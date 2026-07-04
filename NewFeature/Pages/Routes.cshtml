@@ -1,0 +1,314 @@
+@page
+@model NewFeature.Pages.RoutesModel
+@{
+    ViewData["Title"] = "Fleet Operations - Routes";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-map me-2"></i> Route Operations</h1>
+            <p class="text-muted mb-0">Configure terminals, pathways, and mileage distances</p>
+        </div>
+        <button class="btn btn-neon" onclick="openAddModal()">
+            <i class="bi bi-plus-circle me-1"></i> Add Route
+        </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="glass-card mb-4 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6 col-lg-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="routeSearch" class="form-control form-control-glass" placeholder="Search routes by name or locations..." onkeyup="filterRoutes()">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 text-md-end">
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Routes Table -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-glass text-white align-middle" id="routesTable">
+                <thead>
+                    <tr>
+                        <th data-lbl="routeName">Route Name</th>
+                        <th data-lbl="start">Start Location</th>
+                        <th data-lbl="end">End Location</th>
+                        <th data-lbl="distance">Distance</th>
+                        <th data-lbl="actions" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="routesList">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Route Modal -->
+<div class="modal fade" id="routeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="modalTitle">Add Route</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="routeForm" onsubmit="saveRoute(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="routeId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nameEn" class="form-label" data-lbl="lbl-name-en">Route Name (EN)</label>
+                            <input type="text" id="nameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nameAr" class="form-label" data-lbl="lbl-name-ar">Route Name (AR)</label>
+                            <input type="text" id="nameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="startLocationEn" class="form-label" data-lbl="lbl-start-en">Start Location (EN)</label>
+                            <input type="text" id="startLocationEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="startLocationAr" class="form-label" data-lbl="lbl-start-ar">Start Location (AR)</label>
+                            <input type="text" id="startLocationAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="endLocationEn" class="form-label" data-lbl="lbl-end-en">End Location (EN)</label>
+                            <input type="text" id="endLocationEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endLocationAr" class="form-label" data-lbl="lbl-end-ar">End Location (AR)</label>
+                            <input type="text" id="endLocationAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="distanceKm" class="form-label" data-lbl="lbl-distance">Distance (KM)</label>
+                        <input type="number" step="0.01" id="distanceKm" class="form-control form-control-glass" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let currentLang = 'en';
+        let routes = [];
+
+        const labels = {
+            en: {
+                routeName: "Route Name",
+                start: "Start Location",
+                end: "End Location",
+                distance: "Distance",
+                actions: "Actions",
+                "lbl-name-en": "Route Name (EN)",
+                "lbl-name-ar": "Route Name (AR)",
+                "lbl-start-en": "Start Location (EN)",
+                "lbl-start-ar": "Start Location (AR)",
+                "lbl-end-en": "End Location (EN)",
+                "lbl-end-ar": "End Location (AR)",
+                "lbl-distance": "Distance (KM)",
+                "btn-cancel": "Cancel",
+                "btn-save": "Save Route"
+            },
+            ar: {
+                routeName: "اسم المسار",
+                start: "موقع البدء",
+                end: "موقع النهاية",
+                distance: "المسافة",
+                actions: "الإجراءات",
+                "lbl-name-en": "اسم المسار بالإنجليزية",
+                "lbl-name-ar": "اسم المسار بالعربية",
+                "lbl-start-en": "موقع البدء بالإنجليزية",
+                "lbl-start-ar": "موقع البدء بالعربية",
+                "lbl-end-en": "موقع النهاية بالإنجليزية",
+                "lbl-end-ar": "موقع النهاية بالعربية",
+                "lbl-distance": "المسافة (كم)",
+                "btn-cancel": "إلغاء",
+                "btn-save": "حفظ المسار"
+            }
+        };
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadRoutes();
+        });
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll("[data-lbl]").forEach(el => {
+                const key = el.getAttribute("data-lbl");
+                if (labels[lang][key]) {
+                    el.innerText = labels[lang][key];
+                }
+            });
+            renderRoutes();
+        }
+
+        async function loadRoutes() {
+            try {
+                const res = await fetch('/api/routes');
+                if (res.ok) {
+                    routes = await res.json();
+                    renderRoutes();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderRoutes() {
+            const tbody = document.getElementById("routesList");
+            tbody.innerHTML = "";
+
+            if (routes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No routes found.</td></tr>`;
+                return;
+            }
+
+            routes.forEach(r => {
+                const name = currentLang === 'en' ? r.nameEn : r.nameAr;
+                const start = currentLang === 'en' ? r.startLocationEn : r.startLocationAr;
+                const end = currentLang === 'en' ? r.endLocationEn : r.endLocationAr;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${name}</strong></td>
+                    <td>${start}</td>
+                    <td>${end}</td>
+                    <td>${r.distanceKm} KM</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editRoute(${r.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteRoute(${r.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterRoutes() {
+            const query = document.getElementById("routeSearch").value.toLowerCase();
+            const rows = document.querySelectorAll("#routesList tr");
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById("routeForm").reset();
+            document.getElementById("routeId").value = "";
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Route" : "إضافة مسار";
+            
+            const modal = new bootstrap.Modal(document.getElementById('routeModal'));
+            modal.show();
+        }
+
+        async function editRoute(id) {
+            try {
+                const res = await fetch(`/api/routes/${id}`);
+                if (res.ok) {
+                    const r = await res.json();
+                    document.getElementById("routeId").value = r.id;
+                    document.getElementById("nameEn").value = r.nameEn;
+                    document.getElementById("nameAr").value = r.nameAr;
+                    document.getElementById("startLocationEn").value = r.startLocationEn;
+                    document.getElementById("startLocationAr").value = r.startLocationAr;
+                    document.getElementById("endLocationEn").value = r.endLocationEn;
+                    document.getElementById("endLocationAr").value = r.endLocationAr;
+                    document.getElementById("distanceKm").value = r.distanceKm;
+
+                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Route Info" : "تعديل تفاصيل المسار";
+
+                    const modal = new bootstrap.Modal(document.getElementById('routeModal'));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveRoute(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("routeId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                nameEn: document.getElementById("nameEn").value,
+                nameAr: document.getElementById("nameAr").value,
+                startLocationEn: document.getElementById("startLocationEn").value,
+                startLocationAr: document.getElementById("startLocationAr").value,
+                endLocationEn: document.getElementById("endLocationEn").value,
+                endLocationAr: document.getElementById("endLocationAr").value,
+                distanceKm: parseFloat(document.getElementById("distanceKm").value)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/routes/${id}` : '/api/routes';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    const modalEl = document.getElementById('routeModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadRoutes();
+                } else {
+                    alert("Error saving route.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteRoute(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this route?" : "هل أنت متأكد من حذف هذا المسار؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/routes/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadRoutes();
+                } else {
+                    alert("Failed to delete route.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+}

@@ -1,10 +1,97 @@
-﻿@page
+@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Enterprise Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="py-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-extrabold mb-2" style="font-family: var(--font-outfit); background: linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold-light) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            RAWAHEL AL MASHAER CO.
+        </h1>
+        <p class="text-muted fs-5">شركة رواحل المشاعر — Enterprise Portal</p>
+        <hr class="border-glass w-25 mx-auto">
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- 1. Project Management Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Projects" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--neon-blue);"><i class="bi bi-kanban"></i></div>
+                        <h3>Project Management</h3>
+                        <p class="text-muted mt-2">Oversee client projects, milestones, tasks, dependencies, and resources.</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span class="btn btn-neon-outline btn-sm">Manage Projects <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 2. Fleet Management Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Vehicles" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--neon-teal);"><i class="bi bi-truck"></i></div>
+                        <h3>Fleet Management</h3>
+                        <p class="text-muted mt-2">Manage vehicle assets, check maintenance status, license plates, and capacities.</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span class="btn btn-neon-outline btn-sm">Manage Fleet <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 3. Route Operations Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Routes" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--neon-blue);"><i class="bi bi-map"></i></div>
+                        <h3>Route Operations</h3>
+                        <p class="text-muted mt-2">Define routes, starting locations, ending terminals, and distance tracking.</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span class="btn btn-neon-outline btn-sm">Manage Routes <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 4. Trips Scheduling Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Trips" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--neon-teal);"><i class="bi bi-calendar-event"></i></div>
+                        <h3>Trips Scheduling</h3>
+                        <p class="text-muted mt-2">Schedule journeys, assign vehicles, coordinate drivers, and monitor dispatch status.</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span class="btn btn-neon-outline btn-sm">Manage Trips <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 5. User Directory Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Users" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--neon-blue);"><i class="bi bi-shield-lock"></i></div>
+                        <h3>User Directory & Settings</h3>
+                        <p class="text-muted mt-2">Manage personnel profiles, toggle active status, and assign security roles.</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span class="btn btn-neon-outline btn-sm">Manage Users <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
 </div>

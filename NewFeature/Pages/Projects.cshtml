@@ -1,0 +1,371 @@
+@page
+@model NewFeature.Pages.ProjectsModel
+@{
+    ViewData["Title"] = "Project Management";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-kanban me-2"></i> Project Management</h1>
+            <p class="text-muted mb-0">Oversee project scope, dates, and localized client links</p>
+        </div>
+        <button class="btn btn-neon" onclick="openAddModal()">
+            <i class="bi bi-folder-plus me-1"></i> Create Project
+        </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="glass-card mb-4 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6 col-lg-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="projectSearch" class="form-control form-control-glass" placeholder="Search projects by name, client, status..." onkeyup="filterProjects()">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 text-md-end">
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Table -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-glass text-white align-middle" id="projectsTable">
+                <thead>
+                    <tr>
+                        <th data-lbl="projName">Project Name</th>
+                        <th data-lbl="client">Client</th>
+                        <th data-lbl="startDate">Start Date</th>
+                        <th data-lbl="endDate">End Date</th>
+                        <th data-lbl="status">Status</th>
+                        <th data-lbl="actions" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsList">
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading projects...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Project Glass Modal -->
+<div class="modal fade" id="projectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="modalTitle">Create Project</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="projectForm" onsubmit="saveProject(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="projectId">
+                    
+                    <div class="mb-3">
+                        <label for="clientId" class="form-label" data-lbl="lbl-client">Client</label>
+                        <select id="clientId" class="form-control form-control-glass" required>
+                            <option value="">Select Client</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nameEn" class="form-label" data-lbl="lbl-name-en">Project Name (EN)</label>
+                            <input type="text" id="nameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nameAr" class="form-label" data-lbl="lbl-name-ar">Project Name (AR)</label>
+                            <input type="text" id="nameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descriptionEn" class="form-label" data-lbl="lbl-desc-en">Description (EN)</label>
+                        <textarea id="descriptionEn" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descriptionAr" class="form-label" data-lbl="lbl-desc-ar">Description (AR)</label>
+                        <textarea id="descriptionAr" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="startDate" class="form-label" data-lbl="lbl-start-date">Start Date</label>
+                            <input type="date" id="startDate" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endDate" class="form-label" data-lbl="lbl-end-date">End Date</label>
+                            <input type="date" id="endDate" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="status" class="form-label" data-lbl="lbl-status">Project Status</label>
+                        <select id="status" class="form-control form-control-glass" required>
+                            <option value="0">Planning</option>
+                            <option value="1">Active</option>
+                            <option value="2">Completed</option>
+                            <option value="3">On Hold</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let currentLang = 'en';
+        let projects = [];
+        let clients = [];
+
+        const labels = {
+            en: {
+                projName: "Project Name",
+                client: "Client",
+                startDate: "Start Date",
+                endDate: "End Date",
+                status: "Status",
+                actions: "Actions",
+                "lbl-client": "Client Link",
+                "lbl-name-en": "Project Name (EN)",
+                "lbl-name-ar": "Project Name (AR)",
+                "lbl-desc-en": "Description (EN)",
+                "lbl-desc-ar": "Description (AR)",
+                "lbl-start-date": "Start Date",
+                "lbl-end-date": "End Date",
+                "lbl-status": "Project Status",
+                "btn-cancel": "Cancel",
+                "btn-save": "Save Project"
+            },
+            ar: {
+                projName: "اسم المشروع",
+                client: "العميل",
+                startDate: "تاريخ البدء",
+                endDate: "تاريخ الانتهاء",
+                status: "الحالة",
+                actions: "الإجراءات",
+                "lbl-client": "رابط العميل",
+                "lbl-name-en": "اسم المشروع بالإنجليزية",
+                "lbl-name-ar": "اسم المشروع بالعربية",
+                "lbl-desc-en": "الوصف بالإنجليزية",
+                "lbl-desc-ar": "الوصف بالعربية",
+                "lbl-start-date": "تاريخ البدء",
+                "lbl-end-date": "تاريخ الانتهاء",
+                "lbl-status": "حالة المشروع",
+                "btn-cancel": "إلغاء",
+                "btn-save": "حفظ المشروع"
+            }
+        };
+
+        const statusLabels = {
+            0: { text: "Planning", class: "badge-glow-info" },
+            1: { text: "Active", class: "badge-glow-success" },
+            2: { text: "Completed", class: "badge-glow-success" },
+            3: { text: "On Hold", class: "badge-glow-warning" }
+        };
+
+        const statusLabelsAr = {
+            0: { text: "تخطيط", class: "badge-glow-info" },
+            1: { text: "نشط", class: "badge-glow-success" },
+            2: { text: "مكتمل", class: "badge-glow-success" },
+            3: { text: "قيد الانتظار", class: "badge-glow-warning" }
+        };
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            await loadClients();
+            await loadProjects();
+        });
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll("[data-lbl]").forEach(el => {
+                const key = el.getAttribute("data-lbl");
+                if (labels[lang][key]) {
+                    el.innerText = labels[lang][key];
+                }
+            });
+            renderProjects();
+        }
+
+        async function loadClients() {
+            try {
+                const res = await fetch('/api/clients');
+                if (res.ok) {
+                    clients = await res.json();
+                    const dropdown = document.getElementById("clientId");
+                    dropdown.innerHTML = '<option value="">Select Client</option>';
+                    clients.forEach(c => {
+                        const name = currentLang === 'en' ? c.nameEn : c.nameAr;
+                        dropdown.innerHTML += `<option value="${c.id}">${name}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error("Error loading clients:", err);
+            }
+        }
+
+        async function loadProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                if (res.ok) {
+                    projects = await res.json();
+                    renderProjects();
+                }
+            } catch (err) {
+                console.error("Error loading projects:", err);
+            }
+        }
+
+        function renderProjects() {
+            const tbody = document.getElementById("projectsList");
+            tbody.innerHTML = "";
+
+            if (projects.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No projects found.</td></tr>`;
+                return;
+            }
+
+            projects.forEach(p => {
+                const name = currentLang === 'en' ? p.nameEn : p.nameAr;
+                const client = p.clientName;
+                const statusMeta = currentLang === 'en' ? statusLabels[p.status] : statusLabelsAr[p.status];
+                const badge = `<span class="${statusMeta.class}">${statusMeta.text}</span>`;
+
+                const start = new Date(p.startDate).toLocaleDateString();
+                const end = new Date(p.endDate).toLocaleDateString();
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${name}</strong></td>
+                    <td>${client}</td>
+                    <td>${start}</td>
+                    <td>${end}</td>
+                    <td>${badge}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editProject(${p.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteProject(${p.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterProjects() {
+            const query = document.getElementById("projectSearch").value.toLowerCase();
+            const rows = document.querySelectorAll("#projectsList tr");
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById("projectForm").reset();
+            document.getElementById("projectId").value = "";
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Create Project" : "إنشاء مشروع";
+            
+            const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+            modal.show();
+        }
+
+        async function editProject(id) {
+            try {
+                const res = await fetch(`/api/projects/${id}`);
+                if (res.ok) {
+                    const p = await res.json();
+                    document.getElementById("projectId").value = p.id;
+                    document.getElementById("clientId").value = p.clientId;
+                    document.getElementById("nameEn").value = p.nameEn;
+                    document.getElementById("nameAr").value = p.nameAr;
+                    document.getElementById("descriptionEn").value = p.descriptionEn;
+                    document.getElementById("descriptionAr").value = p.descriptionAr;
+                    
+                    document.getElementById("startDate").value = p.startDate.split('T')[0];
+                    document.getElementById("endDate").value = p.endDate.split('T')[0];
+                    document.getElementById("status").value = p.status;
+
+                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Project Details" : "تعديل تفاصيل المشروع";
+
+                    const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveProject(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("projectId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                clientId: parseInt(document.getElementById("clientId").value),
+                nameEn: document.getElementById("nameEn").value,
+                nameAr: document.getElementById("nameAr").value,
+                descriptionEn: document.getElementById("descriptionEn").value,
+                descriptionAr: document.getElementById("descriptionAr").value,
+                startDate: document.getElementById("startDate").value,
+                endDate: document.getElementById("endDate").value,
+                status: parseInt(document.getElementById("status").value)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/projects/${id}` : '/api/projects';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    const modalEl = document.getElementById('projectModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadProjects();
+                } else {
+                    alert("Error saving project data.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteProject(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this project?" : "هل أنت متأكد من حذف هذا المشروع؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadProjects();
+                } else {
+                    alert("Failed to delete project.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+}

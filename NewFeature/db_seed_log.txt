@@ -1,0 +1,1 @@
+User admin@company.com exists! Password reset: True. Email confirmed: True, Lockout cleared. Username: admin@company.com, Active: True, Roles: Admin

@@ -1,0 +1,292 @@
+@page
+@model NewFeature.Pages.ClientsModel
+@{
+    ViewData["Title"] = "Client Management";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-briefcase me-2"></i> Client Management</h1>
+            <p class="text-muted mb-0">Register client accounts, set identification codes, and update contact info</p>
+        </div>
+        <button class="btn btn-neon" onclick="openAddModal()">
+            <i class="bi bi-plus-circle me-1"></i> Add New Client
+        </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="glass-card mb-4 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6 col-lg-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="clientSearch" class="form-control form-control-glass" placeholder="Search clients by name, code, email..." onkeyup="filterClients()">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 text-md-end">
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clients Table -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-glass text-white align-middle" id="clientsTable">
+                <thead>
+                    <tr>
+                        <th data-lbl="code">Client Code</th>
+                        <th data-lbl="clientName">Client Name</th>
+                        <th data-lbl="email">Email</th>
+                        <th data-lbl="phone">Phone</th>
+                        <th data-lbl="actions" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsList">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading client listings...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Client Glass Modal -->
+<div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="modalTitle">Add Client</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="clientForm" onsubmit="saveClient(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="clientId">
+                    
+                    <div class="mb-3">
+                        <label for="code" class="form-label" data-lbl="lbl-code">Client Code</label>
+                        <input type="text" id="code" class="form-control form-control-glass" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nameEn" class="form-label" data-lbl="lbl-name-en">Client Name (EN)</label>
+                            <input type="text" id="nameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nameAr" class="form-label" data-lbl="lbl-name-ar">Client Name (AR)</label>
+                            <input type="text" id="nameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label" data-lbl="lbl-email">Email Address</label>
+                        <input type="email" id="email" class="form-control form-control-glass" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label" data-lbl="lbl-phone">Phone Number</label>
+                        <input type="text" id="phone" class="form-control form-control-glass" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Client</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let currentLang = 'en';
+        let clients = [];
+
+        const labels = {
+            en: {
+                code: "Client Code",
+                clientName: "Client Name",
+                email: "Email",
+                phone: "Phone",
+                actions: "Actions",
+                "lbl-code": "Client Code",
+                "lbl-name-en": "Client Name (EN)",
+                "lbl-name-ar": "Client Name (AR)",
+                "lbl-email": "Email Address",
+                "lbl-phone": "Phone Number",
+                "btn-cancel": "Cancel",
+                "btn-save": "Save Client"
+            },
+            ar: {
+                code: "رمز العميل",
+                clientName: "اسم العميل",
+                email: "البريد الإلكتروني",
+                phone: "الهاتف",
+                actions: "الإجراءات",
+                "lbl-code": "رمز العميل",
+                "lbl-name-en": "اسم العميل بالإنجليزية",
+                "lbl-name-ar": "اسم العميل بالعربية",
+                "lbl-email": "البريد الإلكتروني",
+                "lbl-phone": "رقم الهاتف",
+                "btn-cancel": "إلغاء",
+                "btn-save": "حفظ العميل"
+            }
+        };
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadClients();
+        });
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll("[data-lbl]").forEach(el => {
+                const key = el.getAttribute("data-lbl");
+                if (labels[lang][key]) {
+                    el.innerText = labels[lang][key];
+                }
+            });
+            renderClients();
+        }
+
+        async function loadClients() {
+            try {
+                const res = await fetch('/api/clients');
+                if (res.ok) {
+                    clients = await res.json();
+                    renderClients();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderClients() {
+            const tbody = document.getElementById("clientsList");
+            tbody.innerHTML = "";
+
+            if (clients.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No clients found.</td></tr>`;
+                return;
+            }
+
+            clients.forEach(c => {
+                const name = currentLang === 'en' ? c.nameEn : c.nameAr;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${c.code}</strong></td>
+                    <td>${name}</td>
+                    <td>${c.email}</td>
+                    <td>${c.phone}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editClient(${c.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteClient(${c.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterClients() {
+            const query = document.getElementById("clientSearch").value.toLowerCase();
+            const rows = document.querySelectorAll("#clientsList tr");
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById("clientForm").reset();
+            document.getElementById("clientId").value = "";
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Client" : "إضافة عميل";
+            
+            const modal = new bootstrap.Modal(document.getElementById('clientModal'));
+            modal.show();
+        }
+
+        async function editClient(id) {
+            try {
+                const res = await fetch(`/api/clients/${id}`);
+                if (res.ok) {
+                    const c = await res.json();
+                    document.getElementById("clientId").value = c.id;
+                    document.getElementById("code").value = c.code;
+                    document.getElementById("nameEn").value = c.nameEn;
+                    document.getElementById("nameAr").value = c.nameAr;
+                    document.getElementById("email").value = c.email;
+                    document.getElementById("phone").value = c.phone;
+
+                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Client Details" : "تعديل تفاصيل العميل";
+
+                    const modal = new bootstrap.Modal(document.getElementById('clientModal'));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveClient(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("clientId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                code: document.getElementById("code").value,
+                nameEn: document.getElementById("nameEn").value,
+                nameAr: document.getElementById("nameAr").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/clients/${id}` : '/api/clients';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    const modalEl = document.getElementById('clientModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadClients();
+                } else {
+                    alert("Error saving client.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteClient(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this client?" : "هل أنت متأكد من حذف هذا العميل؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadClients();
+                } else {
+                    alert("Failed to delete client.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+}

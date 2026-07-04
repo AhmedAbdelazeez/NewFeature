@@ -1,31 +1,315 @@
-html {
-  font-size: 14px;
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;900&display=swap');
+
+:root {
+    --bg-dark: #faf9f6;
+    --bg-card: #ffffff;
+    --border-glass: rgba(176, 132, 26, 0.3);
+    --border-glow: rgba(176, 132, 26, 0.7);
+    --brand-gold: #b0841a;
+    --brand-gold-dark: #8c6510;
+    --brand-gold-light: #e2b34a;
+    --text-primary: #0f172a;
+    --text-muted: #475569;
+    --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    --font-outfit: 'Outfit', sans-serif;
+    --font-tajawal: 'Tajawal', sans-serif;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+body, button, input, select, textarea, span, h1, h2, h3, h4, h5, h6, p, div, a {
+    font-family: var(--font-tajawal), sans-serif;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+html[dir="ltr"] body, html[dir="ltr"] button, html[dir="ltr"] input, html[dir="ltr"] select, html[dir="ltr"] textarea, html[dir="ltr"] span, html[dir="ltr"] h1, html[dir="ltr"] h2, html[dir="ltr"] h3, html[dir="ltr"] h4, html[dir="ltr"] h5, html[dir="ltr"] h6, html[dir="ltr"] p, html[dir="ltr"] div, html[dir="ltr"] a {
+    font-family: var(--font-outfit), sans-serif;
 }
 
 body {
-  margin-bottom: 60px;
+    background-color: var(--bg-dark);
+    background-image: linear-gradient(rgba(250, 249, 246, 0.97), rgba(250, 249, 246, 0.97)), url('https://www.rawahel.com.sa/wp-content/themes/tl4s-raoaa_rawahel/images/slider10.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: var(--text-primary);
+    min-height: 100vh;
+    margin: 0;
+    padding-bottom: 60px;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 700;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+/* Glassmorphism Cards */
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    padding: 24px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand-gold), var(--brand-gold-light), var(--brand-gold-dark));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-glow);
+    box-shadow: 0 10px 25px rgba(176, 132, 26, 0.15);
+}
+
+.glass-card:hover::before {
+    opacity: 1;
+}
+
+/* Navbar */
+.navbar-custom {
+    background: #ffffff !important;
+    border-bottom: 1px solid rgba(176, 132, 26, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.navbar-brand-custom {
+    font-family: var(--font-outfit);
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--brand-gold), var(--brand-gold-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-link-custom {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.nav-link-custom:hover {
+    color: var(--brand-gold) !important;
+}
+
+/* Gold brand buttons */
+.btn-neon {
+    background: linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold-dark) 100%);
+    border: none;
+    color: #ffffff !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(176, 132, 26, 0.35);
+    transition: all 0.3s ease;
+}
+
+.btn-neon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(176, 132, 26, 0.5);
+    filter: brightness(1.08);
+}
+
+.btn-neon-outline {
+    background: transparent;
+    border: 2px solid var(--brand-gold);
+    color: var(--brand-gold) !important;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-neon-outline:hover {
+    background: var(--brand-gold);
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(176, 132, 26, 0.25);
+    transform: translateY(-2px);
+}
+
+.btn-neon-danger {
+    background: transparent;
+    border: 2px solid #ef4444;
+    color: #ef4444 !important;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-neon-danger:hover {
+    background: #ef4444;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+    transform: translateY(-2px);
+}
+
+/* Light Glass inputs */
+.form-control-glass {
+    background: #ffffff;
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.form-control-glass:focus {
+    background: #ffffff;
+    border-color: var(--brand-gold);
+    color: var(--text-primary);
+    box-shadow: 0 0 10px rgba(176, 132, 26, 0.25);
+    outline: none;
+}
+
+select.form-control-glass option {
+    background: #ffffff;
+    color: var(--text-primary);
+}
+
+/* Table styles */
+.table-glass {
+    color: var(--text-primary);
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.table-glass th {
+    background: transparent;
+    border-bottom: 2px solid var(--border-glass);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    color: var(--brand-gold-dark);
+    padding: 16px;
+}
+
+.table-glass tr {
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.table-glass tr td {
+    padding: 16px;
+    border-top: 1px solid rgba(176, 132, 26, 0.15);
+    border-bottom: 1px solid rgba(176, 132, 26, 0.15);
+}
+
+.table-glass tr td:first-child {
+    border-left: 1px solid rgba(176, 132, 26, 0.15);
+    border-radius: 8px 0 0 8px;
+}
+
+.table-glass tr td:last-child {
+    border-right: 1px solid rgba(176, 132, 26, 0.15);
+    border-radius: 0 8px 8px 0;
+}
+
+.table-glass tr:hover {
+    background: rgba(176, 132, 26, 0.035);
+    box-shadow: 0 4px 15px rgba(176, 132, 26, 0.08);
+}
+
+/* Glass Modal */
+.modal-content-glass {
+    background: #ffffff !important;
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    color: var(--text-primary);
+}
+
+.modal-header-glass {
+    border-bottom: 1px solid rgba(176, 132, 26, 0.15);
+    padding: 20px;
+}
+
+.modal-footer-glass {
+    border-top: 1px solid rgba(176, 132, 26, 0.15);
+    padding: 20px;
+}
+
+.close-btn-glass {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.close-btn-glass:hover {
+    opacity: 1;
+}
+
+/* Badge glows */
+.badge-glow-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #059669;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.badge-glow-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #d97706;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.badge-glow-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.badge-glow-info {
+    background: rgba(176, 132, 26, 0.08);
+    border: 1px solid rgba(176, 132, 26, 0.3);
+    color: var(--brand-gold-dark);
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+/* Glow highlights */
+.glow-text {
+    color: var(--brand-gold-dark);
+    font-weight: 800;
+}
+
+/* Footer position */
+footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    line-height: 60px;
+    background: #ffffff;
+    border-top: 1px solid rgba(176, 132, 26, 0.15);
+    color: var(--text-muted);
+}
+#usersTable tr, #projectsTable tr, #vehiclesTable tr, #routesTable tr, #tripsTable tr, #clientsTable tr {
+    color: var(--text-primary) !important;
 }

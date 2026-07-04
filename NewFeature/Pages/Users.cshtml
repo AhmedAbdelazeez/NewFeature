@@ -1,0 +1,346 @@
+@page
+@model NewFeature.Pages.UsersModel
+@{
+    ViewData["Title"] = "User Directory & Settings";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-shield-lock me-2"></i> User Directory</h1>
+            <p class="text-muted mb-0">System roles, access controls, and profile configurations</p>
+        </div>
+        <button class="btn btn-neon" onclick="openAddModal()">
+            <i class="bi bi-person-plus-fill me-1"></i> Add New User
+        </button>
+    </div>
+
+    <!-- Search and Localization Toolbar -->
+    <div class="glass-card mb-4 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6 col-lg-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="userSearch" class="form-control form-control-glass" placeholder="Search by name, email, username or role..." onkeyup="filterUsers()">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4 text-md-end">
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table Card -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-glass text-white align-middle" id="usersTable">
+                <thead>
+                    <tr>
+                        <th data-lbl="username">Username</th>
+                        <th data-lbl="email">Email</th>
+                        <th data-lbl="fullname">Full Name</th>
+                        <th data-lbl="role">Role</th>
+                        <th data-lbl="status">Status</th>
+                        <th data-lbl="actions" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersList">
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading users...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit User Glass Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="modalTitle">Add New User</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="userId">
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label" data-lbl="lbl-username">Username</label>
+                        <input type="text" id="username" class="form-control form-control-glass" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label" data-lbl="lbl-email">Email Address</label>
+                        <input type="email" id="email" class="form-control form-control-glass" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="fullNameEn" class="form-label" data-lbl="lbl-name-en">Full Name (EN)</label>
+                            <input type="text" id="fullNameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="fullNameAr" class="form-label" data-lbl="lbl-name-ar">Full Name (AR)</label>
+                            <input type="text" id="fullNameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="role" class="form-label" data-lbl="lbl-role">Assign Role</label>
+                        <select id="role" class="form-control form-control-glass" required>
+                            <option value="">Select a Role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Driver">Driver</option>
+                            <option value="Project Manager">Project Manager</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label" data-lbl="lbl-password">Password</label>
+                        <input type="password" id="password" class="form-control form-control-glass">
+                        <small class="text-muted" id="passwordHelp">Leave blank to keep current password if editing</small>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="isActive" checked>
+                        <label class="form-check-label ms-2" for="isActive" data-lbl="lbl-active">Active Status</label>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let currentLang = 'en';
+        let users = [];
+
+        const labels = {
+            en: {
+                username: "Username",
+                email: "Email",
+                fullname: "Full Name",
+                role: "Role",
+                status: "Status",
+                actions: "Actions",
+                "lbl-username": "Username",
+                "lbl-email": "Email Address",
+                "lbl-name-en": "Full Name (EN)",
+                "lbl-name-ar": "Full Name (AR)",
+                "lbl-role": "Assign Role",
+                "lbl-password": "Password",
+                "lbl-active": "Active Status",
+                "btn-cancel": "Cancel",
+                "btn-save": "Save User"
+            },
+            ar: {
+                username: "اسم المستخدم",
+                email: "البريد الإلكتروني",
+                fullname: "الاسم الكامل",
+                role: "الدور",
+                status: "الحالة",
+                actions: "الإجراءات",
+                "lbl-username": "اسم المستخدم",
+                "lbl-email": "البريد الإلكتروني",
+                "lbl-name-en": "الاسم الكامل بالإنجليزية",
+                "lbl-name-ar": "الاسم الكامل بالعربية",
+                "lbl-role": "تعيين الدور",
+                "lbl-password": "كلمة المرور",
+                "lbl-active": "حالة النشاط",
+                "btn-cancel": "إلغاء",
+                "btn-save": "حفظ المستخدم"
+            }
+        };
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadUsers();
+        });
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll("[data-lbl]").forEach(el => {
+                const key = el.getAttribute("data-lbl");
+                if (labels[lang][key]) {
+                    el.innerText = labels[lang][key];
+                }
+            });
+            renderUsers();
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                if (response.ok) {
+                    users = await response.json();
+                    renderUsers();
+                } else {
+                    alert("Failed to load users from the server.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network error while trying to fetch users.");
+            }
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById("usersList");
+            tbody.innerHTML = "";
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No users found.</td></tr>`;
+                return;
+            }
+
+            users.forEach(u => {
+                const name = currentLang === 'en' ? u.fullNameEn : u.fullNameAr;
+                const statusBadge = u.isActive 
+                    ? `<span class="badge-glow-success"><i class="bi bi-check-circle me-1"></i> Active</span>`
+                    : `<span class="badge-glow-danger"><i class="bi bi-x-circle me-1"></i> Inactive</span>`;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${u.username}</strong></td>
+                    <td>${u.email}</td>
+                    <td>${name}</td>
+                    <td><span class="badge-glow-info">${u.role}</span></td>
+                    <td style="cursor: pointer;" onclick="toggleUserStatus('${u.id}')">${statusBadge}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editUser('${u.id}')"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteUser('${u.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById("userSearch").value.toLowerCase();
+            const rows = document.querySelectorAll("#usersList tr");
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        function openAddModal() {
+            document.getElementById("userForm").reset();
+            document.getElementById("userId").value = "";
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add New User" : "إضافة مستخدم جديد";
+            document.getElementById("password").required = true;
+            document.getElementById("passwordHelp").style.display = "none";
+            document.getElementById("username").disabled = false;
+            
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        }
+
+        async function editUser(id) {
+            try {
+                const response = await fetch(`/api/users/${id}`);
+                if (response.ok) {
+                    const u = await response.json();
+                    document.getElementById("userId").value = u.id;
+                    document.getElementById("username").value = u.username;
+                    document.getElementById("username").disabled = true; // Disable editing username
+                    document.getElementById("email").value = u.email;
+                    document.getElementById("fullNameEn").value = u.fullNameEn;
+                    document.getElementById("fullNameAr").value = u.fullNameAr;
+                    document.getElementById("role").value = u.role;
+                    document.getElementById("password").value = "";
+                    document.getElementById("password").required = false;
+                    document.getElementById("passwordHelp").style.display = "block";
+                    document.getElementById("isActive").checked = u.isActive;
+
+                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit User Settings" : "تعديل إعدادات المستخدم";
+
+                    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveUser(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("userId").value;
+            const dto = {
+                id: id,
+                username: document.getElementById("username").value,
+                email: document.getElementById("email").value,
+                fullNameEn: document.getElementById("fullNameEn").value,
+                fullNameAr: document.getElementById("fullNameAr").value,
+                role: document.getElementById("role").value,
+                password: document.getElementById("password").value || null,
+                isActive: document.getElementById("isActive").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/users/${id}` : '/api/users';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (response.ok) {
+                    const modalEl = document.getElementById('userModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadUsers();
+                } else {
+                    const errs = await response.json();
+                    alert("Error saving user: " + (Array.isArray(errs) ? errs.join(", ") : errs));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network error occurred.");
+            }
+        }
+
+        async function toggleUserStatus(id) {
+            try {
+                const response = await fetch(`/api/users/${id}/toggle-status`, { method: 'POST' });
+                if (response.ok) {
+                    loadUsers();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteUser(id) {
+            const confirmMsg = currentLang === 'en' ? "Are you sure you want to delete this user?" : "هل أنت متأكد من رغبتك في حذف هذا المستخدم؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadUsers();
+                } else {
+                    const txt = await response.text();
+                    alert("Failed: " + txt);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+}
