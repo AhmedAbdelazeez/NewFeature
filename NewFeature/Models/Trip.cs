@@ -27,9 +27,12 @@ namespace NewFeature.Models
         [Required(ErrorMessage = "Trip Status is required")]
         public TripStatus Status { get; set; } = TripStatus.Scheduled;
 
+        public int? ProjectId { get; set; }
+
         // Navigation properties
         public Vehicle? Vehicle { get; set; }
         public Route? Route { get; set; }
         public ApplicationUser? Driver { get; set; }
+        public Project? Project { get; set; }
     }
 }

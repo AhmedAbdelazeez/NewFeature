@@ -11,5 +11,6 @@ namespace NewFeature.Services
         Task<ProjectDto> CreateProjectAsync(ProjectDto dto);
         Task<bool> UpdateProjectAsync(ProjectDto dto);
         Task<bool> DeleteProjectAsync(int id);
+        Task<ProjectDetailsDto?> GetProjectDetailsAsync(int id);
     }
 }

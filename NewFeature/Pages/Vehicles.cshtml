@@ -7,26 +7,22 @@
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="glow-text"><i class="bi bi-truck me-2"></i> Fleet Vehicles</h1>
-            <p class="text-muted mb-0">Manage vehicle assets, capacity, and current operational states</p>
+            <h1 class="glow-text"><i class="bi bi-truck me-2"></i> <span data-i18n="vehicles-title">Fleet Vehicles</span></h1>
+            <p class="text-muted mb-0" data-i18n="vehicles-subtitle">Manage vehicle assets, capacity, and current operational states</p>
         </div>
         <button class="btn btn-neon" onclick="openAddModal()">
-            <i class="bi bi-plus-circle me-1"></i> Add Vehicle
+            <i class="bi bi-plus-circle me-1"></i> <span data-i18n="vehicles-btn-add">Add Vehicle</span>
         </button>
     </div>
 
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-md-6 col-lg-8">
+            <div class="col-12">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                     <input type="text" id="vehicleSearch" class="form-control form-control-glass" placeholder="Search vehicles by plate, make, model or status..." onkeyup="filterVehicles()">
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4 text-md-end">
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
             </div>
         </div>
     </div>
@@ -37,12 +33,12 @@
             <table class="table table-glass text-white align-middle" id="vehiclesTable">
                 <thead>
                     <tr>
-                        <th data-lbl="plate">License Plate</th>
-                        <th data-lbl="makeModel">Make & Model</th>
-                        <th data-lbl="year">Year</th>
-                        <th data-lbl="capacity">Capacity (Tons)</th>
-                        <th data-lbl="status">Status</th>
-                        <th data-lbl="actions" class="text-end">Actions</th>
+                        <th data-i18n="vehicles-th-plate">License Plate</th>
+                        <th data-i18n="vehicles-th-make">Make & Model</th>
+                        <th data-i18n="vehicles-th-year">Year</th>
+                        <th data-i18n="vehicles-th-capacity">Capacity</th>
+                        <th data-i18n="vehicles-th-status">Status</th>
+                        <th data-i18n="vehicles-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="vehiclesList">
@@ -60,7 +56,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-glass">
             <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle">Add Vehicle</h5>
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="vehicles-btn-add">Add Vehicle</h5>
                 <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
             </div>
             <form id="vehicleForm" onsubmit="saveVehicle(event)">
@@ -68,34 +64,34 @@
                     <input type="hidden" id="vehicleId">
                     
                     <div class="mb-3">
-                        <label for="licensePlate" class="form-label" data-lbl="lbl-plate">License Plate</label>
+                        <label for="licensePlate" class="form-label" data-i18n="vehicles-lbl-plate">License Plate</label>
                         <input type="text" id="licensePlate" class="form-control form-control-glass" required>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="make" class="form-label" data-lbl="lbl-make">Make</label>
+                            <label for="make" class="form-label" data-i18n="vehicles-lbl-make">Make</label>
                             <input type="text" id="make" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="model" class="form-label" data-lbl="lbl-model">Model</label>
+                            <label for="model" class="form-label" data-i18n="vehicles-lbl-model">Model</label>
                             <input type="text" id="model" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="year" class="form-label" data-lbl="lbl-year">Year</label>
+                            <label for="year" class="form-label" data-i18n="vehicles-lbl-year">Year</label>
                             <input type="number" id="year" class="form-control form-control-glass" min="1900" max="2100" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="capacity" class="form-label" data-lbl="lbl-capacity">Capacity (Tons)</label>
+                            <label for="capacity" class="form-label" data-i18n="vehicles-lbl-capacity">Capacity</label>
                             <input type="number" step="0.01" id="capacity" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="status" class="form-label" data-lbl="lbl-status">Vehicle Status</label>
+                        <label for="status" class="form-label" data-i18n="vehicles-lbl-status">Vehicle Status</label>
                         <select id="status" class="form-control form-control-glass" required>
                             <option value="0">Available</option>
                             <option value="1">Active</option>
@@ -105,8 +101,8 @@
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Vehicle</button>
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Vehicle</button>
                 </div>
             </form>
         </div>
@@ -116,43 +112,8 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        let currentLang = 'en';
+        const currentLang = localStorage.getItem('lang') || 'en';
         let vehicles = [];
-
-        const labels = {
-            en: {
-                plate: "License Plate",
-                makeModel: "Make & Model",
-                year: "Year",
-                capacity: "Capacity",
-                status: "Status",
-                actions: "Actions",
-                "lbl-plate": "License Plate",
-                "lbl-make": "Make",
-                "lbl-model": "Model",
-                "lbl-year": "Year",
-                "lbl-capacity": "Capacity (Tons)",
-                "lbl-status": "Vehicle Status",
-                "btn-cancel": "Cancel",
-                "btn-save": "Save Vehicle"
-            },
-            ar: {
-                plate: "لوحة الترخيص",
-                makeModel: "الشركة والموديل",
-                year: "السنة",
-                capacity: "الحمولة",
-                status: "الحالة",
-                actions: "الإجراءات",
-                "lbl-plate": "لوحة الترخيص",
-                "lbl-make": "الشركة المصنعة",
-                "lbl-model": "الموديل",
-                "lbl-year": "السنة",
-                "lbl-capacity": "الحمولة (بالأطنان)",
-                "lbl-status": "حالة المركبة",
-                "btn-cancel": "إلغاء",
-                "btn-save": "حفظ المركبة"
-            }
-        };
 
         const statusMeta = {
             0: { text: "Available", class: "badge-glow-success" },
@@ -171,17 +132,6 @@
         document.addEventListener("DOMContentLoaded", function () {
             loadVehicles();
         });
-
-        function setLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll("[data-lbl]").forEach(el => {
-                const key = el.getAttribute("data-lbl");
-                if (labels[lang][key]) {
-                    el.innerText = labels[lang][key];
-                }
-            });
-            renderVehicles();
-        }
 
         async function loadVehicles() {
             try {
@@ -216,6 +166,7 @@
                     <td>${v.capacity}</td>
                     <td>${badge}</td>
                     <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewVehicleDetails(${v.id})"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editVehicle(${v.id})"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-neon-danger btn-sm" onclick="deleteVehicle(${v.id})"><i class="bi bi-trash"></i></button>
                     </td>
@@ -238,7 +189,15 @@
             });
         }
 
+        function resetModalReadOnly(formId) {
+            const form = document.getElementById(formId);
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = false);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "";
+        }
+
         function openAddModal() {
+            resetModalReadOnly("vehicleForm");
             document.getElementById("vehicleForm").reset();
             document.getElementById("vehicleId").value = "";
             document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Vehicle" : "إضافة مركبة";
@@ -248,6 +207,7 @@
         }
 
         async function editVehicle(id) {
+            resetModalReadOnly("vehicleForm");
             try {
                 const res = await fetch(`/api/vehicles/${id}`);
                 if (res.ok) {
@@ -268,6 +228,15 @@
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        async function viewVehicleDetails(id) {
+            await editVehicle(id);
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Vehicle Details" : "تفاصيل المركبة";
+            const form = document.getElementById("vehicleForm");
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = true);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "none";
         }
 
         async function saveVehicle(e) {

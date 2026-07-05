@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        (function() {
+            const lang = localStorage.getItem('lang') || 'en';
+            document.documentElement.setAttribute('lang', lang);
+            document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+        })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Rawhil Dashboard</title>
@@ -14,11 +21,13 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light navbar-custom mb-3">
             <div class="container">
-                <a class="navbar-brand navbar-brand-custom" asp-area="" asp-page="/Index" style="display: flex; align-items: center; gap: 10px;">
-                    <div style="font-size: 1.8rem; color: var(--brand-gold);"><i class="bi bi-shield-shaded"></i></div>
+                <a class="navbar-brand navbar-brand-custom" asp-area="" asp-page="/Index" style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background-color: #ffffff; padding: 4px; border-radius: 8px; border: 1px solid rgba(176, 132, 26, 0.2); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(176, 132, 26, 0.08);">
+                        <img src="https://www.rawahel.com.sa/wp-content/themes/tl4s-raoaa_rawahel/images/logo.png" alt="Rawahel Logo" style="height: 38px; object-fit: contain;" />
+                    </div>
                     <div style="line-height: 1.1; font-family: var(--font-outfit);">
-                        <span style="font-weight: 800; background: linear-gradient(90deg, var(--brand-gold), var(--brand-gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.3rem; letter-spacing: 0.5px;">RAWAHEL</span><br>
-                        <span style="font-size: 0.55rem; letter-spacing: 1.5px; color: var(--text-muted); font-weight: 600; display: block; margin-top: -2px;">AL MASHAER CO.</span>
+                        <span data-i18n="nav-brand-main" style="font-weight: 800; background: linear-gradient(90deg, var(--brand-gold), var(--brand-gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.25rem; letter-spacing: 0.5px;">RAWAHEL</span><br>
+                        <span data-i18n="nav-brand-sub" style="font-size: 0.55rem; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 600; display: block; margin-top: -2px;">AL MASHAER CO.</span>
                     </div>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
@@ -27,25 +36,29 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Index">Dashboard</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Clients">Clients</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Projects">Projects</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Vehicles">Vehicles</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Routes">Routes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-custom" asp-area="" asp-page="/Trips">Trips</a>
-                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Clients" data-i18n="nav-clients">Clients</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Projects" data-i18n="nav-projects">Projects</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Vehicles" data-i18n="nav-vehicles">Vehicles</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Routes" data-i18n="nav-routes">Routes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Trips" data-i18n="nav-trips">Trips</a>
+                            </li>
+                        }
                     </ul>
+                    <!-- Language Switcher Button -->
+                    <button id="langToggleBtn" onclick="toggleLanguage()" class="btn btn-neon-outline btn-sm me-3" style="font-weight:700;">
+                        <i class="bi bi-globe me-1"></i> <span id="langToggleText">العربية (AR)</span>
+                    </button>
                     <partial name="_LoginPartial" />
                 </div>
             </div>
@@ -57,15 +70,370 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - NewFeature - <a asp-area="" asp-page="/Privacy">Privacy</a>
+    <footer class="border-top footer text-muted" style="background-color: #ffffff; border-top: 1px solid rgba(176, 132, 26, 0.15) !important;">
+        <div class="container text-center text-slate-500 font-semibold" data-i18n="footer-text">
+            © 2026 Rawahel Al Mashaer Co. All Rights Reserved.
         </div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        const translations = {
+            'en': {
+                // Layout & Common
+                'nav-brand-main': 'RAWAHEL',
+                'nav-brand-sub': 'AL MASHAER CO.',
+                'nav-clients': 'Clients',
+                'nav-projects': 'Projects',
+                'nav-vehicles': 'Vehicles',
+                'nav-routes': 'Routes',
+                'nav-trips': 'Trips',
+                'nav-hello': 'Hello',
+                'btn-logout': 'Logout',
+                'btn-cancel': 'Cancel',
+                'btn-save': 'Save Changes',
+                'footer-text': '© 2026 CMC Advisor. All Rights Reserved.',
+
+                // Dashboard Home
+                'dashboard-title': 'RAWAHEL AL MASHAER CO',
+                'dashboard-subtitle': 'Unified Digital System for Rawahel Al Mashaer Holding Company',
+                'card-projects-title': 'Project Management',
+                'card-projects-desc': 'Oversee client projects, milestones, tasks, dependencies, and resources',
+                'card-projects-btn': 'Manage Projects →',
+                'card-fleet-title': 'Fleet Management',
+                'card-fleet-desc': 'Manage vehicle assets, check maintenance status, license plates, and capacities',
+                'card-fleet-btn': 'Manage Fleet →',
+                'card-routes-title': 'Route Operations',
+                'card-routes-desc': 'Define routes, starting locations, ending terminals, and distance tracking',
+                'card-routes-btn': 'Manage Routes →',
+                'card-trips-title': 'Trips Scheduling',
+                'card-trips-desc': 'Schedule journeys, assign vehicles, coordinate drivers, and monitor dispatch status',
+                'card-trips-btn': 'Manage Trips →',
+                'card-users-title': 'User Directory & Settings',
+                'card-users-desc': 'Manage personnel profiles, toggle active status, and assign security roles',
+                'card-users-btn': 'Manage Users →',
+
+                // Clients Page
+                'clients-title': 'Client Management',
+                'clients-subtitle': 'Register client accounts, set identification codes, and update contact info',
+                'clients-btn-add': 'Add New Client',
+                'clients-th-code': 'Client Code',
+                'clients-th-name': 'Client Name',
+                'clients-th-email': 'Email',
+                'clients-th-phone': 'Phone',
+                'clients-th-actions': 'Actions',
+                'clients-lbl-code': 'Client Code',
+                'clients-lbl-name-en': 'Client Name (EN)',
+                'clients-lbl-name-ar': 'Client Name (AR)',
+                'clients-lbl-email': 'Email Address',
+                'clients-lbl-phone': 'Phone Number',
+
+                // Projects Page
+                'projects-title': 'Project Management',
+                'projects-subtitle': 'Configure client contracts, allocate resources, and track project status',
+                'projects-btn-add': 'Add New Project',
+                'projects-th-name': 'Project Name',
+                'projects-th-client': 'Client',
+                'projects-th-start': 'Start Date',
+                'projects-th-end': 'End Date',
+                'projects-th-status': 'Status',
+                'projects-th-value': 'Price',
+                'projects-th-vehicles': 'Vehicles',
+                'projects-th-trips': 'Trips',
+                'projects-th-actions': 'Actions',
+                'projects-lbl-client': 'Select Client',
+                'projects-lbl-value': 'Contract Price (SAR)',
+                'projects-lbl-vehicles': 'Vehicles Required',
+                'projects-lbl-trips': 'Trips Estimated',
+                'projects-lbl-name-en': 'Project Name (EN)',
+                'projects-lbl-name-ar': 'Project Name (AR)',
+                'projects-lbl-desc-en': 'Description (EN)',
+                'projects-lbl-desc-ar': 'Description (AR)',
+                'projects-lbl-start': 'Start Date',
+                'projects-lbl-end': 'End Date',
+                'projects-lbl-status': 'Project Status',
+
+                // Vehicles Page
+                'vehicles-title': 'Fleet Asset Management',
+                'vehicles-subtitle': 'Monitor license plates, capacity limits, and mechanical availability',
+                'vehicles-btn-add': 'Add New Vehicle',
+                'vehicles-th-plate': 'License Plate',
+                'vehicles-th-make': 'Make',
+                'vehicles-th-model': 'Model',
+                'vehicles-th-year': 'Year',
+                'vehicles-th-capacity': 'Capacity',
+                'vehicles-th-status': 'Status',
+                'vehicles-th-actions': 'Actions',
+                'vehicles-lbl-plate': 'License Plate',
+                'vehicles-lbl-make': 'Manufacturer / Make',
+                'vehicles-lbl-model': 'Model Name',
+                'vehicles-lbl-year': 'Production Year',
+                'vehicles-lbl-capacity': 'Passenger Capacity',
+                'vehicles-lbl-status': 'Vehicle Status',
+
+                // Routes Page
+                'routes-title': 'Route Operations',
+                'routes-subtitle': 'Define transportation routes, distance parameters, and transit hubs',
+                'routes-btn-add': 'Add New Route',
+                'routes-th-name': 'Route Name',
+                'routes-th-start': 'Start Location',
+                'routes-th-end': 'End Location',
+                'routes-th-distance': 'Distance',
+                'routes-th-actions': 'Actions',
+                'routes-lbl-name-en': 'Route Name (EN)',
+                'routes-lbl-name-ar': 'Route Name (AR)',
+                'routes-lbl-start-en': 'Start Location (EN)',
+                'routes-lbl-start-ar': 'Start Location (AR)',
+                'routes-lbl-end-en': 'End Location (EN)',
+                'routes-lbl-end-ar': 'End Location (AR)',
+                'routes-lbl-distance': 'Distance (KM)',
+
+                // Trips Page
+                'trips-title': 'Trips Scheduling',
+                'trips-subtitle': 'Assign drivers, check vehicle availability, and schedule transit windows',
+                'trips-btn-add': 'Schedule New Trip',
+                'trips-th-vehicle': 'Vehicle Plate',
+                'trips-th-route': 'Route Name',
+                'trips-th-project': 'Project',
+                'trips-th-driver': 'Driver',
+                'trips-th-departure': 'Departure',
+                'trips-th-arrival': 'Arrival',
+                'trips-th-status': 'Status',
+                'trips-th-actions': 'Actions',
+                'trips-lbl-vehicle': 'Select Vehicle',
+                'trips-lbl-route': 'Select Route',
+                'trips-lbl-project': 'Project',
+                'trips-lbl-driver': 'Select Driver',
+                'trips-lbl-departure': 'Scheduled Departure',
+                'trips-lbl-arrival': 'Scheduled Arrival',
+                'trips-lbl-status': 'Trip Status',
+
+                // Users Page
+                'users-title': 'User Directory',
+                'users-subtitle': 'Administer platform staff credentials, status toggles, and security roles',
+                'users-btn-add': 'Add New User',
+                'users-th-username': 'Username',
+                'users-th-email': 'Email',
+                'users-th-name': 'Full Name',
+                'users-th-role': 'Security Role',
+                'users-th-status': 'Status',
+                'users-th-actions': 'Actions',
+                'users-lbl-username': 'Username',
+                'users-lbl-email': 'Email Address',
+                'users-lbl-name-en': 'Full Name (EN)',
+                'users-lbl-name-ar': 'Full Name (AR)',
+                'users-lbl-role': 'System Role',
+                'users-lbl-status': 'Account Active',
+                'users-lbl-password': 'Password (Leave empty to keep current)'
+            },
+            'ar': {
+                // Layout & Common
+                'nav-brand-main': 'رواحل',
+                'nav-brand-sub': 'شركة رواحل المشاعر',
+                'nav-clients': 'العملاء',
+                'nav-projects': 'المشاريع',
+                'nav-vehicles': 'المركبات',
+                'nav-routes': 'المسارات',
+                'nav-trips': 'الرحلات',
+                'nav-hello': 'أهلاً بك',
+                'btn-logout': 'تسجيل خروج',
+                'btn-cancel': 'إلغاء',
+                'btn-save': 'حفظ التغييرات',
+                'footer-text': 'جميع الحقوق محفوظة © 2026 لشركة CMC Advisor',
+
+                // Dashboard Home
+                'dashboard-title': 'شركة رواحل المشاعر',
+                'dashboard-subtitle': 'المنظومة الرقمية الموحدة لإدارة وتشغيل قطاعات شركة رواحل المشاعر القابضة',
+                'card-projects-title': 'إدارة المشاريع',
+                'card-projects-desc': 'متابعة مشاريع العملاء والمعالم والمهام والتبعيات والموارد',
+                'card-projects-btn': 'إدارة المشاريع ←',
+                'card-fleet-title': 'إدارة الأسطول',
+                'card-fleet-desc': 'إدارة أصول المركبات والتحقق من حالة الصيانة ولوحات الترخيص والسعات',
+                'card-fleet-btn': 'إدارة الأسطول ←',
+                'card-routes-title': 'إدارة المسارات',
+                'card-routes-desc': 'تحديد المسارات ومواقع البدء ومحطات النهاية وتتبع المسافات',
+                'card-routes-btn': 'إدارة المسارات ←',
+                'card-trips-title': 'جدولة الرحلات',
+                'card-trips-desc': 'جدولة الرحلات وتعيين المركبات وتنسيق السائقين ومراقبة حالة الإرسال',
+                'card-trips-btn': 'إدارة الرحلات ←',
+                'card-users-title': 'دليل المستخدمين والإعدادات',
+                'card-users-desc': 'إدارة ملفات الموظفين وتبديل حالة النشاط وتعيين الأدوار الأمنية',
+                'card-users-btn': 'إدارة المستخدمين ←',
+
+                // Clients Page
+                'clients-title': 'إدارة العملاء',
+                'clients-subtitle': 'تسجيل حسابات العملاء وتعيين رموز التعريف وتحديث معلومات الاتصال',
+                'clients-btn-add': 'إضافة عميل جديد',
+                'clients-th-code': 'رمز العميل',
+                'clients-th-name': 'اسم العميل',
+                'clients-th-email': 'البريد الإلكتروني',
+                'clients-th-phone': 'الهاتف',
+                'clients-th-actions': 'الإجراءات',
+                'clients-lbl-code': 'رمز العميل',
+                'clients-lbl-name-en': 'اسم العميل (EN)',
+                'clients-lbl-name-ar': 'اسم العميل (AR)',
+                'clients-lbl-email': 'البريد الإلكتروني',
+                'clients-lbl-phone': 'رقم الهاتف',
+
+                // Projects Page
+                'projects-title': 'إدارة المشاريع',
+                'projects-subtitle': 'تكوين عقود العملاء وتخصيص الموارد وتتبع حالة المشروع',
+                'projects-btn-add': 'إضافة مشروع جديد',
+                'projects-th-name': 'اسم المشروع',
+                'projects-th-client': 'العميل',
+                'projects-th-start': 'تاريخ البدء',
+                'projects-th-end': 'تاريخ الانتهاء',
+                'projects-th-status': 'الحالة',
+                'projects-th-value': 'القيمة التعاقدية',
+                'projects-th-vehicles': 'المركبات',
+                'projects-th-trips': 'الرحلات المقدرة',
+                'projects-th-actions': 'الإجراءات',
+                'projects-lbl-client': 'اختر العميل',
+                'projects-lbl-value': 'القيمة التعاقدية (ريال)',
+                'projects-lbl-vehicles': 'المركبات المطلوبة',
+                'projects-lbl-trips': 'الرحلات المقدرة',
+                'projects-lbl-name-en': 'اسم المشروع (EN)',
+                'projects-lbl-name-ar': 'اسم المشروع (AR)',
+                'projects-lbl-desc-en': 'الوصف (EN)',
+                'projects-lbl-desc-ar': 'الوصف (AR)',
+                'projects-lbl-start': 'تاريخ البدء',
+                'projects-lbl-end': 'تاريخ الانتهاء',
+                'projects-lbl-status': 'حالة المشروع',
+
+                // Vehicles Page
+                'vehicles-title': 'إدارة أصول الأسطول',
+                'vehicles-subtitle': 'مراقبة لوحات الترخيص والحدود الاستيعابية والجاهزية الميكانيكية',
+                'vehicles-btn-add': 'إضافة مركبة جديدة',
+                'vehicles-th-plate': 'لوحة الترخيص',
+                'vehicles-th-make': 'الشركة المصنعة',
+                'vehicles-th-model': 'الموديل',
+                'vehicles-th-year': 'سنة الصنع',
+                'vehicles-th-capacity': 'السعة الاستيعابية',
+                'vehicles-th-status': 'الحالة',
+                'vehicles-th-actions': 'الإجراءات',
+                'vehicles-lbl-plate': 'لوحة الترخيص',
+                'vehicles-lbl-make': 'الشركة المصنعة / الماركة',
+                'vehicles-lbl-model': 'اسم الموديل',
+                'vehicles-lbl-year': 'سنة الإنتاج',
+                'vehicles-lbl-capacity': 'السعة الاستيعابية للركاب',
+                'vehicles-lbl-status': 'حالة المركبة',
+
+                // Routes Page
+                'routes-title': 'إدارة المسارات',
+                'routes-subtitle': 'تحديد مسارات النقل ومقاييس المسافات ومحطات العبور',
+                'routes-btn-add': 'إضافة مسار جديد',
+                'routes-th-name': 'اسم المسار',
+                'routes-th-start': 'نقطة الانطلاق',
+                'routes-th-end': 'نقطة الوصول',
+                'routes-th-distance': 'المسافة',
+                'routes-th-actions': 'الإجراءات',
+                'routes-lbl-name-en': 'اسم المسار (EN)',
+                'routes-lbl-name-ar': 'اسم المسار (AR)',
+                'routes-lbl-start-en': 'موقع الانطلاق (EN)',
+                'routes-lbl-start-ar': 'موقع الانطلاق (AR)',
+                'routes-lbl-end-en': 'موقع الوصول (EN)',
+                'routes-lbl-end-ar': 'موقع الوصول (AR)',
+                'routes-lbl-distance': 'المسافة (كم)',
+
+                // Trips Page
+                'trips-title': 'جدولة الرحلات',
+                'trips-subtitle': 'تعيين السائقين والتحقق من جاهزية المركبات وجدولة فترات العبور',
+                'trips-btn-add': 'جدولة رحلة جديدة',
+                'trips-th-vehicle': 'لوحة المركبة',
+                'trips-th-route': 'اسم المسار',
+                'trips-th-project': 'المشروع',
+                'trips-th-driver': 'السائق',
+                'trips-th-departure': 'وقت المغادرة',
+                'trips-th-arrival': 'وقت الوصول',
+                'trips-th-status': 'الحالة',
+                'trips-th-actions': 'الإجراءات',
+                'trips-lbl-vehicle': 'اختر المركبة',
+                'trips-lbl-route': 'اختر المسار',
+                'trips-lbl-project': 'المشروع',
+                'trips-lbl-driver': 'اختر السائق',
+                'trips-lbl-departure': 'وقت المغادرة المجدول',
+                'trips-lbl-arrival': 'وقت الوصول المجدول',
+                'trips-lbl-status': 'حالة الرحلة',
+
+                // Users Page
+                'users-title': 'دليل المستخدمين',
+                'users-subtitle': 'إدارة صلاحيات موظفي المنصة وتبديل حالة الحساب والأدوار الأمنية',
+                'users-btn-add': 'إضافة مستخدم جديد',
+                'users-th-username': 'اسم المستخدم',
+                'users-th-email': 'البريد الإلكتروني',
+                'users-th-name': 'الاسم الكامل',
+                'users-th-role': 'الدور الأمني',
+                'users-th-status': 'الحالة',
+                'users-th-actions': 'الإجراءات',
+                'users-lbl-username': 'اسم المستخدم',
+                'users-lbl-email': 'البريد الإلكتروني',
+                'users-lbl-name-en': 'الاسم الكامل (EN)',
+                'users-lbl-name-ar': 'الاسم الكامل (AR)',
+                'users-lbl-role': 'دور النظام',
+                'users-lbl-status': 'الحساب نشط',
+                'users-lbl-password': 'كلمة المرور (اتركه فارغاً للإبقاء على الحالية)'
+            }
+        };
+
+        function toggleLanguage() {
+            const currentLang = localStorage.getItem('lang') === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('lang', currentLang);
+            document.cookie = "lang=" + currentLang + ";path=/;max-age=31536000";
+            location.reload();
+        }
+
+        function applyLanguage(lang) {
+            document.documentElement.setAttribute('lang', lang);
+            document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+            
+            const btnText = document.getElementById('langToggleText');
+            if (btnText) {
+                btnText.innerText = lang === 'en' ? 'العربية (AR)' : 'English (EN)';
+            }
+
+            // Translate elements marked with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    if (el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit')) {
+                        el.value = translations[lang][key];
+                    } else if (el.tagName === 'INPUT' && el.placeholder) {
+                        el.placeholder = translations[lang][key];
+                    } else {
+                        el.innerText = translations[lang][key];
+                    }
+                }
+            });
+        }
+
+        (function() {
+            const lang = localStorage.getItem('lang') || 'en';
+            applyLanguage(lang);
+
+            // Intercept global fetch requests to automatically append request headers
+            const originalFetch = window.fetch;
+            window.fetch = function(input, init) {
+                init = init || {};
+                init.headers = init.headers || {};
+                const currentLang = localStorage.getItem('lang') || 'en';
+                
+                if (init.headers instanceof Headers) {
+                    init.headers.set('X-Language', currentLang);
+                    init.headers.set('Accept-Language', currentLang);
+                } else if (Array.isArray(init.headers)) {
+                    init.headers.push(['X-Language', currentLang]);
+                    init.headers.push(['Accept-Language', currentLang]);
+                } else {
+                    init.headers['X-Language'] = currentLang;
+                    init.headers['Accept-Language'] = currentLang;
+                }
+                return originalFetch(input, init);
+            };
+        })();
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

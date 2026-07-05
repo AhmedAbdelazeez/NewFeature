@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
@@ -13,15 +14,35 @@ namespace NewFeature.Services
         private readonly IRepository<Models.Task> _taskRepository;
         private readonly IRepository<Project> _projectRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public TaskService(
             IRepository<Models.Task> taskRepository,
             IRepository<Project> projectRepository,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IHttpContextAccessor httpContextAccessor)
         {
             _taskRepository = taskRepository;
             _projectRepository = projectRepository;
             _userManager = userManager;
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        private bool IsArabic()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            if (context != null)
+            {
+                if (context.Request.Headers.TryGetValue("Accept-Language", out var lang))
+                {
+                    if (lang.ToString().ToLower().Contains("ar")) return true;
+                }
+                if (context.Request.Headers.TryGetValue("X-Language", out var xLang))
+                {
+                    if (xLang.ToString().ToLower().Contains("ar")) return true;
+                }
+            }
+            return false;
         }
 
         public async Task<IEnumerable<TaskDto>> GetAllTasksAsync()
@@ -29,9 +50,10 @@ namespace NewFeature.Services
             var tasks = await _taskRepository.GetAllAsync();
             var projects = await _projectRepository.GetAllAsync();
             var users = await _userManager.Users.ToListAsync();
+            var isAr = IsArabic();
 
-            var projectMap = projects.ToDictionary(p => p.Id, p => p.NameEn);
-            var userMap = users.ToDictionary(u => u.Id, u => u.FullNameEn);
+            var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
+            var userMap = users.ToDictionary(u => u.Id, u => isAr ? u.FullNameAr : u.FullNameEn);
 
             return tasks.Select(t => new TaskDto
             {
@@ -47,7 +69,9 @@ namespace NewFeature.Services
                 EstimatedHours = t.EstimatedHours,
                 Status = t.Status,
                 AssignedToUserId = t.AssignedToUserId,
-                AssignedToUserName = t.AssignedToUserId != null && userMap.TryGetValue(t.AssignedToUserId, out var userName) ? userName : "Unassigned"
+                AssignedToUserName = t.AssignedToUserId != null && userMap.TryGetValue(t.AssignedToUserId, out var userName) ? userName : "Unassigned",
+                Title = isAr ? t.TitleAr : t.TitleEn,
+                Description = isAr ? t.DescriptionAr : t.DescriptionEn
             }).ToList();
         }
 
@@ -58,12 +82,13 @@ namespace NewFeature.Services
 
             var project = await _projectRepository.GetByIdAsync(t.ProjectId);
             var user = t.AssignedToUserId != null ? await _userManager.FindByIdAsync(t.AssignedToUserId) : null;
+            var isAr = IsArabic();
 
             return new TaskDto
             {
                 Id = t.Id,
                 ProjectId = t.ProjectId,
-                ProjectName = project?.NameEn ?? "Unknown",
+                ProjectName = project != null ? (isAr ? project.NameAr : project.NameEn) : "Unknown",
                 TitleEn = t.TitleEn,
                 TitleAr = t.TitleAr,
                 DescriptionEn = t.DescriptionEn,
@@ -73,7 +98,9 @@ namespace NewFeature.Services
                 EstimatedHours = t.EstimatedHours,
                 Status = t.Status,
                 AssignedToUserId = t.AssignedToUserId,
-                AssignedToUserName = user?.FullNameEn ?? "Unassigned"
+                AssignedToUserName = user != null ? (isAr ? user.FullNameAr : user.FullNameEn) : "Unassigned",
+                Title = isAr ? t.TitleAr : t.TitleEn,
+                Description = isAr ? t.DescriptionAr : t.DescriptionEn
             };
         }
 

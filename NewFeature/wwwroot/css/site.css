@@ -33,7 +33,6 @@ body {
     color: var(--text-primary);
     min-height: 100vh;
     margin: 0;
-    padding-bottom: 60px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -301,14 +300,12 @@ select.form-control-glass option {
 
 /* Footer position */
 footer {
-    position: absolute;
-    bottom: 0;
     width: 100%;
-    height: 60px;
-    line-height: 60px;
+    padding: 20px 0;
     background: #ffffff;
     border-top: 1px solid rgba(176, 132, 26, 0.15);
     color: var(--text-muted);
+    margin-top: 60px;
 }
 #usersTable tr, #projectsTable tr, #vehiclesTable tr, #routesTable tr, #tripsTable tr, #clientsTable tr {
     color: var(--text-primary) !important;

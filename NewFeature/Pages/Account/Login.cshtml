@@ -1,0 +1,92 @@
+@page
+@model NewFeature.Pages.Account.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "تسجيل الدخول - بوابة المؤشرات الرقمية";
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <!-- Tailwind CSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@@tailwindcss/browser@4"></script>
+    <!-- Google Fonts - Tajawal -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;850;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-image: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url('https://www.rawahel.com.sa/wp-content/themes/tl4s-raoaa_rawahel/images/slider10.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 overflow-hidden transition-all duration-300 hover:shadow-gold-brand/20">
+        <!-- Logo Area -->
+        <div class="px-8 pt-8 pb-4 text-center">
+            <div class="inline-block p-4 bg-[#fcfbf7] rounded-full shadow-inner mb-4">
+                <img src="https://www.rawahel.com.sa/wp-content/themes/tl4s-raoaa_rawahel/images/logo.png" alt="Rawahel Logo" class="h-16 object-contain" />
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800">بوابة المؤشرات الرقمية</h2>
+            <p class="text-sm text-slate-500 mt-1">شركة رواحل المشاعر لخدمات الحجاج والمعتمرين</p>
+        </div>
+
+        <!-- Form Area -->
+        <form method="post" class="px-8 pb-8 space-y-6">
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="p-4 bg-red-50 border-r-4 border-red-500 rounded-lg text-red-700 text-sm">
+                    <div asp-validation-summary="All" class="list-none space-y-1"></div>
+                </div>
+            }
+
+            <div class="space-y-2">
+                <label asp-for="Input.Email" class="text-sm font-semibold text-slate-700 block">البريد الإلكتروني</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <input asp-for="Input.Email" type="email" placeholder="example@rawahil.com.sa" dir="ltr" 
+                           class="w-full pr-10 pl-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-[#b0841a] focus:ring-1 focus:ring-[#b0841a] transition duration-200 text-slate-800 text-sm" />
+                </div>
+                <span asp-validation-for="Input.Email" class="text-xs text-red-500"></span>
+            </div>
+
+            <div class="space-y-2">
+                <label asp-for="Input.Password" class="text-sm font-semibold text-slate-700 block">كلمة المرور</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <input asp-for="Input.Password" type="password" placeholder="••••••••" dir="ltr"
+                           class="w-full pr-10 pl-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-[#b0841a] focus:ring-1 focus:ring-[#b0841a] transition duration-200 text-slate-800 text-sm" />
+                </div>
+                <span asp-validation-for="Input.Password" class="text-xs text-red-500"></span>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <label class="flex items-center text-sm text-slate-600 cursor-pointer">
+                    <input asp-for="Input.RememberMe" type="checkbox" 
+                           class="rounded border-slate-300 text-[#b0841a] focus:ring-[#b0841a] ml-2 h-4 w-4" />
+                    تذكرني على هذا الجهاز
+                </label>
+            </div>
+
+            <button type="submit" class="w-full py-3 px-4 bg-gradient-to-l from-[#b0841a] to-[#8c6510] text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:from-[#c2962b] hover:to-[#9e761d] active:scale-[0.98] transition-all duration-150 cursor-pointer">
+                <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+            </button>
+        </form>
+
+        <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 text-center">
+            <span class="text-xs text-slate-400">جميع الحقوق محفوظة © @DateTime.Now.Year لشركة رواحل المشاعر</span>
+        </div>
+    </div>
+</body>
+</html>

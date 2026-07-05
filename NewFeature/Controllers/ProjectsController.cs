@@ -32,6 +32,14 @@ namespace NewFeature.Controllers
             return Ok(project);
         }
 
+        [HttpGet("{id}/details")]
+        public async Task<ActionResult<ProjectDetailsDto>> GetProjectDetails(int id)
+        {
+            var details = await _projectService.GetProjectDetailsAsync(id);
+            if (details == null) return NotFound();
+            return Ok(details);
+        }
+
         [HttpPost]
         public async Task<ActionResult<ProjectDto>> CreateProject([FromBody] ProjectDto dto)
         {

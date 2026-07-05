@@ -9,7 +9,6 @@ using NewFeature.Models;
 
 namespace NewFeature.Controllers
 {
-    [Authorize(Policy = "ManageSettings")]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
@@ -23,11 +22,25 @@ namespace NewFeature.Controllers
             _roleManager = roleManager;
         }
 
+        private bool IsArabic()
+        {
+            if (Request.Headers.TryGetValue("Accept-Language", out var lang))
+            {
+                if (lang.ToString().ToLower().Contains("ar")) return true;
+            }
+            if (Request.Headers.TryGetValue("X-Language", out var xLang))
+            {
+                if (xLang.ToString().ToLower().Contains("ar")) return true;
+            }
+            return false;
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
         {
             var users = await _userManager.Users.ToListAsync();
             var userDtos = new List<UserDto>();
+            var isAr = IsArabic();
 
             foreach (var user in users)
             {
@@ -40,7 +53,8 @@ namespace NewFeature.Controllers
                     FullNameEn = user.FullNameEn,
                     FullNameAr = user.FullNameAr,
                     IsActive = user.IsActive,
-                    Role = roles.FirstOrDefault() ?? "No Role"
+                    Role = roles.FirstOrDefault() ?? "No Role",
+                    FullName = isAr ? user.FullNameAr : user.FullNameEn
                 });
             }
 
@@ -54,6 +68,7 @@ namespace NewFeature.Controllers
             if (user == null) return NotFound();
 
             var roles = await _userManager.GetRolesAsync(user);
+            var isAr = IsArabic();
             return Ok(new UserDto
             {
                 Id = user.Id,
@@ -62,10 +77,12 @@ namespace NewFeature.Controllers
                 FullNameEn = user.FullNameEn,
                 FullNameAr = user.FullNameAr,
                 IsActive = user.IsActive,
-                Role = roles.FirstOrDefault() ?? "No Role"
+                Role = roles.FirstOrDefault() ?? "No Role",
+                FullName = isAr ? user.FullNameAr : user.FullNameEn
             });
         }
 
+        [Authorize(Policy = "ManageSettings")]
         [HttpPost]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] UserDto dto)
         {
@@ -105,6 +122,7 @@ namespace NewFeature.Controllers
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, dto);
         }
 
+        [Authorize(Policy = "ManageSettings")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] UserDto dto)
         {
@@ -149,6 +167,7 @@ namespace NewFeature.Controllers
             return NoContent();
         }
 
+        [Authorize(Policy = "ManageSettings")]
         [HttpPost("{id}/toggle-status")]
         public async Task<IActionResult> ToggleStatus(string id)
         {
@@ -165,6 +184,7 @@ namespace NewFeature.Controllers
             return Ok(new { isActive = user.IsActive });
         }
 
+        [Authorize(Policy = "ManageSettings")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {

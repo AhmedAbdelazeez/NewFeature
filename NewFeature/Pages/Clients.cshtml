@@ -7,26 +7,22 @@
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="glow-text"><i class="bi bi-briefcase me-2"></i> Client Management</h1>
-            <p class="text-muted mb-0">Register client accounts, set identification codes, and update contact info</p>
+            <h1 class="glow-text"><i class="bi bi-briefcase me-2"></i> <span data-i18n="clients-title">Client Management</span></h1>
+            <p class="text-muted mb-0" data-i18n="clients-subtitle">Register client accounts, set identification codes, and update contact info</p>
         </div>
         <button class="btn btn-neon" onclick="openAddModal()">
-            <i class="bi bi-plus-circle me-1"></i> Add New Client
+            <i class="bi bi-plus-circle me-1"></i> <span data-i18n="clients-btn-add">Add New Client</span>
         </button>
     </div>
 
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-md-6 col-lg-8">
+            <div class="col-12">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                     <input type="text" id="clientSearch" class="form-control form-control-glass" placeholder="Search clients by name, code, email..." onkeyup="filterClients()">
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4 text-md-end">
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
             </div>
         </div>
     </div>
@@ -37,11 +33,11 @@
             <table class="table table-glass text-white align-middle" id="clientsTable">
                 <thead>
                     <tr>
-                        <th data-lbl="code">Client Code</th>
-                        <th data-lbl="clientName">Client Name</th>
-                        <th data-lbl="email">Email</th>
-                        <th data-lbl="phone">Phone</th>
-                        <th data-lbl="actions" class="text-end">Actions</th>
+                        <th data-i18n="clients-th-code">Client Code</th>
+                        <th data-i18n="clients-th-name">Client Name</th>
+                        <th data-i18n="clients-th-email">Email</th>
+                        <th data-i18n="clients-th-phone">Phone</th>
+                        <th data-i18n="clients-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="clientsList">
@@ -59,7 +55,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-glass">
             <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle">Add Client</h5>
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="clients-modal-title-add">Add Client</h5>
                 <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
             </div>
             <form id="clientForm" onsubmit="saveClient(event)">
@@ -67,34 +63,34 @@
                     <input type="hidden" id="clientId">
                     
                     <div class="mb-3">
-                        <label for="code" class="form-label" data-lbl="lbl-code">Client Code</label>
+                        <label for="code" class="form-label" data-i18n="clients-lbl-code">Client Code</label>
                         <input type="text" id="code" class="form-control form-control-glass" required>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="nameEn" class="form-label" data-lbl="lbl-name-en">Client Name (EN)</label>
+                            <label for="nameEn" class="form-label" data-i18n="clients-lbl-name-en">Client Name (EN)</label>
                             <input type="text" id="nameEn" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="nameAr" class="form-label" data-lbl="lbl-name-ar">Client Name (AR)</label>
+                            <label for="nameAr" class="form-label" data-i18n="clients-lbl-name-ar">Client Name (AR)</label>
                             <input type="text" id="nameAr" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label" data-lbl="lbl-email">Email Address</label>
+                        <label for="email" class="form-label" data-i18n="clients-lbl-email">Email Address</label>
                         <input type="email" id="email" class="form-control form-control-glass" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="phone" class="form-label" data-lbl="lbl-phone">Phone Number</label>
+                        <label for="phone" class="form-label" data-i18n="clients-lbl-phone">Phone Number</label>
                         <input type="text" id="phone" class="form-control form-control-glass" required>
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Client</button>
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Client</button>
                 </div>
             </form>
         </div>
@@ -104,54 +100,12 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        let currentLang = 'en';
+        const currentLang = localStorage.getItem('lang') || 'en';
         let clients = [];
-
-        const labels = {
-            en: {
-                code: "Client Code",
-                clientName: "Client Name",
-                email: "Email",
-                phone: "Phone",
-                actions: "Actions",
-                "lbl-code": "Client Code",
-                "lbl-name-en": "Client Name (EN)",
-                "lbl-name-ar": "Client Name (AR)",
-                "lbl-email": "Email Address",
-                "lbl-phone": "Phone Number",
-                "btn-cancel": "Cancel",
-                "btn-save": "Save Client"
-            },
-            ar: {
-                code: "رمز العميل",
-                clientName: "اسم العميل",
-                email: "البريد الإلكتروني",
-                phone: "الهاتف",
-                actions: "الإجراءات",
-                "lbl-code": "رمز العميل",
-                "lbl-name-en": "اسم العميل بالإنجليزية",
-                "lbl-name-ar": "اسم العميل بالعربية",
-                "lbl-email": "البريد الإلكتروني",
-                "lbl-phone": "رقم الهاتف",
-                "btn-cancel": "إلغاء",
-                "btn-save": "حفظ العميل"
-            }
-        };
 
         document.addEventListener("DOMContentLoaded", function () {
             loadClients();
         });
-
-        function setLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll("[data-lbl]").forEach(el => {
-                const key = el.getAttribute("data-lbl");
-                if (labels[lang][key]) {
-                    el.innerText = labels[lang][key];
-                }
-            });
-            renderClients();
-        }
 
         async function loadClients() {
             try {
@@ -175,7 +129,7 @@
             }
 
             clients.forEach(c => {
-                const name = currentLang === 'en' ? c.nameEn : c.nameAr;
+                const name = c.name;
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
@@ -184,6 +138,7 @@
                     <td>${c.email}</td>
                     <td>${c.phone}</td>
                     <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewClientDetails(${c.id})"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editClient(${c.id})"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-neon-danger btn-sm" onclick="deleteClient(${c.id})"><i class="bi bi-trash"></i></button>
                     </td>
@@ -206,7 +161,15 @@
             });
         }
 
+        function resetModalReadOnly(formId) {
+            const form = document.getElementById(formId);
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = false);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "";
+        }
+
         function openAddModal() {
+            resetModalReadOnly("clientForm");
             document.getElementById("clientForm").reset();
             document.getElementById("clientId").value = "";
             document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Client" : "إضافة عميل";
@@ -216,6 +179,7 @@
         }
 
         async function editClient(id) {
+            resetModalReadOnly("clientForm");
             try {
                 const res = await fetch(`/api/clients/${id}`);
                 if (res.ok) {
@@ -235,6 +199,15 @@
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        async function viewClientDetails(id) {
+            await editClient(id);
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Client Details" : "تفاصيل العميل";
+            const form = document.getElementById("clientForm");
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = true);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "none";
         }
 
         async function saveClient(e) {

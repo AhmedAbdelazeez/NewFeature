@@ -7,26 +7,22 @@
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="glow-text"><i class="bi bi-calendar-event me-2"></i> Trips Scheduling</h1>
-            <p class="text-muted mb-0">Coordinate driver dispatches, vehicle scheduling, and arrival logs</p>
+            <h1 class="glow-text"><i class="bi bi-calendar-event me-2"></i> <span data-i18n="trips-title">Trips Scheduling</span></h1>
+            <p class="text-muted mb-0" data-i18n="trips-subtitle">Coordinate driver dispatches, vehicle scheduling, and arrival logs</p>
         </div>
         <button class="btn btn-neon" onclick="openAddModal()">
-            <i class="bi bi-plus-circle me-1"></i> Schedule Trip
+            <i class="bi bi-plus-circle me-1"></i> <span data-i18n="trips-btn-add">Schedule Trip</span>
         </button>
     </div>
 
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-md-6 col-lg-8">
+            <div class="col-12">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                     <input type="text" id="tripSearch" class="form-control form-control-glass" placeholder="Search scheduled journeys by driver, vehicle or status..." onkeyup="filterTrips()">
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4 text-md-end">
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
             </div>
         </div>
     </div>
@@ -37,13 +33,14 @@
             <table class="table table-glass text-white align-middle" id="tripsTable">
                 <thead>
                     <tr>
-                        <th data-lbl="vehicle">Vehicle</th>
-                        <th data-lbl="route">Route</th>
-                        <th data-lbl="driver">Driver</th>
-                        <th data-lbl="departure">Departure</th>
-                        <th data-lbl="arrival">Arrival</th>
-                        <th data-lbl="status">Status</th>
-                        <th data-lbl="actions" class="text-end">Actions</th>
+                        <th data-i18n="trips-th-vehicle">Vehicle</th>
+                        <th data-i18n="trips-th-route">Route</th>
+                        <th data-i18n="trips-th-project">Project</th>
+                        <th data-i18n="trips-th-driver">Driver</th>
+                        <th data-i18n="trips-th-departure">Departure</th>
+                        <th data-i18n="trips-th-arrival">Arrival</th>
+                        <th data-i18n="trips-th-status">Status</th>
+                        <th data-i18n="trips-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tripsList">
@@ -61,7 +58,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-glass">
             <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle">Schedule Trip</h5>
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="trips-btn-add">Schedule Trip</h5>
                 <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
             </div>
             <form id="tripForm" onsubmit="saveTrip(event)">
@@ -69,50 +66,57 @@
                     <input type="hidden" id="tripId">
                     
                     <div class="mb-3">
-                        <label for="vehicleId" class="form-label" data-lbl="lbl-vehicle">Vehicle</label>
+                        <label for="vehicleId" class="form-label" data-i18n="trips-lbl-vehicle">Vehicle</label>
                         <select id="vehicleId" class="form-control form-control-glass" required>
-                            <option value="">Select Vehicle</option>
+                            <option value="" data-i18n="trips-lbl-vehicle">Select Vehicle</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label for="routeId" class="form-label" data-lbl="lbl-route">Route</label>
+                        <label for="routeId" class="form-label" data-i18n="trips-lbl-route">Route</label>
                         <select id="routeId" class="form-control form-control-glass" required>
-                            <option value="">Select Route</option>
+                            <option value="" data-i18n="trips-lbl-route">Select Route</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label for="driverId" class="form-label" data-lbl="lbl-driver">Driver</label>
+                        <label for="projectId" class="form-label" data-i18n="trips-lbl-project">Project</label>
+                        <select id="projectId" class="form-control form-control-glass">
+                            <option value="" data-i18n="trips-lbl-project">Select Project (Optional)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="driverId" class="form-label" data-i18n="trips-lbl-driver">Driver</label>
                         <select id="driverId" class="form-control form-control-glass" required>
-                            <option value="">Select Driver</option>
+                            <option value="" data-i18n="trips-lbl-driver">Select Driver</option>
                         </select>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="scheduledDeparture" class="form-label" data-lbl="lbl-dep-sched">Scheduled Departure</label>
+                            <label for="scheduledDeparture" class="form-label" data-i18n="trips-lbl-departure">Scheduled Departure</label>
                             <input type="datetime-local" id="scheduledDeparture" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="scheduledArrival" class="form-label" data-lbl="lbl-arr-sched">Scheduled Arrival</label>
+                            <label for="scheduledArrival" class="form-label" data-i18n="trips-lbl-arrival">Scheduled Arrival</label>
                             <input type="datetime-local" id="scheduledArrival" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="actualDeparture" class="form-label" data-lbl="lbl-dep-act">Actual Departure</label>
+                            <label for="actualDeparture" class="form-label" data-i18n="trips-lbl-departure">Actual Departure</label>
                             <input type="datetime-local" id="actualDeparture" class="form-control form-control-glass">
                         </div>
                         <div class="col-md-6">
-                            <label for="actualArrival" class="form-label" data-lbl="lbl-arr-act">Actual Arrival</label>
+                            <label for="actualArrival" class="form-label" data-i18n="trips-lbl-arrival">Actual Arrival</label>
                             <input type="datetime-local" id="actualArrival" class="form-control form-control-glass">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="status" class="form-label" data-lbl="lbl-status">Trip Status</label>
+                        <label for="status" class="form-label" data-i18n="trips-lbl-status">Trip Status</label>
                         <select id="status" class="form-control form-control-glass" required>
                             <option value="0">Scheduled</option>
                             <option value="1">In Progress</option>
@@ -122,8 +126,8 @@
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Trip</button>
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Trip</button>
                 </div>
             </form>
         </div>
@@ -133,52 +137,12 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        let currentLang = 'en';
+        const currentLang = localStorage.getItem('lang') || 'en';
         let trips = [];
         let vehicles = [];
         let routes = [];
+        let projects = [];
         let drivers = [];
-
-        const labels = {
-            en: {
-                vehicle: "Vehicle",
-                route: "Route",
-                driver: "Driver",
-                departure: "Departure",
-                arrival: "Arrival",
-                status: "Status",
-                actions: "Actions",
-                "lbl-vehicle": "Vehicle Asset",
-                "lbl-route": "Route / Pathway",
-                "lbl-driver": "Assigned Driver",
-                "lbl-dep-sched": "Scheduled Departure",
-                "lbl-arr-sched": "Scheduled Arrival",
-                "lbl-dep-act": "Actual Departure",
-                "lbl-arr-act": "Actual Arrival",
-                "lbl-status": "Trip Status",
-                "btn-cancel": "Cancel",
-                "btn-save": "Save Journey"
-            },
-            ar: {
-                vehicle: "المركبة",
-                route: "المسار",
-                driver: "السائق",
-                departure: "المغادرة",
-                arrival: "الوصول",
-                status: "الحالة",
-                actions: "الإجراءات",
-                "lbl-vehicle": "أصل المركبة",
-                "lbl-route": "المسار / الممر",
-                "lbl-driver": "السائق المعين",
-                "lbl-dep-sched": "المغادرة المجدولة",
-                "lbl-arr-sched": "الوصول المجدول",
-                "lbl-dep-act": "المغادرة الفعلية",
-                "lbl-arr-act": "الوصول الفعلي",
-                "lbl-status": "حالة الرحلة",
-                "btn-cancel": "إلغاء",
-                "btn-save": "حفظ الرحلة"
-            }
-        };
 
         const statusMeta = {
             0: { text: "Scheduled", class: "badge-glow-info" },
@@ -195,56 +159,74 @@
         };
 
         document.addEventListener("DOMContentLoaded", async function () {
-            await loadDropdowns();
+            await loadVehicles();
+            await loadRoutes();
+            await loadDrivers();
+            await loadProjects();
             await loadTrips();
         });
 
-        function setLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll("[data-lbl]").forEach(el => {
-                const key = el.getAttribute("data-lbl");
-                if (labels[lang][key]) {
-                    el.innerText = labels[lang][key];
-                }
-            });
-            renderTrips();
-        }
-
-        async function loadDropdowns() {
+        async function loadVehicles() {
             try {
-                // Vehicles
-                let res = await fetch('/api/vehicles');
+                const res = await fetch('/api/vehicles');
                 if (res.ok) {
                     vehicles = await res.json();
                     const el = document.getElementById("vehicleId");
-                    el.innerHTML = '<option value="">Select Vehicle</option>';
+                    el.innerHTML = '<option value="" data-i18n="trips-lbl-vehicle">Select Vehicle</option>';
                     vehicles.forEach(v => {
                         el.innerHTML += `<option value="${v.id}">${v.licensePlate} (${v.make} ${v.model})</option>`;
                     });
                 }
+            } catch (err) {
+                console.error(err);
+            }
+        }
 
-                // Routes
-                res = await fetch('/api/routes');
+        async function loadRoutes() {
+            try {
+                const res = await fetch('/api/routes');
                 if (res.ok) {
                     routes = await res.json();
                     const el = document.getElementById("routeId");
                     el.innerHTML = '<option value="">Select Route</option>';
                     routes.forEach(r => {
-                        const name = currentLang === 'en' ? r.nameEn : r.nameAr;
+                        const name = r.name;
                         el.innerHTML += `<option value="${r.id}">${name} (${r.distanceKm} KM)</option>`;
                     });
                 }
+            } catch (err) {
+                console.error(err);
+            }
+        }
 
-                // Drivers (users filter by role Driver)
-                res = await fetch('/api/users');
+        async function loadDrivers() {
+            try {
+                const res = await fetch('/api/users');
                 if (res.ok) {
                     const allUsers = await res.json();
                     drivers = allUsers.filter(u => u.role === 'Driver');
                     const el = document.getElementById("driverId");
                     el.innerHTML = '<option value="">Select Driver</option>';
                     drivers.forEach(d => {
-                        const name = currentLang === 'en' ? d.fullNameEn : d.fullNameAr;
+                        const name = d.fullName;
                         el.innerHTML += `<option value="${d.id}">${name}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function loadProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                if (res.ok) {
+                    projects = await res.json();
+                    const el = document.getElementById("projectId");
+                    el.innerHTML = '<option value="" data-i18n="trips-lbl-project">Select Project (Optional)</option>';
+                    projects.forEach(p => {
+                        const name = p.name;
+                        el.innerHTML += `<option value="${p.id}">${name}</option>`;
                     });
                 }
             } catch (err) {
@@ -269,7 +251,7 @@
             tbody.innerHTML = "";
 
             if (trips.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No scheduled trips found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No scheduled trips found.</td></tr>`;
                 return;
             }
 
@@ -283,11 +265,13 @@
                 tr.innerHTML = `
                     <td><strong>${t.vehiclePlate}</strong></td>
                     <td>${t.routeName}</td>
+                    <td><span class="badge badge-glow-info">${t.projectName}</span></td>
                     <td>${t.driverName}</td>
                     <td>${dep}</td>
                     <td>${arr}</td>
                     <td>${badge}</td>
                     <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewTripDetails(${t.id})"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editTrip(${t.id})"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-neon-danger btn-sm" onclick="deleteTrip(${t.id})"><i class="bi bi-trash"></i></button>
                     </td>
@@ -310,7 +294,15 @@
             });
         }
 
+        function resetModalReadOnly(formId) {
+            const form = document.getElementById(formId);
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = false);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "";
+        }
+
         function openAddModal() {
+            resetModalReadOnly("tripForm");
             document.getElementById("tripForm").reset();
             document.getElementById("tripId").value = "";
             document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Schedule Trip" : "جدولة رحلة";
@@ -320,6 +312,7 @@
         }
 
         async function editTrip(id) {
+            resetModalReadOnly("tripForm");
             try {
                 const res = await fetch(`/api/trips/${id}`);
                 if (res.ok) {
@@ -327,6 +320,7 @@
                     document.getElementById("tripId").value = t.id;
                     document.getElementById("vehicleId").value = t.vehicleId;
                     document.getElementById("routeId").value = t.routeId;
+                    document.getElementById("projectId").value = t.projectId || "";
                     document.getElementById("driverId").value = t.driverId;
                     
                     document.getElementById("scheduledDeparture").value = t.scheduledDeparture.substring(0, 16);
@@ -347,15 +341,25 @@
             }
         }
 
+        async function viewTripDetails(id) {
+            await editTrip(id);
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Trip Details" : "تفاصيل الرحلة";
+            const form = document.getElementById("tripForm");
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = true);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "none";
+        }
+
         async function saveTrip(e) {
             e.preventDefault();
 
-            const id = document.getElementById("tripId").value;
+            const projectIdVal = document.getElementById("projectId").value;
             const dto = {
                 id: id ? parseInt(id) : 0,
                 vehicleId: parseInt(document.getElementById("vehicleId").value),
                 routeId: parseInt(document.getElementById("routeId").value),
                 driverId: document.getElementById("driverId").value,
+                projectId: projectIdVal ? parseInt(projectIdVal) : null,
                 scheduledDeparture: document.getElementById("scheduledDeparture").value,
                 scheduledArrival: document.getElementById("scheduledArrival").value,
                 actualDeparture: document.getElementById("actualDeparture").value || null,

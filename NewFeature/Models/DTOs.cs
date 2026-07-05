@@ -28,6 +28,8 @@ namespace NewFeature.Models
         [Phone]
         [StringLength(20)]
         public string Phone { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
     }
 
     public class ProjectDto
@@ -62,6 +64,13 @@ namespace NewFeature.Models
 
         [Required]
         public ProjectStatus Status { get; set; }
+
+        public decimal ContractValue { get; set; }
+        public int RequiredVehiclesCount { get; set; }
+        public int EstimatedTripsCount { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
     }
 
     public class VehicleDto
@@ -123,6 +132,10 @@ namespace NewFeature.Models
         [Required(ErrorMessage = "Distance in KM is required")]
         [Range(0.1, 100000.0)]
         public decimal DistanceKm { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+        public string StartLocation { get; set; } = string.Empty;
+        public string EndLocation { get; set; } = string.Empty;
     }
 
     public class TripDto
@@ -152,6 +165,9 @@ namespace NewFeature.Models
 
         [Required]
         public TripStatus Status { get; set; }
+
+        public int? ProjectId { get; set; }
+        public string ProjectName { get; set; } = string.Empty;
     }
 
     public class TaskDto
@@ -192,6 +208,9 @@ namespace NewFeature.Models
 
         public string? AssignedToUserId { get; set; }
         public string AssignedToUserName { get; set; } = string.Empty;
+
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
     }
 
     public class UserDto
@@ -224,5 +243,18 @@ namespace NewFeature.Models
         [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
         [DataType(DataType.Password)]
         public string? Password { get; set; }
+
+        public string FullName { get; set; } = string.Empty;
+    }
+
+    public class ProjectDetailsDto
+    {
+        public ProjectDto Project { get; set; } = null!;
+        public int TotalTrips { get; set; }
+        public int CompletedTrips { get; set; }
+        public int ActiveTrips { get; set; }
+        public int CancelledTrips { get; set; }
+        public double CompletionPercentage { get; set; }
+        public List<TripDto> Trips { get; set; } = new List<TripDto>();
     }
 }

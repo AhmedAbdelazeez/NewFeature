@@ -7,26 +7,22 @@
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="glow-text"><i class="bi bi-kanban me-2"></i> Project Management</h1>
-            <p class="text-muted mb-0">Oversee project scope, dates, and localized client links</p>
+            <h1 class="glow-text"><i class="bi bi-kanban me-2"></i> <span data-i18n="projects-title">Project Management</span></h1>
+            <p class="text-muted mb-0" data-i18n="projects-subtitle">Configure client contracts, allocate resources, and track project status</p>
         </div>
         <button class="btn btn-neon" onclick="openAddModal()">
-            <i class="bi bi-folder-plus me-1"></i> Create Project
+            <i class="bi bi-folder-plus me-1"></i> <span data-i18n="projects-btn-add">Create Project</span>
         </button>
     </div>
 
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-md-6 col-lg-8">
+            <div class="col-12">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                     <input type="text" id="projectSearch" class="form-control form-control-glass" placeholder="Search projects by name, client, status..." onkeyup="filterProjects()">
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4 text-md-end">
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
             </div>
         </div>
     </div>
@@ -37,17 +33,20 @@
             <table class="table table-glass text-white align-middle" id="projectsTable">
                 <thead>
                     <tr>
-                        <th data-lbl="projName">Project Name</th>
-                        <th data-lbl="client">Client</th>
-                        <th data-lbl="startDate">Start Date</th>
-                        <th data-lbl="endDate">End Date</th>
-                        <th data-lbl="status">Status</th>
-                        <th data-lbl="actions" class="text-end">Actions</th>
+                        <th data-i18n="projects-th-name">Project Name</th>
+                        <th data-i18n="projects-th-client">Client</th>
+                        <th data-i18n="projects-th-value">Price</th>
+                        <th data-i18n="projects-th-vehicles">Vehicles</th>
+                        <th data-i18n="projects-th-trips">Trips</th>
+                        <th data-i18n="projects-th-start">Start Date</th>
+                        <th data-i18n="projects-th-end">End Date</th>
+                        <th data-i18n="projects-th-status">Status</th>
+                        <th data-i18n="projects-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="projectsList">
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading projects...</td>
+                        <td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading projects...</td>
                     </tr>
                 </tbody>
             </table>
@@ -60,7 +59,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-glass">
             <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle">Create Project</h5>
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="projects-btn-add">Create Project</h5>
                 <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
             </div>
             <form id="projectForm" onsubmit="saveProject(event)">
@@ -68,46 +67,61 @@
                     <input type="hidden" id="projectId">
                     
                     <div class="mb-3">
-                        <label for="clientId" class="form-label" data-lbl="lbl-client">Client</label>
+                        <label for="clientId" class="form-label" data-i18n="projects-lbl-client">Client</label>
                         <select id="clientId" class="form-control form-control-glass" required>
-                            <option value="">Select Client</option>
+                            <option value="" data-i18n="projects-lbl-client">Select Client</option>
                         </select>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="nameEn" class="form-label" data-lbl="lbl-name-en">Project Name (EN)</label>
+                            <label for="nameEn" class="form-label" data-i18n="projects-lbl-name-en">Project Name (EN)</label>
                             <input type="text" id="nameEn" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="nameAr" class="form-label" data-lbl="lbl-name-ar">Project Name (AR)</label>
+                            <label for="nameAr" class="form-label" data-i18n="projects-lbl-name-ar">Project Name (AR)</label>
                             <input type="text" id="nameAr" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="descriptionEn" class="form-label" data-lbl="lbl-desc-en">Description (EN)</label>
+                        <label for="descriptionEn" class="form-label" data-i18n="projects-lbl-desc-en">Description (EN)</label>
                         <textarea id="descriptionEn" class="form-control form-control-glass" rows="2" required></textarea>
                     </div>
 
                     <div class="mb-3">
-                        <label for="descriptionAr" class="form-label" data-lbl="lbl-desc-ar">Description (AR)</label>
+                        <label for="descriptionAr" class="form-label" data-i18n="projects-lbl-desc-ar">Description (AR)</label>
                         <textarea id="descriptionAr" class="form-control form-control-glass" rows="2" required></textarea>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="startDate" class="form-label" data-lbl="lbl-start-date">Start Date</label>
+                            <label for="startDate" class="form-label" data-i18n="projects-lbl-start">Start Date</label>
                             <input type="date" id="startDate" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="endDate" class="form-label" data-lbl="lbl-end-date">End Date</label>
+                            <label for="endDate" class="form-label" data-i18n="projects-lbl-end">End Date</label>
                             <input type="date" id="endDate" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="contractValue" class="form-label" data-i18n="projects-lbl-value">Contract Price (SAR)</label>
+                            <input type="number" step="0.01" id="contractValue" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="requiredVehiclesCount" class="form-label" data-i18n="projects-lbl-vehicles">Vehicles Required</label>
+                            <input type="number" id="requiredVehiclesCount" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="estimatedTripsCount" class="form-label" data-i18n="projects-lbl-trips">Trips Estimated</label>
+                            <input type="number" id="estimatedTripsCount" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
-                        <label for="status" class="form-label" data-lbl="lbl-status">Project Status</label>
+                        <label for="status" class="form-label" data-i18n="projects-lbl-status">Project Status</label>
                         <select id="status" class="form-control form-control-glass" required>
                             <option value="0">Planning</option>
                             <option value="1">Active</option>
@@ -117,10 +131,111 @@
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save Project</button>
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Project</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Project Details / Dashboard Modal -->
+<div class="modal fade" id="projectDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="detailsModalTitle"><i class="bi bi-bar-chart-line me-2"></i> <span data-i18n="projects-details-title">Project Dashboard</span></h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body p-4 text-white">
+                <!-- Info Grid -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-1 text-muted small" data-i18n="projects-lbl-client">Client</p>
+                        <h6 id="detClient" class="font-semibold text-slate-200"></h6>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1 text-muted small" data-i18n="projects-lbl-value">Contract Price (SAR)</p>
+                        <h6 id="detPrice" class="font-semibold text-neon"></h6>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1 text-muted small" data-i18n="projects-lbl-start">Start Date</p>
+                        <h6 id="detStart" class="text-slate-200"></h6>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1 text-muted small" data-i18n="projects-lbl-end">End Date</p>
+                        <h6 id="detEnd" class="text-slate-200"></h6>
+                    </div>
+                </div>
+
+                <hr class="border-glass mb-4">
+
+                <!-- Progress Section -->
+                <h6 class="glow-text mb-3"><i class="bi bi-activity me-1"></i> <span data-i18n="projects-lbl-progress-title">Trip Completion Progress</span></h6>
+                <div class="row g-3 mb-3 text-center">
+                    <div class="col-3">
+                        <div class="p-2 glass-card">
+                            <h4 id="detStatTarget" class="mb-0 text-slate-100"></h4>
+                            <small class="text-muted" style="font-size: 10px;" data-i18n="projects-lbl-trips">Estimated Trips</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 glass-card">
+                            <h4 id="detStatCompleted" class="mb-0 text-success"></h4>
+                            <small class="text-muted" style="font-size: 10px;" data-i18n="trips-th-status-completed">Completed</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 glass-card">
+                            <h4 id="detStatRemaining" class="mb-0 text-warning"></h4>
+                            <small class="text-muted" style="font-size: 10px;" data-i18n="projects-lbl-remaining">Remaining</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 glass-card">
+                            <h4 id="detStatCancelled" class="mb-0 text-danger"></h4>
+                            <small class="text-muted" style="font-size: 10px;" data-i18n="trips-th-status-cancelled">Cancelled</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-1 small">
+                        <span class="text-muted" data-i18n="projects-lbl-progress-rate">Completion Rate</span>
+                        <span id="detProgressPercent" class="text-neon font-semibold"></span>
+                    </div>
+                    <div class="progress progress-glass" style="height: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(176, 132, 26, 0.2);">
+                        <div id="detProgressBar" class="progress-bar" role="progressbar" style="width: 0%; background: linear-gradient(135deg, #b0841a 0%, #faf9f6 100%);"></div>
+                    </div>
+                </div>
+
+                <hr class="border-glass mb-4">
+
+                <!-- Assigned Trips list -->
+                <h6 class="glow-text mb-3"><i class="bi bi-calendar-event me-1"></i> <span data-i18n="projects-lbl-trips-list">Scheduled Trips List</span></h6>
+                <div class="table-responsive" style="max-height: 250px;">
+                    <table class="table table-glass table-sm text-white align-middle mb-0" id="detailsTripsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="trips-th-vehicle">Vehicle</th>
+                                <th data-i18n="trips-th-route">Route</th>
+                                <th data-i18n="trips-th-driver">Driver</th>
+                                <th data-i18n="trips-th-departure">Departure</th>
+                                <th data-i18n="trips-th-status">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailsTripsList">
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">No trips scheduled for this project.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-glass">
+                <button type="button" class="btn btn-neon" data-bs-dismiss="modal" data-i18n="btn-cancel">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -128,48 +243,9 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        let currentLang = 'en';
+        const currentLang = localStorage.getItem('lang') || 'en';
         let projects = [];
         let clients = [];
-
-        const labels = {
-            en: {
-                projName: "Project Name",
-                client: "Client",
-                startDate: "Start Date",
-                endDate: "End Date",
-                status: "Status",
-                actions: "Actions",
-                "lbl-client": "Client Link",
-                "lbl-name-en": "Project Name (EN)",
-                "lbl-name-ar": "Project Name (AR)",
-                "lbl-desc-en": "Description (EN)",
-                "lbl-desc-ar": "Description (AR)",
-                "lbl-start-date": "Start Date",
-                "lbl-end-date": "End Date",
-                "lbl-status": "Project Status",
-                "btn-cancel": "Cancel",
-                "btn-save": "Save Project"
-            },
-            ar: {
-                projName: "اسم المشروع",
-                client: "العميل",
-                startDate: "تاريخ البدء",
-                endDate: "تاريخ الانتهاء",
-                status: "الحالة",
-                actions: "الإجراءات",
-                "lbl-client": "رابط العميل",
-                "lbl-name-en": "اسم المشروع بالإنجليزية",
-                "lbl-name-ar": "اسم المشروع بالعربية",
-                "lbl-desc-en": "الوصف بالإنجليزية",
-                "lbl-desc-ar": "الوصف بالعربية",
-                "lbl-start-date": "تاريخ البدء",
-                "lbl-end-date": "تاريخ الانتهاء",
-                "lbl-status": "حالة المشروع",
-                "btn-cancel": "إلغاء",
-                "btn-save": "حفظ المشروع"
-            }
-        };
 
         const statusLabels = {
             0: { text: "Planning", class: "badge-glow-info" },
@@ -190,17 +266,6 @@
             await loadProjects();
         });
 
-        function setLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll("[data-lbl]").forEach(el => {
-                const key = el.getAttribute("data-lbl");
-                if (labels[lang][key]) {
-                    el.innerText = labels[lang][key];
-                }
-            });
-            renderProjects();
-        }
-
         async function loadClients() {
             try {
                 const res = await fetch('/api/clients');
@@ -209,7 +274,7 @@
                     const dropdown = document.getElementById("clientId");
                     dropdown.innerHTML = '<option value="">Select Client</option>';
                     clients.forEach(c => {
-                        const name = currentLang === 'en' ? c.nameEn : c.nameAr;
+                        const name = c.name;
                         dropdown.innerHTML += `<option value="${c.id}">${name}</option>`;
                     });
                 }
@@ -235,12 +300,12 @@
             tbody.innerHTML = "";
 
             if (projects.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No projects found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">No projects found.</td></tr>`;
                 return;
             }
 
             projects.forEach(p => {
-                const name = currentLang === 'en' ? p.nameEn : p.nameAr;
+                const name = p.name;
                 const client = p.clientName;
                 const statusMeta = currentLang === 'en' ? statusLabels[p.status] : statusLabelsAr[p.status];
                 const badge = `<span class="${statusMeta.class}">${statusMeta.text}</span>`;
@@ -252,10 +317,14 @@
                 tr.innerHTML = `
                     <td><strong>${name}</strong></td>
                     <td>${client}</td>
+                    <td><span class="text-neon font-semibold">${p.contractValue.toLocaleString()} SAR</span></td>
+                    <td><span class="badge badge-glow-info">${p.requiredVehiclesCount}</span></td>
+                    <td><span class="badge badge-glow-warning">${p.estimatedTripsCount}</span></td>
                     <td>${start}</td>
                     <td>${end}</td>
                     <td>${badge}</td>
                     <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewProjectDetails(${p.id})"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editProject(${p.id})"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-neon-danger btn-sm" onclick="deleteProject(${p.id})"><i class="bi bi-trash"></i></button>
                     </td>
@@ -287,6 +356,72 @@
             modal.show();
         }
 
+        const tripStatusLabels = {
+            0: { text: "Scheduled", class: "badge-glow-info" },
+            1: { text: "In Progress", class: "badge-glow-warning" },
+            2: { text: "Completed", class: "badge-glow-success" },
+            3: { text: "Cancelled", class: "badge-glow-danger" }
+        };
+
+        const tripStatusLabelsAr = {
+            0: { text: "مجدولة", class: "badge-glow-info" },
+            1: { text: "قيد التنفيذ", class: "badge-glow-warning" },
+            2: { text: "مكتملة", class: "badge-glow-success" },
+            3: { text: "ملغاة", class: "badge-glow-danger" }
+        };
+
+        async function viewProjectDetails(id) {
+            try {
+                const res = await fetch(`/api/projects/${id}/details`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const p = data.project;
+                    
+                    document.getElementById("detClient").innerText = p.clientName;
+                    document.getElementById("detPrice").innerText = p.contractValue.toLocaleString() + " SAR";
+                    document.getElementById("detStart").innerText = new Date(p.startDate).toLocaleDateString();
+                    document.getElementById("detEnd").innerText = new Date(p.endDate).toLocaleDateString();
+                    
+                    document.getElementById("detStatTarget").innerText = p.estimatedTripsCount;
+                    document.getElementById("detStatCompleted").innerText = data.completedTrips;
+                    document.getElementById("detStatRemaining").innerText = data.activeTrips;
+                    document.getElementById("detStatCancelled").innerText = data.cancelledTrips;
+                    
+                    document.getElementById("detProgressPercent").innerText = data.completionPercentage + "%";
+                    document.getElementById("detProgressBar").style.width = data.completionPercentage + "%";
+                    
+                    // Render trips
+                    const tbody = document.getElementById("detailsTripsList");
+                    tbody.innerHTML = "";
+                    
+                    if (data.trips.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No trips scheduled for this project.' : 'لا توجد رحلات مجدولة لهذا المشروع.'}</td></tr>`;
+                    } else {
+                        data.trips.forEach(t => {
+                            const statusMeta = currentLang === 'en' ? tripStatusLabels[t.status] : tripStatusLabelsAr[t.status];
+                            const badge = `<span class="${statusMeta.class}">${statusMeta.text}</span>`;
+                            const dep = new Date(t.scheduledDeparture).toLocaleString();
+                            
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td><strong>${t.vehiclePlate}</strong></td>
+                                <td>${t.routeName}</td>
+                                <td>${t.driverName}</td>
+                                <td>${dep}</td>
+                                <td>${badge}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('projectDetailsModal'));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
         async function editProject(id) {
             try {
                 const res = await fetch(`/api/projects/${id}`);
@@ -302,6 +437,9 @@
                     document.getElementById("startDate").value = p.startDate.split('T')[0];
                     document.getElementById("endDate").value = p.endDate.split('T')[0];
                     document.getElementById("status").value = p.status;
+                    document.getElementById("contractValue").value = p.contractValue;
+                    document.getElementById("requiredVehiclesCount").value = p.requiredVehiclesCount;
+                    document.getElementById("estimatedTripsCount").value = p.estimatedTripsCount;
 
                     document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Project Details" : "تعديل تفاصيل المشروع";
 
@@ -326,7 +464,10 @@
                 descriptionAr: document.getElementById("descriptionAr").value,
                 startDate: document.getElementById("startDate").value,
                 endDate: document.getElementById("endDate").value,
-                status: parseInt(document.getElementById("status").value)
+                status: parseInt(document.getElementById("status").value),
+                contractValue: parseFloat(document.getElementById("contractValue").value),
+                requiredVehiclesCount: parseInt(document.getElementById("requiredVehiclesCount").value),
+                estimatedTripsCount: parseInt(document.getElementById("estimatedTripsCount").value)
             };
 
             const method = id ? 'PUT' : 'POST';

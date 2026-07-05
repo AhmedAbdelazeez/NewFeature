@@ -7,26 +7,22 @@
 <div class="py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="glow-text"><i class="bi bi-shield-lock me-2"></i> User Directory</h1>
-            <p class="text-muted mb-0">System roles, access controls, and profile configurations</p>
+            <h1 class="glow-text"><i class="bi bi-shield-lock me-2"></i> <span data-i18n="users-title">User Directory</span></h1>
+            <p class="text-muted mb-0" data-i18n="users-subtitle">System roles, access controls, and profile configurations</p>
         </div>
         <button class="btn btn-neon" onclick="openAddModal()">
-            <i class="bi bi-person-plus-fill me-1"></i> Add New User
+            <i class="bi bi-person-plus-fill me-1"></i> <span data-i18n="users-btn-add">Add New User</span>
         </button>
     </div>
 
     <!-- Search and Localization Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-md-6 col-lg-8">
+            <div class="col-12">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                     <input type="text" id="userSearch" class="form-control form-control-glass" placeholder="Search by name, email, username or role..." onkeyup="filterUsers()">
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4 text-md-end">
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="setLang('en')">English UI</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="setLang('ar')">العربية</button>
             </div>
         </div>
     </div>
@@ -37,12 +33,12 @@
             <table class="table table-glass text-white align-middle" id="usersTable">
                 <thead>
                     <tr>
-                        <th data-lbl="username">Username</th>
-                        <th data-lbl="email">Email</th>
-                        <th data-lbl="fullname">Full Name</th>
-                        <th data-lbl="role">Role</th>
-                        <th data-lbl="status">Status</th>
-                        <th data-lbl="actions" class="text-end">Actions</th>
+                        <th data-i18n="users-th-username">Username</th>
+                        <th data-i18n="users-th-email">Email</th>
+                        <th data-i18n="users-th-name">Full Name</th>
+                        <th data-i18n="users-th-role">Role</th>
+                        <th data-i18n="users-th-status">Status</th>
+                        <th data-i18n="users-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersList">
@@ -60,7 +56,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-glass">
             <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle">Add New User</h5>
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="users-btn-add">Add New User</h5>
                 <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
             </div>
             <form id="userForm" onsubmit="saveUser(event)">
@@ -68,30 +64,30 @@
                     <input type="hidden" id="userId">
                     
                     <div class="mb-3">
-                        <label for="username" class="form-label" data-lbl="lbl-username">Username</label>
+                        <label for="username" class="form-label" data-i18n="users-lbl-username">Username</label>
                         <input type="text" id="username" class="form-control form-control-glass" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label" data-lbl="lbl-email">Email Address</label>
+                        <label for="email" class="form-label" data-i18n="users-lbl-email">Email Address</label>
                         <input type="email" id="email" class="form-control form-control-glass" required>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="fullNameEn" class="form-label" data-lbl="lbl-name-en">Full Name (EN)</label>
+                            <label for="fullNameEn" class="form-label" data-i18n="users-lbl-name-en">Full Name (EN)</label>
                             <input type="text" id="fullNameEn" class="form-control form-control-glass" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="fullNameAr" class="form-label" data-lbl="lbl-name-ar">Full Name (AR)</label>
+                            <label for="fullNameAr" class="form-label" data-i18n="users-lbl-name-ar">Full Name (AR)</label>
                             <input type="text" id="fullNameAr" class="form-control form-control-glass" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="role" class="form-label" data-lbl="lbl-role">Assign Role</label>
+                        <label for="role" class="form-label" data-i18n="users-lbl-role">Assign Role</label>
                         <select id="role" class="form-control form-control-glass" required>
-                            <option value="">Select a Role</option>
+                            <option value="" data-i18n="users-lbl-role">Select a Role</option>
                             <option value="Admin">Admin</option>
                             <option value="Driver">Driver</option>
                             <option value="Project Manager">Project Manager</option>
@@ -99,19 +95,19 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="password" class="form-label" data-lbl="lbl-password">Password</label>
+                        <label for="password" class="form-label" data-i18n="users-lbl-password">Password</label>
                         <input type="password" id="password" class="form-control form-control-glass">
-                        <small class="text-muted" id="passwordHelp">Leave blank to keep current password if editing</small>
+                        <small class="text-muted" id="passwordHelp" data-i18n="users-lbl-password">Leave blank to keep current password if editing</small>
                     </div>
 
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="isActive" checked>
-                        <label class="form-check-label ms-2" for="isActive" data-lbl="lbl-active">Active Status</label>
+                        <label class="form-check-label ms-2" for="isActive" data-i18n="users-lbl-status">Active Status</label>
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-lbl="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-lbl="btn-save">Save User</button>
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save User</button>
                 </div>
             </form>
         </div>
@@ -121,60 +117,12 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        let currentLang = 'en';
+        const currentLang = localStorage.getItem('lang') || 'en';
         let users = [];
-
-        const labels = {
-            en: {
-                username: "Username",
-                email: "Email",
-                fullname: "Full Name",
-                role: "Role",
-                status: "Status",
-                actions: "Actions",
-                "lbl-username": "Username",
-                "lbl-email": "Email Address",
-                "lbl-name-en": "Full Name (EN)",
-                "lbl-name-ar": "Full Name (AR)",
-                "lbl-role": "Assign Role",
-                "lbl-password": "Password",
-                "lbl-active": "Active Status",
-                "btn-cancel": "Cancel",
-                "btn-save": "Save User"
-            },
-            ar: {
-                username: "اسم المستخدم",
-                email: "البريد الإلكتروني",
-                fullname: "الاسم الكامل",
-                role: "الدور",
-                status: "الحالة",
-                actions: "الإجراءات",
-                "lbl-username": "اسم المستخدم",
-                "lbl-email": "البريد الإلكتروني",
-                "lbl-name-en": "الاسم الكامل بالإنجليزية",
-                "lbl-name-ar": "الاسم الكامل بالعربية",
-                "lbl-role": "تعيين الدور",
-                "lbl-password": "كلمة المرور",
-                "lbl-active": "حالة النشاط",
-                "btn-cancel": "إلغاء",
-                "btn-save": "حفظ المستخدم"
-            }
-        };
 
         document.addEventListener("DOMContentLoaded", function () {
             loadUsers();
         });
-
-        function setLang(lang) {
-            currentLang = lang;
-            document.querySelectorAll("[data-lbl]").forEach(el => {
-                const key = el.getAttribute("data-lbl");
-                if (labels[lang][key]) {
-                    el.innerText = labels[lang][key];
-                }
-            });
-            renderUsers();
-        }
 
         async function loadUsers() {
             try {
@@ -201,7 +149,7 @@
             }
 
             users.forEach(u => {
-                const name = currentLang === 'en' ? u.fullNameEn : u.fullNameAr;
+                const name = u.fullName;
                 const statusBadge = u.isActive 
                     ? `<span class="badge-glow-success"><i class="bi bi-check-circle me-1"></i> Active</span>`
                     : `<span class="badge-glow-danger"><i class="bi bi-x-circle me-1"></i> Inactive</span>`;
@@ -214,6 +162,7 @@
                     <td><span class="badge-glow-info">${u.role}</span></td>
                     <td style="cursor: pointer;" onclick="toggleUserStatus('${u.id}')">${statusBadge}</td>
                     <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewUserDetails('${u.id}')"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editUser('${u.id}')"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-neon-danger btn-sm" onclick="deleteUser('${u.id}')"><i class="bi bi-trash"></i></button>
                     </td>
@@ -236,7 +185,15 @@
             });
         }
 
+        function resetModalReadOnly(formId) {
+            const form = document.getElementById(formId);
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = false);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "";
+        }
+
         function openAddModal() {
+            resetModalReadOnly("userForm");
             document.getElementById("userForm").reset();
             document.getElementById("userId").value = "";
             document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add New User" : "إضافة مستخدم جديد";
@@ -249,6 +206,7 @@
         }
 
         async function editUser(id) {
+            resetModalReadOnly("userForm");
             try {
                 const response = await fetch(`/api/users/${id}`);
                 if (response.ok) {
@@ -273,6 +231,15 @@
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        async function viewUserDetails(id) {
+            await editUser(id);
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "User Details" : "تفاصيل المستخدم";
+            const form = document.getElementById("userForm");
+            form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = true);
+            const saveBtn = form.querySelector("button[type='submit']");
+            if (saveBtn) saveBtn.style.display = "none";
         }
 
         async function saveUser(e) {

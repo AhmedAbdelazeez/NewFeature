@@ -36,10 +36,20 @@ namespace NewFeature.Models
         [Required(ErrorMessage = "Project Status is required")]
         public ProjectStatus Status { get; set; } = ProjectStatus.Planning;
 
+        [Required(ErrorMessage = "Contract Value / Price is required")]
+        public decimal ContractValue { get; set; }
+
+        [Required(ErrorMessage = "Required Vehicles count is required")]
+        public int RequiredVehiclesCount { get; set; }
+
+        [Required(ErrorMessage = "Estimated Trips count is required")]
+        public int EstimatedTripsCount { get; set; }
+
         // Navigation properties
         public Client? Client { get; set; }
         public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
         public ICollection<ProjectMilestone> Milestones { get; set; } = new List<ProjectMilestone>();
         public ICollection<Task> Tasks { get; set; } = new List<Task>();
+        public ICollection<Trip> Trips { get; set; } = new List<Trip>();
     }
 }

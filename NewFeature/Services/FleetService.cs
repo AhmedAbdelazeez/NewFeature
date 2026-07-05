@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
@@ -13,18 +14,41 @@ namespace NewFeature.Services
         private readonly IRepository<Vehicle> _vehicleRepository;
         private readonly IRepository<Models.Route> _routeRepository;
         private readonly IRepository<Trip> _tripRepository;
+        private readonly IRepository<Project> _projectRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public FleetService(
             IRepository<Vehicle> vehicleRepository,
             IRepository<Models.Route> routeRepository,
             IRepository<Trip> tripRepository,
-            UserManager<ApplicationUser> userManager)
+            IRepository<Project> projectRepository,
+            UserManager<ApplicationUser> userManager,
+            IHttpContextAccessor httpContextAccessor)
         {
             _vehicleRepository = vehicleRepository;
             _routeRepository = routeRepository;
             _tripRepository = tripRepository;
+            _projectRepository = projectRepository;
             _userManager = userManager;
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        private bool IsArabic()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            if (context != null)
+            {
+                if (context.Request.Headers.TryGetValue("Accept-Language", out var lang))
+                {
+                    if (lang.ToString().ToLower().Contains("ar")) return true;
+                }
+                if (context.Request.Headers.TryGetValue("X-Language", out var xLang))
+                {
+                    if (xLang.ToString().ToLower().Contains("ar")) return true;
+                }
+            }
+            return false;
         }
 
         #region Vehicles CRUD
@@ -111,6 +135,7 @@ namespace NewFeature.Services
         public async Task<IEnumerable<RouteDto>> GetAllRoutesAsync()
         {
             var routes = await _routeRepository.GetAllAsync();
+            var isAr = IsArabic();
             return routes.Select(r => new RouteDto
             {
                 Id = r.Id,
@@ -120,7 +145,10 @@ namespace NewFeature.Services
                 StartLocationAr = r.StartLocationAr,
                 EndLocationEn = r.EndLocationEn,
                 EndLocationAr = r.EndLocationAr,
-                DistanceKm = r.DistanceKm
+                DistanceKm = r.DistanceKm,
+                Name = isAr ? r.NameAr : r.NameEn,
+                StartLocation = isAr ? r.StartLocationAr : r.StartLocationEn,
+                EndLocation = isAr ? r.EndLocationAr : r.EndLocationEn
             }).ToList();
         }
 
@@ -129,6 +157,7 @@ namespace NewFeature.Services
             var r = await _routeRepository.GetByIdAsync(id);
             if (r == null) return null;
 
+            var isAr = IsArabic();
             return new RouteDto
             {
                 Id = r.Id,
@@ -138,7 +167,10 @@ namespace NewFeature.Services
                 StartLocationAr = r.StartLocationAr,
                 EndLocationEn = r.EndLocationEn,
                 EndLocationAr = r.EndLocationAr,
-                DistanceKm = r.DistanceKm
+                DistanceKm = r.DistanceKm,
+                Name = isAr ? r.NameAr : r.NameEn,
+                StartLocation = isAr ? r.StartLocationAr : r.StartLocationEn,
+                EndLocation = isAr ? r.EndLocationAr : r.EndLocationEn
             };
         }
 
@@ -197,11 +229,14 @@ namespace NewFeature.Services
             var trips = await _tripRepository.GetAllAsync();
             var vehicles = await _vehicleRepository.GetAllAsync();
             var routes = await _routeRepository.GetAllAsync();
+            var projects = await _projectRepository.GetAllAsync();
             var drivers = await _userManager.Users.ToListAsync();
+            var isAr = IsArabic();
 
             var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v.LicensePlate);
-            var routeMap = routes.ToDictionary(r => r.Id, r => r.NameEn);
-            var driverMap = drivers.ToDictionary(d => d.Id, d => d.FullNameEn);
+            var routeMap = routes.ToDictionary(r => r.Id, r => isAr ? r.NameAr : r.NameEn);
+            var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
+            var driverMap = drivers.ToDictionary(d => d.Id, d => isAr ? d.FullNameAr : d.FullNameEn);
 
             return trips.Select(t => new TripDto
             {
@@ -212,6 +247,8 @@ namespace NewFeature.Services
                 RouteName = routeMap.TryGetValue(t.RouteId, out var routeName) ? routeName : "Unknown",
                 DriverId = t.DriverId,
                 DriverName = driverMap.TryGetValue(t.DriverId, out var driverName) ? driverName : "Unknown",
+                ProjectId = t.ProjectId,
+                ProjectName = t.ProjectId.HasValue && projectMap.TryGetValue(t.ProjectId.Value, out var projName) ? projName : "None",
                 ScheduledDeparture = t.ScheduledDeparture,
                 ScheduledArrival = t.ScheduledArrival,
                 ActualDeparture = t.ActualDeparture,
@@ -227,7 +264,9 @@ namespace NewFeature.Services
 
             var vehicle = await _vehicleRepository.GetByIdAsync(t.VehicleId);
             var route = await _routeRepository.GetByIdAsync(t.RouteId);
+            var project = t.ProjectId.HasValue ? await _projectRepository.GetByIdAsync(t.ProjectId.Value) : null;
             var driver = await _userManager.FindByIdAsync(t.DriverId);
+            var isAr = IsArabic();
 
             return new TripDto
             {
@@ -235,9 +274,11 @@ namespace NewFeature.Services
                 VehicleId = t.VehicleId,
                 VehiclePlate = vehicle?.LicensePlate ?? "Unknown",
                 RouteId = t.RouteId,
-                RouteName = route?.NameEn ?? "Unknown",
+                RouteName = route != null ? (isAr ? route.NameAr : route.NameEn) : "Unknown",
                 DriverId = t.DriverId,
-                DriverName = driver?.FullNameEn ?? "Unknown",
+                DriverName = driver != null ? (isAr ? driver.FullNameAr : driver.FullNameEn) : "Unknown",
+                ProjectId = t.ProjectId,
+                ProjectName = project != null ? (isAr ? project.NameAr : project.NameEn) : "None",
                 ScheduledDeparture = t.ScheduledDeparture,
                 ScheduledArrival = t.ScheduledArrival,
                 ActualDeparture = t.ActualDeparture,
@@ -253,6 +294,7 @@ namespace NewFeature.Services
                 VehicleId = dto.VehicleId,
                 RouteId = dto.RouteId,
                 DriverId = dto.DriverId,
+                ProjectId = dto.ProjectId,
                 ScheduledDeparture = dto.ScheduledDeparture,
                 ScheduledArrival = dto.ScheduledArrival,
                 ActualDeparture = dto.ActualDeparture,
@@ -275,6 +317,7 @@ namespace NewFeature.Services
             trip.VehicleId = dto.VehicleId;
             trip.RouteId = dto.RouteId;
             trip.DriverId = dto.DriverId;
+            trip.ProjectId = dto.ProjectId;
             trip.ScheduledDeparture = dto.ScheduledDeparture;
             trip.ScheduledArrival = dto.ScheduledArrival;
             trip.ActualDeparture = dto.ActualDeparture;

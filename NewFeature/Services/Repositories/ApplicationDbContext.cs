@@ -50,6 +50,10 @@ namespace NewFeature.Services.Repositories
                 .Property(v => v.Capacity)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<Project>()
+                .Property(p => p.ContractValue)
+                .HasPrecision(18, 2);
+
             modelBuilder.Entity<Models.Route>()
                 .Property(r => r.DistanceKm)
                 .HasPrecision(18, 2);
@@ -170,6 +174,13 @@ namespace NewFeature.Services.Repositories
                 .HasOne(t => t.Driver)
                 .WithMany(u => u.Trips)
                 .HasForeignKey(t => t.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Project -> Trips
+            modelBuilder.Entity<Trip>()
+                .HasOne(t => t.Project)
+                .WithMany(p => p.Trips)
+                .HasForeignKey(t => t.ProjectId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
