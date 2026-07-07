@@ -49,6 +49,17 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DashboardPortal", policy =>
+    {
+        policy.WithOrigins("http://localhost:5118", "https://localhost:7290")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -63,6 +74,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseCors("DashboardPortal");
 
 app.UseAuthentication();
 app.UseAuthorization();

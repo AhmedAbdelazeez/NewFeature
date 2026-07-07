@@ -106,11 +106,11 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="actualDeparture" class="form-label" data-i18n="trips-lbl-departure">Actual Departure</label>
+                            <label for="actualDeparture" class="form-label" data-i18n="trips-lbl-actual-departure">Actual Departure</label>
                             <input type="datetime-local" id="actualDeparture" class="form-control form-control-glass">
                         </div>
                         <div class="col-md-6">
-                            <label for="actualArrival" class="form-label" data-i18n="trips-lbl-arrival">Actual Arrival</label>
+                            <label for="actualArrival" class="form-label" data-i18n="trips-lbl-actual-arrival">Actual Arrival</label>
                             <input type="datetime-local" id="actualArrival" class="form-control form-control-glass">
                         </div>
                     </div>
@@ -353,9 +353,10 @@
         async function saveTrip(e) {
             e.preventDefault();
 
+            const idVal = document.getElementById("tripId").value;
             const projectIdVal = document.getElementById("projectId").value;
             const dto = {
-                id: id ? parseInt(id) : 0,
+                id: idVal ? parseInt(idVal) : 0,
                 vehicleId: parseInt(document.getElementById("vehicleId").value),
                 routeId: parseInt(document.getElementById("routeId").value),
                 driverId: document.getElementById("driverId").value,
@@ -367,8 +368,8 @@
                 status: parseInt(document.getElementById("status").value)
             };
 
-            const method = id ? 'PUT' : 'POST';
-            const url = id ? `/api/trips/${id}` : '/api/trips';
+            const method = idVal ? 'PUT' : 'POST';
+            const url = idVal ? `/api/trips/${idVal}` : '/api/trips';
 
             try {
                 const res = await fetch(url, {
@@ -383,10 +384,12 @@
                     modal.hide();
                     loadTrips();
                 } else {
-                    alert("Error saving scheduled trip.");
+                    const errText = await res.text();
+                    alert("Error saving scheduled trip: Status " + res.status + " (" + res.statusText + ")\nResponse: " + (errText || "Empty Response"));
                 }
             } catch (err) {
                 console.error(err);
+                alert("Connection error: " + err.message);
             }
         }
 

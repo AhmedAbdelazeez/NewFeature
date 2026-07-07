@@ -240,6 +240,200 @@
     </div>
 </div>
 
+<!-- Manage Project Tasks Modal -->
+<div class="modal fade" id="projectTasksModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="tasksModalTitle"><i class="bi bi-gear-wide-connected me-2"></i> <span>إدارة تفاصيل المشروع</span></h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body p-4 text-slate-800">
+                <!-- Bootstrap Tabs Navigation -->
+                <ul class="nav nav-tabs mb-4 border-bottom border-glass" id="projectModalTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold px-3 py-2 border-0 bg-transparent border-bottom" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-tab-content" type="button" role="tab" aria-selected="true" style="border-width: 3px !important; border-color: transparent; transition: all 0.25s;"><i class="bi bi-list-check me-2"></i>المهام (Tasks)</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold px-3 py-2 border-0 bg-transparent border-bottom" id="milestones-tab" data-bs-toggle="tab" data-bs-target="#milestones-tab-content" type="button" role="tab" aria-selected="false" style="border-width: 3px !important; border-color: transparent; transition: all 0.25s;"><i class="bi bi-flag me-2"></i>المراحل الرئيسية (Milestones)</button>
+                    </li>
+                </ul>
+
+                <style>
+                    #projectModalTabs .nav-link {
+                        color: #64748b !important;
+                    }
+                    #projectModalTabs .nav-link.active {
+                        color: #b0841a !important;
+                        border-bottom-color: #b0841a !important;
+                    }
+                    #projectModalTabs .nav-link:hover {
+                        color: #b0841a !important;
+                    }
+                </style>
+
+                <div class="tab-content" id="projectModalTabContent">
+                    <!-- Tab 1: Tasks Content -->
+                    <div class="tab-pane fade show active" id="tasks-tab-content" role="tabpanel" aria-labelledby="tasks-tab">
+                        <!-- Task Forms (Toggled via button) -->
+                        <div id="addTaskFormContainer" class="card bg-light border border-slate-200 p-4 rounded-2.5xl mb-4 d-none">
+                            <h6 class="glow-text mb-3" style="font-weight: 800;"><i class="bi bi-plus-circle me-1"></i> <span id="lblAddTaskTitle">Add New Task</span></h6>
+                            <form id="taskForm" onsubmit="saveTask(event)">
+                                <input type="hidden" id="taskProjectId">
+                                <input type="hidden" id="taskIdField">
+                                
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="taskTitleAr" id="lblTaskTitleAr" class="form-label text-slate-700 font-bold mb-1">اسم المهمة (العربية) *</label>
+                                        <input type="text" id="taskTitleAr" class="form-control form-control-glass bg-white" placeholder="مثال: فحص سلامة الإطارات والمكابح" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="taskTitleEn" id="lblTaskTitleEn" class="form-label text-slate-700 font-bold mb-1">Task Title (English) *</label>
+                                        <input type="text" id="taskTitleEn" class="form-control form-control-glass bg-white" placeholder="e.g. Inspect Tires & Brakes" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="taskDescAr" id="lblTaskDescAr" class="form-label text-slate-700 font-bold mb-1">وصف المهمة (العربية) *</label>
+                                        <textarea id="taskDescAr" class="form-control form-control-glass bg-white" rows="2" placeholder="أدخل تفاصيل ومحددات إنجاز المهمة..." required></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="taskDescEn" id="lblTaskDescEn" class="form-label text-slate-700 font-bold mb-1">Task Description (English) *</label>
+                                        <textarea id="taskDescEn" class="form-control form-control-glass bg-white" rows="2" placeholder="Enter task specifications and guidelines..." required></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-4">
+                                        <label for="taskDueDate" id="lblTaskDueDate" class="form-label text-slate-700 font-bold mb-1">تاريخ الاستحقاق *</label>
+                                        <input type="date" id="taskDueDate" class="form-control form-control-glass bg-white" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="taskHours" id="lblTaskHours" class="form-label text-slate-700 font-bold mb-1">الساعات المقدرة *</label>
+                                        <input type="number" step="0.5" id="taskHours" class="form-control form-control-glass bg-white" placeholder="مثال: 15.5" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="taskStatusSelect" id="lblTaskStatus" class="form-label text-slate-700 font-bold mb-1">حالة المهمة *</label>
+                                        <select id="taskStatusSelect" class="form-control form-control-glass bg-white" required>
+                                            <option value="0">لم تبدأ (To Do)</option>
+                                            <option value="1">قيد التنفيذ (In Progress)</option>
+                                            <option value="2">قيد المراجعة (In Review)</option>
+                                            <option value="3">مكتملة (Done)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" id="btnCancelTaskForm" class="btn btn-neon-outline btn-sm" onclick="toggleAddTaskForm(false)">إلغاء</button>
+                                    <button type="submit" id="btnSaveTaskForm" class="btn btn-neon btn-sm">حفظ المهمة</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="glow-text mb-0" style="font-weight: 800;"><i class="bi bi-tasks me-1"></i> <span id="lblTasksListHeader">Tasks List</span></h6>
+                            <button class="btn btn-neon btn-sm" onclick="toggleAddTaskForm(true)">
+                                <i class="bi bi-plus-circle me-1"></i> <span id="btnAddTaskTrigger">إضافة مهمة جديدة</span>
+                            </button>
+                        </div>
+
+                        <!-- Tasks list table -->
+                        <div class="table-responsive" style="max-height: 350px;">
+                            <table class="table table-glass table-sm text-slate-800 align-middle mb-0" id="projectTasksTable">
+                                <thead>
+                                    <tr class="text-slate-400">
+                                        <th>اسم المهمة</th>
+                                        <th>الحالة</th>
+                                        <th>تاريخ الاستحقاق</th>
+                                        <th>ساعات العمل</th>
+                                        <th class="text-end">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projectTasksList" class="text-slate-700">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">لا توجد مهام مدخلة لهذا المشروع حالياً.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Milestones Content -->
+                    <div class="tab-pane fade" id="milestones-tab-content" role="tabpanel" aria-labelledby="milestones-tab">
+                        <!-- Milestone Form (Toggled via button) -->
+                        <div id="addMilestoneFormContainer" class="card bg-light border border-slate-200 p-4 rounded-2.5xl mb-4 d-none">
+                            <h6 class="glow-text mb-3" style="font-weight: 800;"><i class="bi bi-plus-circle me-1"></i> <span id="lblAddMilestoneTitle">إضافة مرحلة رئيسية جديدة</span></h6>
+                            <form id="milestoneForm" onsubmit="saveMilestone(event)">
+                                <input type="hidden" id="milestoneProjectId">
+                                <input type="hidden" id="milestoneIdField">
+                                
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="milestoneTitleAr" class="form-label text-slate-700 font-bold mb-1">اسم المرحلة (العربية) *</label>
+                                        <input type="text" id="milestoneTitleAr" class="form-control form-control-glass bg-white" placeholder="مثال: وصول الفوج الأول من الحجاج" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="milestoneTitleEn" class="form-label text-slate-700 font-bold mb-1">Milestone Title (English) *</label>
+                                        <input type="text" id="milestoneTitleEn" class="form-control form-control-glass bg-white" placeholder="e.g. Arrival of first pilgrims batch" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <label for="milestoneDueDate" class="form-label text-slate-700 font-bold mb-1">تاريخ الاستحقاق *</label>
+                                        <input type="date" id="milestoneDueDate" class="form-control form-control-glass bg-white" required>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end pb-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="milestoneIsCompleted">
+                                            <label class="form-check-label text-slate-700 font-bold ms-2" for="milestoneIsCompleted">مكتملة (Completed)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-neon-outline btn-sm" onclick="toggleAddMilestoneForm(false)">إلغاء</button>
+                                    <button type="submit" class="btn btn-neon btn-sm">حفظ المرحلة</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="glow-text mb-0" style="font-weight: 800;"><i class="bi bi-flag me-1"></i> <span>قائمة المراحل الرئيسية</span></h6>
+                            <button class="btn btn-neon btn-sm" onclick="toggleAddMilestoneForm(true)">
+                                <i class="bi bi-plus-circle me-1"></i> <span>إضافة مرحلة جديدة</span>
+                            </button>
+                        </div>
+
+                        <!-- Milestones list table -->
+                        <div class="table-responsive" style="max-height: 350px;">
+                            <table class="table table-glass table-sm text-slate-800 align-middle mb-0" id="projectMilestonesTable">
+                                <thead>
+                                    <tr class="text-slate-400">
+                                        <th>اسم المرحلة</th>
+                                        <th>الحالة</th>
+                                        <th>تاريخ الاستحقاق</th>
+                                        <th class="text-end">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projectMilestonesList" class="text-slate-700">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">لا توجد مراحل رئيسية مدخلة لهذا المشروع حالياً.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-glass">
+                <button type="button" id="btnModalClose" class="btn btn-neon" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -324,9 +518,12 @@
                     <td>${end}</td>
                     <td>${badge}</td>
                     <td class="text-end">
-                        <button class="btn btn-neon-outline btn-sm me-2" onclick="viewProjectDetails(${p.id})"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editProject(${p.id})"><i class="bi bi-pencil-square"></i></button>
-                        <button class="btn btn-neon-danger btn-sm" onclick="deleteProject(${p.id})"><i class="bi bi-trash"></i></button>
+                        <div class="d-flex justify-content-end gap-1 flex-nowrap">
+                            <button class="btn btn-neon-outline btn-sm" onclick="viewProjectDetails(${p.id})" title="View Details"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-neon-outline btn-sm" onclick="openProjectTasksModal(${p.id})" title="Manage Tasks"><i class="bi bi-list-check"></i></button>
+                            <button class="btn btn-neon-outline btn-sm" onclick="editProject(${p.id})" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-neon-danger btn-sm" onclick="deleteProject(${p.id})" title="Delete"><i class="bi bi-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -503,6 +700,389 @@
                     loadProjects();
                 } else {
                     alert("Failed to delete project.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // ================= Tasks Management Handlers =================
+        let activeProjectIdForTasks = null;
+        let projectTasks = [];
+
+        function toggleAddTaskForm(show) {
+            const form = document.getElementById("addTaskFormContainer");
+            const btn = document.getElementById("btnAddTaskTrigger");
+            if (show) {
+                form.classList.remove("d-none");
+                if (btn) btn.classList.add("d-none");
+                document.getElementById("taskForm").reset();
+                document.getElementById("taskIdField").value = "";
+                document.getElementById("taskProjectId").value = activeProjectIdForTasks;
+            } else {
+                form.classList.add("d-none");
+                if (btn) btn.classList.remove("d-none");
+            }
+        }
+
+        async function openProjectTasksModal(projectId) {
+            activeProjectIdForTasks = projectId;
+            const project = projects.find(p => p.id === projectId);
+            const title = project ? (currentLang === 'en' ? project.nameEn : project.nameAr) : '';
+            
+            document.getElementById("tasksModalTitle").querySelector("span").innerText = 
+                currentLang === 'en' ? `إدارة تفاصيل المشروع: ${title}` : `إدارة تفاصيل المشروع: ${title}`;
+            
+            translateTaskModal();
+            toggleAddTaskForm(false);
+            toggleAddMilestoneForm(false);
+            
+            // Set active tab to Tasks by default
+            const tasksTabEl = document.getElementById('tasks-tab');
+            const tab = new bootstrap.Tab(tasksTabEl);
+            tab.show();
+            
+            await Promise.all([loadProjectTasks(), loadProjectMilestones()]);
+            
+            const modal = new bootstrap.Modal(document.getElementById('projectTasksModal'));
+            modal.show();
+        }
+
+        function translateTaskModal() {
+            const isEn = currentLang === 'en';
+            
+            // Labels
+            document.getElementById("lblAddTaskTitle").innerText = isEn ? "Add New Task" : "إضافة مهمة جديدة";
+            document.getElementById("lblTaskTitleAr").innerText = isEn ? "Task Title (Arabic) *" : "اسم المهمة (العربية) *";
+            document.getElementById("lblTaskTitleEn").innerText = isEn ? "Task Title (English) *" : "اسم المهمة (الإنجليزية) *";
+            document.getElementById("lblTaskDescAr").innerText = isEn ? "Description (Arabic) *" : "وصف المهمة (العربية) *";
+            document.getElementById("lblTaskDescEn").innerText = isEn ? "Description (English) *" : "وصف المهمة (الإنجليزية) *";
+            document.getElementById("lblTaskDueDate").innerText = isEn ? "Due Date *" : "تاريخ الاستحقاق *";
+            document.getElementById("lblTaskHours").innerText = isEn ? "Estimated Hours *" : "الساعات المقدرة *";
+            document.getElementById("lblTaskStatus").innerText = isEn ? "Task Status *" : "حالة المهمة *";
+            
+            // Placeholders
+            document.getElementById("taskTitleAr").placeholder = isEn ? "e.g. Inspect Tires & Brakes" : "مثال: فحص سلامة الإطارات والمكابح";
+            document.getElementById("taskTitleEn").placeholder = isEn ? "e.g. Inspect Tires & Brakes" : "e.g. Inspect Tires & Brakes";
+            document.getElementById("taskDescAr").placeholder = isEn ? "Enter task details..." : "أدخل تفاصيل ومحددات إنجاز المهمة...";
+            document.getElementById("taskDescEn").placeholder = isEn ? "Enter task details..." : "Enter task details...";
+            document.getElementById("taskHours").placeholder = isEn ? "e.g. 15.5" : "مثال: 15.5";
+            
+            // Buttons
+            document.getElementById("btnCancelTaskForm").innerText = isEn ? "Cancel" : "إلغاء";
+            document.getElementById("btnSaveTaskForm").innerText = isEn ? "Save Task" : "حفظ المهمة";
+            
+            const triggerTextSpan = document.getElementById("btnAddTaskTrigger").querySelector("span");
+            if (triggerTextSpan) {
+                triggerTextSpan.innerText = isEn ? "Add New Task" : "إضافة مهمة جديدة";
+            }
+            
+            document.getElementById("lblTasksListHeader").innerText = isEn ? "Tasks List" : "قائمة المهام";
+            document.getElementById("btnModalClose").innerText = isEn ? "Close" : "إغلاق";
+            
+            // Table headers
+            const tableHeaders = document.getElementById("projectTasksTable").querySelectorAll("thead th");
+            if (tableHeaders.length === 5) {
+                tableHeaders[0].innerText = isEn ? "Task Title" : "اسم المهمة";
+                tableHeaders[1].innerText = isEn ? "Status" : "الحالة";
+                tableHeaders[2].innerText = isEn ? "Due Date" : "تاريخ الاستحقاق";
+                tableHeaders[3].innerText = isEn ? "Hours" : "ساعات العمل";
+                tableHeaders[4].innerText = isEn ? "Actions" : "الإجراءات";
+            }
+        }
+
+        async function loadProjectTasks() {
+            try {
+                const res = await fetch('/api/tasks');
+                if (res.ok) {
+                    const allTasks = await res.json();
+                    projectTasks = allTasks.filter(t => t.projectId === activeProjectIdForTasks);
+                    renderProjectTasks();
+                }
+            } catch (err) {
+                console.error("Error loading tasks:", err);
+            }
+        }
+
+        const taskStatusMeta = {
+            0: { text: "To Do", class: "badge-glow-info" },
+            1: { text: "In Progress", class: "badge-glow-warning" },
+            2: { text: "In Review", class: "badge-glow-info" },
+            3: { text: "Done", class: "badge-glow-success" }
+        };
+
+        const taskStatusMetaAr = {
+            0: { text: "لم تبدأ", class: "badge-glow-info" },
+            1: { text: "قيد التنفيذ", class: "badge-glow-warning" },
+            2: { text: "قيد المراجعة", class: "badge-glow-info" },
+            3: { text: "مكتمل", class: "badge-glow-success" }
+        };
+
+        function renderProjectTasks() {
+            const tbody = document.getElementById("projectTasksList");
+            tbody.innerHTML = "";
+
+            if (projectTasks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No tasks defined for this project.' : 'لا توجد مهام مدخلة لهذا المشروع.'}</td></tr>`;
+                return;
+            }
+
+            projectTasks.forEach(t => {
+                const title = currentLang === 'en' ? (t.titleEn || t.title) : (t.titleAr || t.title);
+                const statusInfo = currentLang === 'en' ? taskStatusMeta[t.status] : taskStatusMetaAr[t.status];
+                const date = new Date(t.dueDate).toLocaleDateString();
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${title}</strong></td>
+                    <td><span class="${statusInfo.class}">${statusInfo.text}</span></td>
+                    <td>${date}</td>
+                    <td>${t.estimatedHours} hrs</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-1" onclick="editTask(${t.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteTask(${t.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function saveTask(e) {
+            e.preventDefault();
+            
+            const titleAr = document.getElementById("taskTitleAr").value.trim();
+            const titleEn = document.getElementById("taskTitleEn").value.trim();
+            const descAr = document.getElementById("taskDescAr").value.trim();
+            const descEn = document.getElementById("taskDescEn").value.trim();
+            const dueDate = document.getElementById("taskDueDate").value;
+            const hoursVal = document.getElementById("taskHours").value.trim();
+            
+            if (!titleAr || !titleEn || !descAr || !descEn || !dueDate || !hoursVal) {
+                alert(currentLang === 'en' ? "Please fill in all required fields." : "يرجى تعبئة جميع الحقول المطلوبة.");
+                return;
+            }
+
+            const hours = parseFloat(hoursVal);
+            if (isNaN(hours) || hours <= 0) {
+                alert(currentLang === 'en' ? "Please enter a valid number of estimated hours." : "يرجى إدخال عدد ساعات تقديري صالح.");
+                return;
+            }
+
+            const btnSave = document.getElementById("btnSaveTaskForm");
+            const originalText = btnSave.innerText;
+            btnSave.disabled = true;
+            btnSave.innerText = currentLang === 'en' ? "Saving..." : "جاري الحفظ...";
+
+            const idField = document.getElementById("taskIdField").value;
+            const dto = {
+                id: idField ? parseInt(idField) : 0,
+                projectId: activeProjectIdForTasks,
+                titleEn: titleEn,
+                titleAr: titleAr,
+                title: titleAr,
+                descriptionEn: descEn,
+                descriptionAr: descAr,
+                description: descAr,
+                dueDate: dueDate,
+                estimatedHours: hours,
+                status: parseInt(document.getElementById("taskStatusSelect").value)
+            };
+
+            const method = idField ? 'PUT' : 'POST';
+            const url = idField ? `/api/tasks/${idField}` : '/api/tasks';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    toggleAddTaskForm(false);
+                    await loadProjectTasks();
+                } else {
+                    const errText = await res.text();
+                    alert((currentLang === 'en' ? "Error saving task: " : "حدث خطأ أثناء حفظ المهمة: ") + (errText || res.statusText));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection error: " + err.message);
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = originalText;
+            }
+        }
+
+        function editTask(id) {
+            const t = projectTasks.find(task => task.id === id);
+            if (!t) return;
+
+            toggleAddTaskForm(true);
+            document.getElementById("taskIdField").value = t.id;
+            document.getElementById("taskTitleEn").value = t.titleEn || t.title;
+            document.getElementById("taskTitleAr").value = t.titleAr || t.title;
+            document.getElementById("taskDescEn").value = t.descriptionEn || t.description;
+            document.getElementById("taskDescAr").value = t.descriptionAr || t.description;
+            document.getElementById("taskDueDate").value = t.dueDate.split('T')[0];
+            document.getElementById("taskHours").value = t.estimatedHours;
+            document.getElementById("taskStatusSelect").value = t.status;
+        }
+
+        async function deleteTask(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this task?" : "هل أنت متأكد من حذف هذه المهمة؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    await loadProjectTasks();
+                } else {
+                    alert("Failed to delete task.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // ================= Milestones Management Handlers =================
+        let projectMilestones = [];
+
+        function toggleAddMilestoneForm(show) {
+            const form = document.getElementById("addMilestoneFormContainer");
+            const btn = document.getElementById("milestones-tab-content").querySelector(".btn-neon");
+            if (show) {
+                form.classList.remove("d-none");
+                if (btn) btn.classList.add("d-none");
+                document.getElementById("milestoneForm").reset();
+                document.getElementById("milestoneIdField").value = "";
+                document.getElementById("milestoneProjectId").value = activeProjectIdForTasks;
+            } else {
+                form.classList.add("d-none");
+                if (btn) btn.classList.remove("d-none");
+            }
+        }
+
+        async function loadProjectMilestones() {
+            try {
+                const res = await fetch('/api/milestones');
+                if (res.ok) {
+                    const allMilestones = await res.json();
+                    projectMilestones = allMilestones.filter(m => m.projectId === activeProjectIdForTasks);
+                    renderProjectMilestones();
+                }
+            } catch (err) {
+                console.error("Error loading milestones:", err);
+            }
+        }
+
+        function renderProjectMilestones() {
+            const tbody = document.getElementById("projectMilestonesList");
+            tbody.innerHTML = "";
+
+            if (projectMilestones.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No milestones defined for this project.' : 'لا توجد مراحل رئيسية مدخلة لهذا المشروع.'}</td></tr>`;
+                return;
+            }
+
+            projectMilestones.forEach(m => {
+                const title = currentLang === 'en' ? (m.titleEn || m.titleAr) : (m.titleAr || m.titleEn);
+                const statusClass = m.isCompleted ? "badge-glow-success" : "badge-glow-info";
+                const statusText = m.isCompleted 
+                    ? (currentLang === 'en' ? "Completed" : "مكتملة") 
+                    : (currentLang === 'en' ? "Pending" : "قيد الانتظار");
+                const date = new Date(m.dueDate).toLocaleDateString();
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${title}</strong></td>
+                    <td><span class="${statusClass}">${statusText}</span></td>
+                    <td>${date}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-1" onclick="editMilestone(${m.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteMilestone(${m.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function saveMilestone(e) {
+            e.preventDefault();
+            
+            const titleAr = document.getElementById("milestoneTitleAr").value.trim();
+            const titleEn = document.getElementById("milestoneTitleEn").value.trim();
+            const dueDate = document.getElementById("milestoneDueDate").value;
+            const isCompleted = document.getElementById("milestoneIsCompleted").checked;
+            
+            if (!titleAr || !titleEn || !dueDate) {
+                alert(currentLang === 'en' ? "Please fill in all required fields." : "يرجى تعبئة جميع الحقول المطلوبة.");
+                return;
+            }
+
+            const btnSave = document.getElementById("milestoneForm").querySelector("button[type='submit']");
+            const originalText = btnSave.innerText;
+            btnSave.disabled = true;
+            btnSave.innerText = currentLang === 'en' ? "Saving..." : "جاري الحفظ...";
+
+            const idField = document.getElementById("milestoneIdField").value;
+            const dto = {
+                id: idField ? parseInt(idField) : 0,
+                projectId: activeProjectIdForTasks,
+                titleEn: titleEn,
+                titleAr: titleAr,
+                dueDate: dueDate,
+                isCompleted: isCompleted
+            };
+
+            const method = idField ? 'PUT' : 'POST';
+            const url = idField ? `/api/milestones/${idField}` : '/api/milestones';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    toggleAddMilestoneForm(false);
+                    await loadProjectMilestones();
+                } else {
+                    const errText = await res.text();
+                    alert((currentLang === 'en' ? "Error saving milestone: " : "حدث خطأ أثناء حفظ المرحلة: ") + (errText || res.statusText));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection error: " + err.message);
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = originalText;
+            }
+        }
+
+        function editMilestone(id) {
+            const m = projectMilestones.find(ms => ms.id === id);
+            if (!m) return;
+
+            toggleAddMilestoneForm(true);
+            document.getElementById("milestoneIdField").value = m.id;
+            document.getElementById("milestoneTitleEn").value = m.titleEn;
+            document.getElementById("milestoneTitleAr").value = m.titleAr;
+            document.getElementById("milestoneDueDate").value = m.dueDate.split('T')[0];
+            document.getElementById("milestoneIsCompleted").checked = m.isCompleted;
+        }
+
+        async function deleteMilestone(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this milestone?" : "هل أنت متأكد من حذف هذه المرحلة؟";
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/milestones/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    await loadProjectMilestones();
+                } else {
+                    alert("Failed to delete milestone.");
                 }
             } catch (err) {
                 console.error(err);
