@@ -278,5 +278,148 @@ namespace NewFeature.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}\n{ex.StackTrace}");
             }
         }
+
+        [HttpGet("project-kpis")]
+        public async Task<ActionResult<ProjectKpiDto>> GetProjectKpis()
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                var projects = await _context.Projects.ToListAsync();
+                var tasks = await _context.Tasks.Include(t => t.TimeLogs).ToListAsync();
+                var milestones = await _context.ProjectMilestones.ToListAsync();
+                var vehicles = await _context.Vehicles.ToListAsync();
+                var trips = await _context.Trips.Include(t => t.Route).ToListAsync();
+
+                var kpis = new ProjectKpiDto();
+
+                int totalProjects = projects.Count;
+                int completedProjects = projects.Count(p => p.Status == ProjectStatus.Completed);
+                kpis.ProjectCompletionRateActual = totalProjects > 0
+                    ? Math.Round((double)completedProjects / totalProjects * 100, 1)
+                    : 0;
+
+                int delayedProjects = projects.Count(p => p.EndDate < now && p.Status != ProjectStatus.Completed);
+                kpis.ProjectDelayRateActual = totalProjects > 0
+                    ? Math.Round((double)delayedProjects / totalProjects * 100, 1)
+                    : 0;
+
+                int totalTasks = tasks.Count;
+                int completedTasks = tasks.Count(t => t.Status == Models.TaskStatus.Done);
+                kpis.TaskCompletionRateActual = totalTasks > 0
+                    ? Math.Round((double)completedTasks / totalTasks * 100, 1)
+                    : 0;
+
+                int overdueTasks = tasks.Count(t => t.DueDate < now && t.Status != Models.TaskStatus.Done);
+                kpis.OverdueTaskRateActual = totalTasks > 0
+                    ? Math.Round((double)overdueTasks / totalTasks * 100, 1)
+                    : 0;
+
+                int totalMilestones = milestones.Count;
+                int completedMilestones = milestones.Count(m => m.IsCompleted);
+                kpis.MilestoneCompletionRateActual = totalMilestones > 0
+                    ? Math.Round((double)completedMilestones / totalMilestones * 100, 1)
+                    : 0;
+
+                double sumProgress = 0;
+                foreach (var p in projects)
+                {
+                    var projTasks = tasks.Where(t => t.ProjectId == p.Id).ToList();
+                    if (projTasks.Any())
+                    {
+                        sumProgress += (double)projTasks.Count(t => t.Status == Models.TaskStatus.Done) / projTasks.Count * 100;
+                    }
+                    else
+                    {
+                        var projTrips = trips.Where(t => t.ProjectId == p.Id).ToList();
+                        if (projTrips.Any())
+                        {
+                            sumProgress += (double)projTrips.Count(t => t.Status == TripStatus.Completed) / projTrips.Count * 100;
+                        }
+                    }
+                }
+                kpis.AverageProjectProgressActual = totalProjects > 0
+                    ? Math.Round(sumProgress / totalProjects, 1)
+                    : 0;
+
+                int totalEstimatedTrips = projects.Sum(p => p.EstimatedTripsCount);
+                int completedTrips = trips.Count(t => t.Status == TripStatus.Completed);
+                kpis.TripFulfillmentRateActual = totalEstimatedTrips > 0
+                    ? Math.Round((double)completedTrips / totalEstimatedTrips * 100, 1)
+                    : 0;
+
+                int onTimeTrips = trips.Count(t => t.Status == TripStatus.Completed && t.ActualArrival.HasValue && t.ActualArrival.Value <= t.ScheduledArrival);
+                int completedTripsCount = trips.Count(t => t.Status == TripStatus.Completed);
+                kpis.OnTimeTripDeliveryActual = completedTripsCount > 0
+                    ? Math.Round((double)onTimeTrips / completedTripsCount * 100, 1)
+                    : 0;
+
+                int totalVehicles = vehicles.Count;
+                int outOfServiceVehicles = vehicles.Count(v => v.Status == VehicleStatus.OutOfService);
+                int activeVehicles = vehicles.Count(v => v.Status == VehicleStatus.Active);
+                int availableFleet = totalVehicles - outOfServiceVehicles;
+                kpis.FleetUtilizationRateActual = availableFleet > 0
+                    ? Math.Round((double)activeVehicles / availableFleet * 100, 1)
+                    : 0;
+
+                decimal totalEstimatedHours = tasks.Sum(t => t.EstimatedHours);
+                decimal totalActualHours = tasks.SelectMany(t => t.TimeLogs).Sum(tl => tl.HoursLogged);
+                kpis.ResourceEfficiencyActual = totalActualHours > 0
+                    ? Math.Round((double)(totalEstimatedHours / totalActualHours) * 100, 1)
+                    : 100.0;
+
+                kpis.ProjectsByStatus = new List<ChartDataPoint>
+                {
+                    new() { Label = "Active", Value = projects.Count(p => p.Status == ProjectStatus.Active), Color = "#10b981" },
+                    new() { Label = "Planning", Value = projects.Count(p => p.Status == ProjectStatus.Planning), Color = "#3b82f6" },
+                    new() { Label = "Completed", Value = completedProjects, Color = "#8b5cf6" },
+                    new() { Label = "On Hold", Value = projects.Count(p => p.Status == ProjectStatus.OnHold), Color = "#f59e0b" }
+                };
+
+                kpis.TasksByStatus = new List<ChartDataPoint>
+                {
+                    new() { Label = "To Do", Value = tasks.Count(t => t.Status == Models.TaskStatus.ToDo), Color = "#6b7280" },
+                    new() { Label = "In Progress", Value = tasks.Count(t => t.Status == Models.TaskStatus.InProgress), Color = "#3b82f6" },
+                    new() { Label = "In Review", Value = tasks.Count(t => t.Status == Models.TaskStatus.InReview), Color = "#f59e0b" },
+                    new() { Label = "Done", Value = completedTasks, Color = "#10b981" }
+                };
+
+                var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
+                var monthlyCompletedTasks = tasks
+                    .Where(t => t.Status == Models.TaskStatus.Done && t.DueDate >= sixMonthsAgo)
+                    .GroupBy(t => t.DueDate.ToString("yyyy-MM"))
+                    .OrderBy(g => g.Key)
+                    .Select(g => new ChartDataPoint
+                    {
+                        Label = g.Key,
+                        Value = g.Count(),
+                        Color = "#10b981"
+                    }).ToList();
+                kpis.MonthlyTaskCompletion = monthlyCompletedTasks;
+
+                kpis.TripFulfillmentPerProject = projects
+                    .Where(p => p.EstimatedTripsCount > 0)
+                    .Select(p => {
+                        int projCompletedTrips = trips.Count(t => t.ProjectId == p.Id && t.Status == TripStatus.Completed);
+                        double fulfillment = Math.Round((double)projCompletedTrips / p.EstimatedTripsCount * 100, 1);
+                        return new ChartDataPoint
+                        {
+                            Label = p.NameAr ?? p.NameEn,
+                            Value = (decimal)fulfillment,
+                            Color = fulfillment >= 90 ? "#10b981" : (fulfillment >= 50 ? "#f59e0b" : "#ef4444")
+                        };
+                    })
+                    .Take(10)
+                    .ToList();
+
+                return Ok(kpis);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
     }
 }
+

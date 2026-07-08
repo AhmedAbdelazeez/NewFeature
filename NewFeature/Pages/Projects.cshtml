@@ -52,7 +52,230 @@
             </table>
         </div>
     </div>
+
+    <!-- ================= Projects Dashboard & KPIs ================= -->
+    <hr class="border-glass my-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="glow-text"><i class="bi bi-speedometer2 me-2"></i> <span data-i18n="projects-kpi-dashboard-title">Projects Performance Dashboard</span></h2>
+            <p class="text-muted mb-0" data-i18n="projects-kpi-dashboard-subtitle">Real-time performance metrics and charts for active contracts</p>
+        </div>
+        <button class="btn btn-neon-outline btn-sm" onclick="loadProjectKpis()">
+            <i class="bi bi-arrow-clockwise me-1"></i> <span data-i18n="btn-refresh">Refresh Dashboard</span>
+        </button>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="row g-4 mb-5" id="kpiGrid">
+        <!-- 1. Project Completion Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-project-completion" style="font-size: 0.75rem; white-space: nowrap;">Project Completion Rate</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiProjectCompletionActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-check2-circle"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiProjectCompletionTarget">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Project Delay Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-project-delay" style="font-size: 0.75rem; white-space: nowrap;">Project Delay Rate</small>
+                        <h3 class="mb-0 text-danger font-extrabold" id="kpiProjectDelayActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiProjectDelayTarget">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Task Completion Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-task-completion" style="font-size: 0.75rem; white-space: nowrap;">Task Completion Rate</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiTaskCompletionActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-list-task"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiTaskCompletionTarget">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Overdue Task Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-task-overdue" style="font-size: 0.75rem; white-space: nowrap;">Overdue Task Rate</small>
+                        <h3 class="mb-0 text-danger font-extrabold" id="kpiTaskOverdueActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-danger"><i class="bi bi-calendar-x"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiTaskOverdueTarget">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Milestone Completion Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-milestone-completion" style="font-size: 0.75rem; white-space: nowrap;">Milestone Completion Rate</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiMilestoneCompletionActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-flag"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiMilestoneCompletionTarget">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Avg Project Completion % -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-avg-progress" style="font-size: 0.75rem; white-space: nowrap;">Avg Project Progress</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiAvgProgressActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-graph-up-arrow"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiAvgProgressTarget">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Trip Fulfillment Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-trip-fulfillment" style="font-size: 0.75rem; white-space: nowrap;">Trip Fulfillment Rate</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiTripFulfillmentActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-truck-flatbed"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiTripFulfillmentTarget">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. On-Time Trip Delivery Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-ontime-delivery" style="font-size: 0.75rem; white-space: nowrap;">On-Time Trip Delivery</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiOnTimeDeliveryActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-clock-history"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiOnTimeDeliveryTarget">95%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Fleet Utilization Rate -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-fleet-utilization" style="font-size: 0.75rem; white-space: nowrap;">Fleet Utilization Rate</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiFleetUtilizationActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-funnel"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiFleetUtilizationTarget">85%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 10. Resource Efficiency -->
+        <div class="col-md-6 col-lg-3 col-xl-2.4">
+            <div class="glass-card h-100 p-3 position-relative overflow-hidden" style="min-width: 200px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted font-bold d-block mb-1" data-i18n="kpi-resource-efficiency" style="font-size: 0.75rem; white-space: nowrap;">Resource Efficiency</small>
+                        <h3 class="mb-0 text-white font-extrabold" id="kpiResourceEfficiencyActual" style="font-size: 1.5rem;">-%</h3>
+                    </div>
+                    <div class="fs-3 text-neon"><i class="bi bi-person-workspace"></i></div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-glass d-flex justify-content-between align-items-center text-muted" style="font-size: 0.7rem;">
+                    <span data-i18n="lbl-target">Target:</span>
+                    <span class="font-bold text-white" id="kpiResourceEfficiencyTarget">100%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-xl-3">
+            <div class="glass-card p-3">
+                <h5 class="glow-text text-center mb-3" style="font-size: 0.95rem;" data-i18n="chart-projects-status">Projects Status</h5>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="chartProjectsByStatus"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="glass-card p-3">
+                <h5 class="glow-text text-center mb-3" style="font-size: 0.95rem;" data-i18n="chart-tasks-status">Tasks Status</h5>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="chartTasksByStatus"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-xl-6">
+            <div class="glass-card p-3">
+                <h5 class="glow-text text-center mb-3" style="font-size: 0.95rem;" data-i18n="chart-monthly-completion">Monthly Completed Tasks</h5>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="chartMonthlyTasks"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <div class="glass-card p-3">
+                <h5 class="glow-text text-center mb-3" style="font-size: 0.95rem;" data-i18n="chart-trip-fulfillment">Trip Fulfillment Rate per Project (%)</h5>
+                <div style="position: relative; height: 220px;">
+                    <canvas id="chartTripFulfillment"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 
 <!-- Add/Edit Project Glass Modal -->
 <div class="modal fade" id="projectModal" tabindex="-1" aria-hidden="true">
@@ -435,6 +658,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
         const currentLang = localStorage.getItem('lang') || 'en';
@@ -458,6 +682,7 @@
         document.addEventListener("DOMContentLoaded", async function () {
             await loadClients();
             await loadProjects();
+            await loadProjectKpis();
         });
 
         async function loadClients() {
@@ -1088,5 +1313,169 @@
                 console.error(err);
             }
         }
+
+        // ================= KPI Dashboard & Chart Rendering =================
+        let chartProj = null;
+        let chartTask = null;
+        let chartMonthly = null;
+        let chartFulfillment = null;
+
+        async function loadProjectKpis() {
+            try {
+                const res = await fetch('/api/dashboard/project-kpis');
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Update KPI cards
+                    document.getElementById("kpiProjectCompletionActual").innerText = data.projectCompletionRateActual + "%";
+                    
+                    const delayEl = document.getElementById("kpiProjectDelayActual");
+                    delayEl.innerText = data.projectDelayRateActual + "%";
+                    if (data.projectDelayRateActual > 0) {
+                        delayEl.className = "mb-0 text-danger font-extrabold";
+                    } else {
+                        delayEl.className = "mb-0 text-success font-extrabold";
+                    }
+
+                    document.getElementById("kpiTaskCompletionActual").innerText = data.taskCompletionRateActual + "%";
+                    
+                    const overdueEl = document.getElementById("kpiTaskOverdueActual");
+                    overdueEl.innerText = data.overdueTaskRateActual + "%";
+                    if (data.overdueTaskRateActual > 0) {
+                        overdueEl.className = "mb-0 text-danger font-extrabold";
+                    } else {
+                        overdueEl.className = "mb-0 text-success font-extrabold";
+                    }
+
+                    document.getElementById("kpiMilestoneCompletionActual").innerText = data.milestoneCompletionRateActual + "%";
+                    document.getElementById("kpiAvgProgressActual").innerText = data.averageProjectProgressActual + "%";
+                    document.getElementById("kpiTripFulfillmentActual").innerText = data.tripFulfillmentRateActual + "%";
+                    document.getElementById("kpiOnTimeDeliveryActual").innerText = data.onTimeTripDeliveryActual + "%";
+                    document.getElementById("kpiFleetUtilizationActual").innerText = data.fleetUtilizationRateActual + "%";
+                    document.getElementById("kpiResourceEfficiencyActual").innerText = data.resourceEfficiencyActual + "%";
+
+                    // Render Charts
+                    renderKpiCharts(data);
+                }
+            } catch (err) {
+                console.error("Error loading project KPIs:", err);
+            }
+        }
+
+        function renderKpiCharts(data) {
+            if (chartProj) chartProj.destroy();
+            if (chartTask) chartTask.destroy();
+            if (chartMonthly) chartMonthly.destroy();
+            if (chartFulfillment) chartFulfillment.destroy();
+
+            const isAr = currentLang === 'ar';
+
+            const statusLabelsMap = {
+                "Active": isAr ? "نشط" : "Active",
+                "Planning": isAr ? "تخطيط" : "Planning",
+                "Completed": isAr ? "مكتمل" : "Completed",
+                "On Hold": isAr ? "معلق" : "On Hold",
+                "To Do": isAr ? "لم تبدأ" : "To Do",
+                "In Progress": isAr ? "قيد التنفيذ" : "In Progress",
+                "In Review": isAr ? "قيد المراجعة" : "In Review",
+                "Done": isAr ? "مكتملة" : "Completed / Done"
+            };
+
+            // 1. Projects by Status
+            const projCtx = document.getElementById('chartProjectsByStatus').getContext('2d');
+            chartProj = new Chart(projCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.projectsByStatus.map(d => statusLabelsMap[d.label] || d.label),
+                    datasets: [{
+                        data: data.projectsByStatus.map(d => d.value),
+                        backgroundColor: data.projectsByStatus.map(d => d.color || '#3b82f6'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 2. Tasks by Status
+            const taskCtx = document.getElementById('chartTasksByStatus').getContext('2d');
+            chartTask = new Chart(taskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.tasksByStatus.map(d => statusLabelsMap[d.label] || d.label),
+                    datasets: [{
+                        data: data.tasksByStatus.map(d => d.value),
+                        backgroundColor: data.tasksByStatus.map(d => d.color || '#3b82f6'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 3. Monthly Completed Tasks
+            const monthlyCtx = document.getElementById('chartMonthlyTasks').getContext('2d');
+            chartMonthly = new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.monthlyTaskCompletion.map(d => d.label),
+                    datasets: [{
+                        label: isAr ? 'المهام المكتملة' : 'Completed Tasks',
+                        data: data.monthlyTaskCompletion.map(d => d.value),
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                        y: { ticks: { color: '#94a3b8', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(148,163,184,0.1)' } }
+                    }
+                }
+            });
+
+            // 4. Trip Fulfillment Rate per Project
+            const fulfillmentCtx = document.getElementById('chartTripFulfillment').getContext('2d');
+            chartFulfillment = new Chart(fulfillmentCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.tripFulfillmentPerProject.map(d => d.label),
+                    datasets: [{
+                        label: isAr ? 'نسبة الإنجاز %' : 'Fulfillment %',
+                        data: data.tripFulfillmentPerProject.map(d => d.value),
+                        backgroundColor: data.tripFulfillmentPerProject.map(d => d.color || '#b0841a'),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' }, max: 100 },
+                        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } }
+                    }
+                }
+            });
+        }
     </script>
 }
+
