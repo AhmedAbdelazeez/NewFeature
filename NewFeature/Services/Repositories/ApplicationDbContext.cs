@@ -25,6 +25,12 @@ namespace NewFeature.Services.Repositories
         public DbSet<TaskDependency> TaskDependencies { get; set; } = null!;
         public DbSet<TimeLog> TimeLogs { get; set; } = null!;
 
+        public DbSet<Department> Departments { get; set; } = null!;
+        public DbSet<ViolationClassification> ViolationClassifications { get; set; } = null!;
+        public DbSet<Violation> Violations { get; set; } = null!;
+        public DbSet<InternalAudit> InternalAudits { get; set; } = null!;
+        public DbSet<ImprovementAction> ImprovementActions { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -181,6 +187,36 @@ namespace NewFeature.Services.Repositories
                 .HasOne(t => t.Project)
                 .WithMany(p => p.Trips)
                 .HasForeignKey(t => t.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Compliance Department Precision
+            modelBuilder.Entity<Violation>()
+                .Property(v => v.FineAmount)
+                .HasPrecision(18, 2);
+
+            // Compliance Department Relationships
+            modelBuilder.Entity<Violation>()
+                .HasOne(v => v.Department)
+                .WithMany(d => d.Violations)
+                .HasForeignKey(v => v.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Violation>()
+                .HasOne(v => v.Classification)
+                .WithMany(vc => vc.Violations)
+                .HasForeignKey(v => v.ClassificationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<InternalAudit>()
+                .HasOne(ia => ia.Department)
+                .WithMany(d => d.Audits)
+                .HasForeignKey(ia => ia.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ImprovementAction>()
+                .HasOne(ia => ia.Department)
+                .WithMany(d => d.ImprovementActions)
+                .HasForeignKey(ia => ia.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

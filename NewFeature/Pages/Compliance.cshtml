@@ -1,0 +1,1153 @@
+@page
+@model NewFeature.Pages.ComplianceModel
+@{
+    ViewData["Title"] = "Compliance Department";
+}
+
+<div class="py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-shield-check me-2"></i> <span data-i18n="compliance-title">Compliance Department</span></h1>
+            <p class="text-muted mb-0" data-i18n="compliance-subtitle">Track violations, audit logs, improvement actions, and compliance lookups</p>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="complianceTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="violations-tab" data-bs-toggle="tab" data-bs-target="#violations-pane" type="button" role="tab" aria-controls="violations-pane" aria-selected="true">
+                <i class="bi bi-exclamation-octagon me-1"></i> <span data-i18n="compliance-tab-violations">Violations</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="audits-tab" data-bs-toggle="tab" data-bs-target="#audits-pane" type="button" role="tab" aria-controls="audits-pane" aria-selected="false">
+                <i class="bi bi-journal-check me-1"></i> <span data-i18n="compliance-tab-audits">Internal Audits</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="improvements-tab" data-bs-toggle="tab" data-bs-target="#improvements-pane" type="button" role="tab" aria-controls="improvements-pane" aria-selected="false">
+                <i class="bi bi-arrow-up-right-circle me-1"></i> <span data-i18n="compliance-tab-improvements">Continuous Improvement</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="lookups-tab" data-bs-toggle="tab" data-bs-target="#lookups-pane" type="button" role="tab" aria-controls="lookups-pane" aria-selected="false">
+                <i class="bi bi-gear me-1"></i> <span data-i18n="compliance-tab-lookups">Compliance Lookups</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content" id="complianceTabsContent">
+        
+        <!-- 1. Violations Tab Pane -->
+        <div class="tab-pane fade show active" id="violations-pane" role="tabpanel" aria-labelledby="violations-tab">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="glow-text h5" data-i18n="compliance-tab-violations">Violations</h2>
+                </div>
+                <button class="btn btn-neon" onclick="openViolationModal()">
+                    <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-violation">Add Violation</span>
+                </button>
+            </div>
+
+            <!-- Toolbar Search -->
+            <div class="glass-card mb-4 p-3">
+                <input type="text" id="violationSearch" class="form-control form-control-glass" placeholder="Search violations..." onkeyup="filterTable('violationsList', 'violationSearch')">
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="violationsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="compliance-th-title">Title</th>
+                                <th data-i18n="compliance-th-dept">Department</th>
+                                <th data-i18n="compliance-th-class">Classification</th>
+                                <th data-i18n="compliance-th-date">Date</th>
+                                <th data-i18n="compliance-th-res-date">Resolution Date</th>
+                                <th data-i18n="compliance-th-status">Status</th>
+                                <th data-i18n="compliance-th-severity">Severity</th>
+                                <th data-i18n="compliance-th-fine">Fine (SAR)</th>
+                                <th data-i18n="clients-th-actions" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="violationsList">
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading violations...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Internal Audits Tab Pane -->
+        <div class="tab-pane fade" id="audits-pane" role="tabpanel" aria-labelledby="audits-tab">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="glow-text h5" data-i18n="compliance-tab-audits">Internal Audits</h2>
+                </div>
+                <button class="btn btn-neon" onclick="openAuditModal()">
+                    <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-audit">Add Audit</span>
+                </button>
+            </div>
+
+            <!-- Toolbar Search -->
+            <div class="glass-card mb-4 p-3">
+                <input type="text" id="auditSearch" class="form-control form-control-glass" placeholder="Search audits..." onkeyup="filterTable('auditsList', 'auditSearch')">
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="auditsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="compliance-th-title">Title</th>
+                                <th data-i18n="compliance-th-dept">Department</th>
+                                <th data-i18n="compliance-th-date">Date</th>
+                                <th data-i18n="compliance-th-controls">Audited Controls</th>
+                                <th data-i18n="compliance-th-passed">Passed Controls</th>
+                                <th data-i18n="compliance-th-critical">Critical Findings</th>
+                                <th data-i18n="clients-th-actions" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditsList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading internal audits...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Continuous Improvement Tab Pane -->
+        <div class="tab-pane fade" id="improvements-pane" role="tabpanel" aria-labelledby="improvements-tab">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="glow-text h5" data-i18n="compliance-tab-improvements">Continuous Improvement</h2>
+                </div>
+                <button class="btn btn-neon" onclick="openImprovementModal()">
+                    <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-improvement">Add Improvement</span>
+                </button>
+            </div>
+
+            <!-- Toolbar Search -->
+            <div class="glass-card mb-4 p-3">
+                <input type="text" id="improvementSearch" class="form-control form-control-glass" placeholder="Search actions..." onkeyup="filterTable('improvementsList', 'improvementSearch')">
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="improvementsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="compliance-th-title">Title</th>
+                                <th data-i18n="compliance-th-dept">Department</th>
+                                <th data-i18n="compliance-th-date">Date Proposed</th>
+                                <th data-i18n="compliance-th-res-date">Date Implemented</th>
+                                <th data-i18n="compliance-th-status">Status</th>
+                                <th data-i18n="clients-th-actions" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="improvementsList">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading improvement actions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Lookups Tab Pane -->
+        <div class="tab-pane fade" id="lookups-pane" role="tabpanel" aria-labelledby="lookups-tab">
+            <div class="row g-4">
+                <!-- Departments Section -->
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="glow-text h6 mb-0" data-i18n="compliance-subtab-depts">Departments</h3>
+                            <button class="btn btn-neon btn-sm" onclick="openDeptModal()">
+                                <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-dept">Add Dept</span>
+                            </button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-glass table-sm text-white align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="compliance-th-code">Code</th>
+                                        <th data-i18n="clients-th-name">Name</th>
+                                        <th data-i18n="compliance-th-status">Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deptsList">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3 text-muted">Loading departments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Classifications Section -->
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="glow-text h6 mb-0" data-i18n="compliance-subtab-classes">Violation Classifications</h3>
+                            <button class="btn btn-neon btn-sm" onclick="openClassModal()">
+                                <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-class">Add Class</span>
+                            </button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-glass table-sm text-white align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="compliance-th-code">Code</th>
+                                        <th data-i18n="clients-th-name">Name</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="classificationsList">
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3 text-muted">Loading classifications...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. Violation Modal -->
+<div class="modal fade" id="violationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="violationModalTitle" data-i18n="compliance-btn-add-violation">Add Violation</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="violationForm" onsubmit="saveViolation(event)">
+                <input type="hidden" id="violationId">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-title-en">Title (EN)</label>
+                            <input type="text" id="violationTitleEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-title-ar">Title (AR)</label>
+                            <input type="text" id="violationTitleAr" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-desc-en">Description (EN)</label>
+                            <textarea id="violationDescEn" class="form-control form-control-glass" rows="3" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-desc-ar">Description (AR)</label>
+                            <textarea id="violationDescAr" class="form-control form-control-glass" rows="3" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-dept">Select Department</label>
+                            <select id="violationDeptId" class="form-control form-control-glass" required>
+                                <option value="" data-i18n="compliance-lbl-dept">Select Department</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-class">Select Classification</label>
+                            <select id="violationClassId" class="form-control form-control-glass" required>
+                                <option value="" data-i18n="compliance-lbl-class">Select Classification</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-date">Detection Date</label>
+                            <input type="date" id="violationDate" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="compliance-lbl-res-date">Resolution Date (Optional)</label>
+                            <input type="date" id="violationResDate" class="form-control form-control-glass">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" data-i18n="compliance-lbl-status">Status</label>
+                            <select id="violationStatus" class="form-control form-control-glass" required>
+                                <option value="0">Open</option>
+                                <option value="1">Closed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" data-i18n="compliance-lbl-severity">Severity</label>
+                            <select id="violationSeverity" class="form-control form-control-glass" required>
+                                <option value="0">Critical</option>
+                                <option value="1">Major</option>
+                                <option value="2">Minor</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" data-i18n="compliance-lbl-fine">Fine Amount (SAR)</label>
+                            <input type="number" step="0.01" min="0" id="violationFine" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Internal Audit Modal -->
+<div class="modal fade" id="auditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="auditModalTitle" data-i18n="compliance-btn-add-audit">Add Audit</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="auditForm" onsubmit="saveAudit(event)">
+                <input type="hidden" id="auditId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-title-en">Title (EN)</label>
+                        <input type="text" id="auditTitleEn" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-title-ar">Title (AR)</label>
+                        <input type="text" id="auditTitleAr" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-dept">Select Department</label>
+                        <select id="auditDeptId" class="form-control form-control-glass" required>
+                            <option value="" data-i18n="compliance-lbl-dept">Select Department</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-date">Audit Date</label>
+                        <input type="date" id="auditDate" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="row mb-3 g-2">
+                        <div class="col-6">
+                            <label class="form-label" data-i18n="compliance-lbl-controls">Audited Controls</label>
+                            <input type="number" min="1" id="auditTotalControls" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" data-i18n="compliance-lbl-passed">Passed Controls</label>
+                            <input type="number" min="0" id="auditPassedControls" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-critical">Critical Findings Count</label>
+                        <input type="number" min="0" id="auditCriticalFindings" class="form-control form-control-glass" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Improvement Action Modal -->
+<div class="modal fade" id="improvementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="improvementModalTitle" data-i18n="compliance-btn-add-improvement">Add Improvement</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="improvementForm" onsubmit="saveImprovement(event)">
+                <input type="hidden" id="improvementId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-title-en">Title (EN)</label>
+                        <input type="text" id="impTitleEn" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-title-ar">Title (AR)</label>
+                        <input type="text" id="impTitleAr" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-desc-en">Description (EN)</label>
+                        <textarea id="impDescEn" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-desc-ar">Description (AR)</label>
+                        <textarea id="impDescAr" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-dept">Select Department</label>
+                        <select id="impDeptId" class="form-control form-control-glass" required>
+                            <option value="" data-i18n="compliance-lbl-dept">Select Department</option>
+                        </select>
+                    </div>
+                    <div class="row mb-3 g-2">
+                        <div class="col-6">
+                            <label class="form-label" data-i18n="compliance-lbl-date">Date Proposed</label>
+                            <input type="date" id="impDateProposed" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" data-i18n="compliance-lbl-res-date">Date Implemented</label>
+                            <input type="date" id="impDateImplemented" class="form-control form-control-glass">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-status">Status</label>
+                        <select id="impStatus" class="form-control form-control-glass" required>
+                            <option value="0">Proposed</option>
+                            <option value="1">Approved</option>
+                            <option value="2">Implemented</option>
+                            <option value="3">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Department Modal -->
+<div class="modal fade" id="deptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="deptModalTitle" data-i18n="compliance-btn-add-dept">Add Department</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="deptForm" onsubmit="saveDept(event)">
+                <input type="hidden" id="deptId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-code">Department Code</label>
+                        <input type="text" id="deptCode" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-name-en">Name (EN)</label>
+                        <input type="text" id="deptNameEn" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-name-ar">Name (AR)</label>
+                        <input type="text" id="deptNameAr" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" id="deptCompliant" class="form-check-input" checked>
+                        <label class="form-check-label text-white" for="deptCompliant" data-i18n="compliance-lbl-compliant">Is Compliant</label>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Classification Modal -->
+<div class="modal fade" id="classModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="classModalTitle" data-i18n="compliance-btn-add-class">Add Classification</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="classForm" onsubmit="saveClass(event)">
+                <input type="hidden" id="classId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-code">Classification Code</label>
+                        <input type="text" id="classCode" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-name-en">Name (EN)</label>
+                        <input type="text" id="classNameEn" class="form-control form-control-glass" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="compliance-lbl-name-ar">Name (AR)</label>
+                        <input type="text" id="classNameAr" class="form-control form-control-glass" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const currentLang = localStorage.getItem('lang') || 'en';
+        
+        // Severity Meta Data
+        const severityMeta = {
+            0: { text: "Critical", class: "badge-glow-danger" },
+            1: { text: "Major", class: "badge-glow-warning" },
+            2: { text: "Minor", class: "badge-glow-info" }
+        };
+        const severityMetaAr = {
+            0: { text: "حرجة", class: "badge-glow-danger" },
+            1: { text: "جسيمة", class: "badge-glow-warning" },
+            2: { text: "بسيطة", class: "badge-glow-info" }
+        };
+
+        // Status Meta Data
+        const statusMeta = {
+            0: { text: "Open", class: "badge-glow-danger" },
+            1: { text: "Closed", class: "badge-glow-success" }
+        };
+        const statusMetaAr = {
+            0: { text: "مفتوحة", class: "badge-glow-danger" },
+            1: { text: "مغلقة", class: "badge-glow-success" }
+        };
+
+        // Improvement Status Meta Data
+        const impStatusMeta = {
+            0: { text: "Proposed", class: "badge-glow-warning" },
+            1: { text: "Approved", class: "badge-glow-info" },
+            2: { text: "Implemented", class: "badge-glow-success" },
+            3: { text: "Cancelled", class: "badge-glow-danger" }
+        };
+        const impStatusMetaAr = {
+            0: { text: "مقترح", class: "badge-glow-warning" },
+            1: { text: "معتمد", class: "badge-glow-info" },
+            2: { text: "منفذ", class: "badge-glow-success" },
+            3: { text: "ملغى", class: "badge-glow-danger" }
+        };
+
+        // Global list storage for lookups
+        let departments = [];
+        let classifications = [];
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            // Load lookups first so they are available for other dropdowns
+            await loadLookups();
+            
+            // Load CRUD lists
+            loadViolations();
+            loadAudits();
+            loadImprovements();
+        });
+
+        // Format dates consistently
+        function formatDate(dateString) {
+            if (!dateString) return "-";
+            const date = new Date(dateString);
+            return date.toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
+            });
+        }
+
+        function formatShortDate(dateString) {
+            if (!dateString) return "";
+            const d = new Date(dateString);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+
+        // Generic search filter
+        function filterTable(tbodyId, searchInputId) {
+            const query = document.getElementById(searchInputId).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? "" : "none";
+            });
+        }
+
+        // Load lookups: departments and classifications
+        async function loadLookups() {
+            try {
+                // Fetch Departments
+                let res = await fetch('/api/compliance/departments');
+                if (res.ok) {
+                    departments = await res.json();
+                    renderDepts();
+                    populateDropdowns("violationDeptId", departments);
+                    populateDropdowns("auditDeptId", departments);
+                    populateDropdowns("impDeptId", departments);
+                }
+
+                // Fetch Classifications
+                res = await fetch('/api/compliance/classifications');
+                if (res.ok) {
+                    classifications = await res.json();
+                    renderClassifications();
+                    populateDropdowns("violationClassId", classifications);
+                }
+            } catch (err) {
+                console.error("Error loading lookups:", err);
+            }
+        }
+
+        function populateDropdowns(elementId, items) {
+            const select = document.getElementById(elementId);
+            // keep the first option
+            const firstOpt = select.options[0];
+            select.innerHTML = "";
+            select.appendChild(firstOpt);
+            
+            items.forEach(item => {
+                const opt = document.createElement("option");
+                opt.value = item.id;
+                opt.innerText = currentLang === 'ar' ? item.nameAr : item.nameEn;
+                select.appendChild(opt);
+            });
+        }
+
+        // Render lookups
+        function renderDepts() {
+            const tbody = document.getElementById("deptsList");
+            tbody.innerHTML = "";
+            if (departments.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No departments.</td></tr>`;
+                return;
+            }
+            departments.forEach(d => {
+                const badge = d.isCompliant 
+                    ? `<span class="badge-glow-success">${currentLang === 'ar' ? 'ملتزم' : 'Compliant'}</span>`
+                    : `<span class="badge-glow-danger">${currentLang === 'ar' ? 'غير ملتزم' : 'Non-Compliant'}</span>`;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${d.code}</strong></td>
+                    <td>${currentLang === 'ar' ? d.nameAr : d.nameEn}</td>
+                    <td>${badge}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editDept(${d.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteDept(${d.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderClassifications() {
+            const tbody = document.getElementById("classificationsList");
+            tbody.innerHTML = "";
+            if (classifications.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No classifications.</td></tr>`;
+                return;
+            }
+            classifications.forEach(c => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${c.code}</strong></td>
+                    <td>${currentLang === 'ar' ? c.nameAr : c.nameEn}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editClass(${c.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteClass(${c.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Violations CRUD implementation
+        async function loadViolations() {
+            try {
+                const res = await fetch('/api/compliance/violations');
+                if (!res.ok) return;
+                const list = await res.json();
+                const tbody = document.getElementById("violationsList");
+                tbody.innerHTML = "";
+
+                if (list.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No violations found.</td></tr>`;
+                    return;
+                }
+
+                list.forEach(v => {
+                    const sev = currentLang === 'ar' ? severityMetaAr[v.severity] : severityMeta[v.severity];
+                    const stat = currentLang === 'ar' ? statusMetaAr[v.status] : statusMeta[v.status];
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${v.title}</strong></td>
+                        <td>${v.departmentName}</td>
+                        <td>${v.classificationName}</td>
+                        <td>${formatDate(v.detectionDate)}</td>
+                        <td>${formatDate(v.resolutionDate)}</td>
+                        <td><span class="${stat.class}">${stat.text}</span></td>
+                        <td><span class="${sev.class}">${sev.text}</span></td>
+                        <td>${v.fineAmount.toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 2 })}</td>
+                        <td class="text-end" style="white-space: nowrap;">
+                            <button class="btn btn-neon-outline btn-sm me-1" onclick="editViolation(${v.id})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-neon-danger btn-sm" onclick="deleteViolation(${v.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function openViolationModal() {
+            document.getElementById("violationForm").reset();
+            document.getElementById("violationId").value = "";
+            document.getElementById("violationModalTitle").innerText = currentLang === 'ar' ? "إضافة مخالفة" : "Add Violation";
+            
+            // set default date to today
+            document.getElementById("violationDate").value = formatShortDate(new Date());
+            
+            new bootstrap.Modal(document.getElementById('violationModal')).show();
+        }
+
+        async function saveViolation(e) {
+            e.preventDefault();
+            const id = document.getElementById("violationId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("violationTitleEn").value,
+                titleAr: document.getElementById("violationTitleAr").value,
+                descriptionEn: document.getElementById("violationDescEn").value,
+                descriptionAr: document.getElementById("violationDescAr").value,
+                departmentId: parseInt(document.getElementById("violationDeptId").value),
+                classificationId: parseInt(document.getElementById("violationClassId").value),
+                detectionDate: new Date(document.getElementById("violationDate").value).toISOString(),
+                resolutionDate: document.getElementById("violationResDate").value ? new Date(document.getElementById("violationResDate").value).toISOString() : null,
+                status: parseInt(document.getElementById("violationStatus").value),
+                severity: parseInt(document.getElementById("violationSeverity").value),
+                fineAmount: parseFloat(document.getElementById("violationFine").value)
+            };
+
+            try {
+                const url = id ? `/api/compliance/violations/${id}` : '/api/compliance/violations';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLang },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('violationModal')).hide();
+                    loadViolations();
+                } else {
+                    const err = await res.json();
+                    alert("Validation Error: " + JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function editViolation(id) {
+            try {
+                const res = await fetch(`/api/compliance/violations/${id}`);
+                if (!res.ok) return;
+                const v = await res.json();
+
+                document.getElementById("violationId").value = v.id;
+                document.getElementById("violationTitleEn").value = v.titleEn;
+                document.getElementById("violationTitleAr").value = v.titleAr;
+                document.getElementById("violationDescEn").value = v.descriptionEn;
+                document.getElementById("violationDescAr").value = v.descriptionAr;
+                document.getElementById("violationDeptId").value = v.departmentId;
+                document.getElementById("violationClassId").value = v.classificationId;
+                document.getElementById("violationDate").value = formatShortDate(v.detectionDate);
+                document.getElementById("violationResDate").value = formatShortDate(v.resolutionDate);
+                document.getElementById("violationStatus").value = v.status;
+                document.getElementById("violationSeverity").value = v.severity;
+                document.getElementById("violationFine").value = v.fineAmount;
+
+                document.getElementById("violationModalTitle").innerText = currentLang === 'ar' ? "تعديل مخالفة" : "Edit Violation";
+                new bootstrap.Modal(document.getElementById('violationModal')).show();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteViolation(id) {
+            if (!confirm(currentLang === 'ar' ? "هل أنت متأكد من رغبتك في حذف هذه المخالفة؟" : "Are you sure you want to delete this violation?")) return;
+            try {
+                const res = await fetch(`/api/compliance/violations/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadViolations();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Internal Audits CRUD implementation
+        async function loadAudits() {
+            try {
+                const res = await fetch('/api/compliance/audits');
+                if (!res.ok) return;
+                const list = await res.json();
+                const tbody = document.getElementById("auditsList");
+                tbody.innerHTML = "";
+
+                if (list.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No audit reports found.</td></tr>`;
+                    return;
+                }
+
+                list.forEach(a => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${a.title}</strong></td>
+                        <td>${a.departmentName}</td>
+                        <td>${formatDate(a.auditDate)}</td>
+                        <td>${a.totalControlsAudited}</td>
+                        <td>${a.passedControlsCount}</td>
+                        <td><span class="${a.criticalFindingsCount > 0 ? 'text-danger font-bold' : ''}">${a.criticalFindingsCount}</span></td>
+                        <td class="text-end" style="white-space: nowrap;">
+                            <button class="btn btn-neon-outline btn-sm me-1" onclick="editAudit(${a.id})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-neon-danger btn-sm" onclick="deleteAudit(${a.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function openAuditModal() {
+            document.getElementById("auditForm").reset();
+            document.getElementById("auditId").value = "";
+            document.getElementById("auditModalTitle").innerText = currentLang === 'ar' ? "إضافة تقرير تدقيق" : "Add Audit Report";
+            document.getElementById("auditDate").value = formatShortDate(new Date());
+            new bootstrap.Modal(document.getElementById('auditModal')).show();
+        }
+
+        async function saveAudit(e) {
+            e.preventDefault();
+            const id = document.getElementById("auditId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("auditTitleEn").value,
+                titleAr: document.getElementById("auditTitleAr").value,
+                departmentId: parseInt(document.getElementById("auditDeptId").value),
+                auditDate: new Date(document.getElementById("auditDate").value).toISOString(),
+                totalControlsAudited: parseInt(document.getElementById("auditTotalControls").value),
+                passedControlsCount: parseInt(document.getElementById("auditPassedControls").value),
+                criticalFindingsCount: parseInt(document.getElementById("auditCriticalFindings").value)
+            };
+
+            try {
+                const url = id ? `/api/compliance/audits/${id}` : '/api/compliance/audits';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLang },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('auditModal')).hide();
+                    loadAudits();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function editAudit(id) {
+            try {
+                const res = await fetch(`/api/compliance/audits/${id}`);
+                if (!res.ok) return;
+                const a = await res.json();
+
+                document.getElementById("auditId").value = a.id;
+                document.getElementById("auditTitleEn").value = a.titleEn;
+                document.getElementById("auditTitleAr").value = a.titleAr;
+                document.getElementById("auditDeptId").value = a.departmentId;
+                document.getElementById("auditDate").value = formatShortDate(a.auditDate);
+                document.getElementById("auditTotalControls").value = a.totalControlsAudited;
+                document.getElementById("auditPassedControls").value = a.passedControlsCount;
+                document.getElementById("auditCriticalFindings").value = a.criticalFindingsCount;
+
+                document.getElementById("auditModalTitle").innerText = currentLang === 'ar' ? "تعديل تقرير التدقيق" : "Edit Audit Report";
+                new bootstrap.Modal(document.getElementById('auditModal')).show();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteAudit(id) {
+            if (!confirm(currentLang === 'ar' ? "هل أنت متأكد من حذف هذا السجل؟" : "Are you sure you want to delete this record?")) return;
+            try {
+                const res = await fetch(`/api/compliance/audits/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadAudits();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Continuous Improvements CRUD implementation
+        async function loadImprovements() {
+            try {
+                const res = await fetch('/api/compliance/improvements');
+                if (!res.ok) return;
+                const list = await res.json();
+                const tbody = document.getElementById("improvementsList");
+                tbody.innerHTML = "";
+
+                if (list.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No improvements registered.</td></tr>`;
+                    return;
+                }
+
+                list.forEach(i => {
+                    const statusMetaVal = currentLang === 'ar' ? impStatusMetaAr[i.status] : impStatusMeta[i.status];
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${i.title}</strong></td>
+                        <td>${i.departmentName}</td>
+                        <td>${formatDate(i.dateProposed)}</td>
+                        <td>${formatDate(i.dateImplemented)}</td>
+                        <td><span class="${statusMetaVal.class}">${statusMetaVal.text}</span></td>
+                        <td class="text-end" style="white-space: nowrap;">
+                            <button class="btn btn-neon-outline btn-sm me-1" onclick="editImprovement(${i.id})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-neon-danger btn-sm" onclick="deleteImprovement(${i.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function openImprovementModal() {
+            document.getElementById("improvementForm").reset();
+            document.getElementById("improvementId").value = "";
+            document.getElementById("improvementModalTitle").innerText = currentLang === 'ar' ? "إضافة إجراء تحسيني" : "Add Improvement Action";
+            document.getElementById("impDateProposed").value = formatShortDate(new Date());
+            new bootstrap.Modal(document.getElementById('improvementModal')).show();
+        }
+
+        async function saveImprovement(e) {
+            e.preventDefault();
+            const id = document.getElementById("improvementId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("impTitleEn").value,
+                titleAr: document.getElementById("impTitleAr").value,
+                descriptionEn: document.getElementById("impDescEn").value,
+                descriptionAr: document.getElementById("impDescAr").value,
+                departmentId: parseInt(document.getElementById("impDeptId").value),
+                dateProposed: new Date(document.getElementById("impDateProposed").value).toISOString(),
+                dateImplemented: document.getElementById("impDateImplemented").value ? new Date(document.getElementById("impDateImplemented").value).toISOString() : null,
+                status: parseInt(document.getElementById("impStatus").value)
+            };
+
+            try {
+                const url = id ? `/api/compliance/improvements/${id}` : '/api/compliance/improvements';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLang },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('improvementModal')).hide();
+                    loadImprovements();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function editImprovement(id) {
+            try {
+                const res = await fetch(`/api/compliance/improvements/${id}`);
+                if (!res.ok) return;
+                const imp = await res.json();
+
+                document.getElementById("improvementId").value = imp.id;
+                document.getElementById("impTitleEn").value = imp.titleEn;
+                document.getElementById("impTitleAr").value = imp.titleAr;
+                document.getElementById("impDescEn").value = imp.descriptionEn;
+                document.getElementById("impDescAr").value = imp.descriptionAr;
+                document.getElementById("impDeptId").value = imp.departmentId;
+                document.getElementById("impDateProposed").value = formatShortDate(imp.dateProposed);
+                document.getElementById("impDateImplemented").value = formatShortDate(imp.dateImplemented);
+                document.getElementById("impStatus").value = imp.status;
+
+                document.getElementById("improvementModalTitle").innerText = currentLang === 'ar' ? "تعديل إجراء التحسين" : "Edit Improvement Action";
+                new bootstrap.Modal(document.getElementById('improvementModal')).show();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteImprovement(id) {
+            if (!confirm(currentLang === 'ar' ? "هل أنت متأكد من الحذف؟" : "Are you sure you want to delete this action?")) return;
+            try {
+                const res = await fetch(`/api/compliance/improvements/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadImprovements();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Lookups implementation
+        // Department Modal CRUD
+        function openDeptModal() {
+            document.getElementById("deptForm").reset();
+            document.getElementById("deptId").value = "";
+            document.getElementById("deptModalTitle").innerText = currentLang === 'ar' ? "إضافة إدارة" : "Add Department";
+            new bootstrap.Modal(document.getElementById('deptModal')).show();
+        }
+
+        async function saveDept(e) {
+            e.preventDefault();
+            const id = document.getElementById("deptId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                code: document.getElementById("deptCode").value,
+                nameEn: document.getElementById("deptNameEn").value,
+                nameAr: document.getElementById("deptNameAr").value,
+                isCompliant: document.getElementById("deptCompliant").checked
+            };
+
+            try {
+                const url = id ? `/api/compliance/departments/${id}` : '/api/compliance/departments';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLang },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('deptModal')).hide();
+                    await loadLookups();
+                    // Reload dependent lists to refresh names
+                    loadViolations();
+                    loadAudits();
+                    loadImprovements();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function editDept(id) {
+            try {
+                const res = await fetch(`/api/compliance/departments/${id}`);
+                if (!res.ok) return;
+                const d = await res.json();
+
+                document.getElementById("deptId").value = d.id;
+                document.getElementById("deptCode").value = d.code;
+                document.getElementById("deptNameEn").value = d.nameEn;
+                document.getElementById("deptNameAr").value = d.nameAr;
+                document.getElementById("deptCompliant").checked = d.isCompliant;
+
+                document.getElementById("deptModalTitle").innerText = currentLang === 'ar' ? "تعديل إدارة" : "Edit Department";
+                new bootstrap.Modal(document.getElementById('deptModal')).show();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteDept(id) {
+            if (!confirm(currentLang === 'ar' ? "هل تريد بالتأكيد حذف هذه الإدارة؟ قد يؤدي هذا لمنع حذف العناصر المرتبطة بها." : "Are you sure you want to delete this department? Unused items only can be deleted.")) return;
+            try {
+                const res = await fetch(`/api/compliance/departments/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    await loadLookups();
+                } else {
+                    alert("Delete failed. Make sure no audits, violations or actions are linked to this department.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Violation Classification Modal CRUD
+        function openClassModal() {
+            document.getElementById("classForm").reset();
+            document.getElementById("classId").value = "";
+            document.getElementById("classModalTitle").innerText = currentLang === 'ar' ? "إضافة تصنيف مخالفة" : "Add Classification";
+            new bootstrap.Modal(document.getElementById('classModal')).show();
+        }
+
+        async function saveClass(e) {
+            e.preventDefault();
+            const id = document.getElementById("classId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                code: document.getElementById("classCode").value,
+                nameEn: document.getElementById("classNameEn").value,
+                nameAr: document.getElementById("classNameAr").value
+            };
+
+            try {
+                const url = id ? `/api/compliance/classifications/${id}` : '/api/compliance/classifications';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLang },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('classModal')).hide();
+                    await loadLookups();
+                    loadViolations();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function editClass(id) {
+            try {
+                const res = await fetch(`/api/compliance/classifications/${id}`);
+                if (!res.ok) return;
+                const c = await res.json();
+
+                document.getElementById("classId").value = c.id;
+                document.getElementById("classCode").value = c.code;
+                document.getElementById("classNameEn").value = c.nameEn;
+                document.getElementById("classNameAr").value = c.nameAr;
+
+                document.getElementById("classModalTitle").innerText = currentLang === 'ar' ? "تعديل تصنيف المخالفة" : "Edit Classification";
+                new bootstrap.Modal(document.getElementById('classModal')).show();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteClass(id) {
+            if (!confirm(currentLang === 'ar' ? "حذف هذا التصنيف؟" : "Are you sure you want to delete this classification?")) return;
+            try {
+                const res = await fetch(`/api/compliance/classifications/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    await loadLookups();
+                    loadViolations();
+                } else {
+                    alert("Delete failed. Classification is likely used by violations.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+}

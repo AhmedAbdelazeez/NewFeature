@@ -39,4 +39,26 @@ namespace NewFeature.Models
         FinishToFinish,
         StartToFinish
     }
+
+    public enum ViolationStatus
+    {
+        Open,
+        Closed
+    }
+
+    public enum ViolationSeverity
+    {
+        Critical,
+        Major,
+        Minor
+    }
+
+    public enum ImprovementStatus
+    {
+        Proposed,
+        Approved,
+        Implemented,
+        Cancelled
+    }
 }
+

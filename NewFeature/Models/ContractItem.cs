@@ -27,6 +27,9 @@ namespace NewFeature.Models
 
         public decimal TotalPrice { get; set; }
 
+        [Required]
+        public bool IsCompliant { get; set; } = true;
+
         // Navigation property
         public Contract? Contract { get; set; }
     }
