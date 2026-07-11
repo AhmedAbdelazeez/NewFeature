@@ -61,7 +61,7 @@ namespace NewFeature.Services
             var isAr = IsArabic();
             var clientMap = clients.ToDictionary(c => c.Id, c => isAr ? c.NameAr : c.NameEn);
 
-            return projects.Select(p => new ProjectDto
+            return projects.OrderByDescending(p => p.Id).Select(p => new ProjectDto
             {
                 Id = p.Id,
                 ClientId = p.ClientId,

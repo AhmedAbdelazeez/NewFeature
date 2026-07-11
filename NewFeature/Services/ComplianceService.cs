@@ -59,7 +59,7 @@ namespace NewFeature.Services
         {
             var departments = await _departmentRepository.GetAllAsync();
             var isAr = IsArabic();
-            return departments.Select(d => new DepartmentDto
+            return departments.OrderByDescending(d => d.Id).Select(d => new DepartmentDto
             {
                 Id = d.Id,
                 NameEn = d.NameEn,
@@ -134,7 +134,7 @@ namespace NewFeature.Services
         {
             var classifications = await _classificationRepository.GetAllAsync();
             var isAr = IsArabic();
-            return classifications.Select(c => new ViolationClassificationDto
+            return classifications.OrderByDescending(c => c.Id).Select(c => new ViolationClassificationDto
             {
                 Id = c.Id,
                 NameEn = c.NameEn,
@@ -211,7 +211,7 @@ namespace NewFeature.Services
             var deptMap = departments.ToDictionary(d => d.Id, d => isAr ? d.NameAr : d.NameEn);
             var classMap = classifications.ToDictionary(c => c.Id, c => isAr ? c.NameAr : c.NameEn);
 
-            return violations.Select(v => new ViolationDto
+            return violations.OrderByDescending(v => v.Id).Select(v => new ViolationDto
             {
                 Id = v.Id,
                 TitleEn = v.TitleEn,
@@ -327,7 +327,7 @@ namespace NewFeature.Services
             var isAr = IsArabic();
             var deptMap = departments.ToDictionary(d => d.Id, d => isAr ? d.NameAr : d.NameEn);
 
-            return audits.Select(a => new InternalAuditDto
+            return audits.OrderByDescending(a => a.Id).Select(a => new InternalAuditDto
             {
                 Id = a.Id,
                 TitleEn = a.TitleEn,
@@ -422,7 +422,7 @@ namespace NewFeature.Services
             var isAr = IsArabic();
             var deptMap = departments.ToDictionary(d => d.Id, d => isAr ? d.NameAr : d.NameEn);
 
-            return improvements.Select(i => new ImprovementActionDto
+            return improvements.OrderByDescending(i => i.Id).Select(i => new ImprovementActionDto
             {
                 Id = i.Id,
                 TitleEn = i.TitleEn,

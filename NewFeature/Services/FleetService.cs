@@ -55,7 +55,7 @@ namespace NewFeature.Services
         public async Task<IEnumerable<VehicleDto>> GetAllVehiclesAsync()
         {
             var vehicles = await _vehicleRepository.GetAllAsync();
-            return vehicles.Select(v => new VehicleDto
+            return vehicles.OrderByDescending(v => v.Id).Select(v => new VehicleDto
             {
                 Id = v.Id,
                 LicensePlate = v.LicensePlate,
@@ -136,7 +136,7 @@ namespace NewFeature.Services
         {
             var routes = await _routeRepository.GetAllAsync();
             var isAr = IsArabic();
-            return routes.Select(r => new RouteDto
+            return routes.OrderByDescending(r => r.Id).Select(r => new RouteDto
             {
                 Id = r.Id,
                 NameEn = r.NameEn,
@@ -238,7 +238,7 @@ namespace NewFeature.Services
             var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
             var driverMap = drivers.ToDictionary(d => d.Id, d => isAr ? d.FullNameAr : d.FullNameEn);
 
-            return trips.Select(t => new TripDto
+            return trips.OrderByDescending(t => t.Id).Select(t => new TripDto
             {
                 Id = t.Id,
                 VehicleId = t.VehicleId,

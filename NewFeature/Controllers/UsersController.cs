@@ -38,7 +38,7 @@ namespace NewFeature.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
         {
-            var users = await _userManager.Users.ToListAsync();
+            var users = await _userManager.Users.OrderByDescending(u => u.Id).ToListAsync();
             var userDtos = new List<UserDto>();
             var isAr = IsArabic();
 

@@ -39,7 +39,7 @@ namespace NewFeature.Services
         {
             var clients = await _clientRepository.GetAllAsync();
             var isAr = IsArabic();
-            return clients.Select(c => new ClientDto
+            return clients.OrderByDescending(c => c.Id).Select(c => new ClientDto
             {
                 Id = c.Id,
                 NameEn = c.NameEn,

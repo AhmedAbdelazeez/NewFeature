@@ -55,7 +55,7 @@ namespace NewFeature.Services
             var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
             var userMap = users.ToDictionary(u => u.Id, u => isAr ? u.FullNameAr : u.FullNameEn);
 
-            return tasks.Select(t => new TaskDto
+            return tasks.OrderByDescending(t => t.Id).Select(t => new TaskDto
             {
                 Id = t.Id,
                 ProjectId = t.ProjectId,
