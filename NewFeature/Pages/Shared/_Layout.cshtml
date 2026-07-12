@@ -59,6 +59,9 @@
                             <li class="nav-item">
                                 <a class="nav-link nav-link-custom" asp-area="" asp-page="/OperationalAudits" data-i18n="nav-operationalaudits">Operational Audits</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Employees" data-i18n="nav-employees">Human Resources</a>
+                            </li>
                         }
                     </ul>
                     <!-- Language Switcher Button -->
@@ -348,7 +351,55 @@
                 'operationalaudits-lbl-critical': 'Critical Findings Count',
                 'operationalaudits-lbl-recommendations': 'Recommendations Count',
                 'operationalaudits-lbl-mitigation': 'Risk Mitigation Rate (%)',
-                'operationalaudits-lbl-status': 'Audit Status'
+                'operationalaudits-lbl-status': 'Audit Status',
+
+                // Employees & HR Management
+                'nav-employees': 'Human Resources',
+                'employees-title': 'Human Resources',
+                'employees-subtitle': 'Manage employee profiles, assign roles, track ratings, and record performance evaluations',
+                'employees-btn-add': 'Add New Employee',
+                'employees-btn-add-evaluation': 'Add New Evaluation',
+                'tab-employees': 'Employees List',
+                'tab-evaluations': 'Performance Evaluations',
+                'employees-th-name': 'Name',
+                'employees-th-phone': 'Phone Number',
+                'employees-lbl-phone': 'Phone Number',
+                'employees-th-role': 'Role / Position',
+                'employees-th-dept': 'Department',
+                'employees-th-joindate': 'Join Date',
+                'employees-th-salary': 'Salary',
+                'employees-th-rating': 'Rating',
+                'employees-th-nationality': 'Nationality',
+                'employees-th-tasks': 'Assigned Tasks',
+                'employees-th-status': 'Status',
+                'employees-th-actions': 'Actions',
+                'evaluations-th-empname': 'Employee Name',
+                'evaluations-th-date': 'Evaluation Date',
+                'evaluations-th-score': 'Score',
+                'evaluations-th-notes': 'Feedback / Notes',
+                'evaluations-th-actions': 'Actions',
+                'card-hr-title': 'Human Resources',
+                'card-hr-desc': 'Manage employee profiles, assign roles, track ratings, and record performance evaluations',
+                'card-hr-btn': 'Manage HR →',
+                'employees-lbl-name-en': 'Employee Name (EN)',
+                'employees-lbl-name-ar': 'Employee Name (AR)',
+                'employees-lbl-role': 'Role / Position',
+                'employees-lbl-dept': 'Department',
+                'employees-lbl-joindate': 'Join Date',
+                'employees-lbl-salary': 'Salary (SAR)',
+                'employees-lbl-rating': 'Rating (1-5)',
+                'employees-lbl-userlink': 'Link System Account',
+                'employees-lbl-issaudi': 'Saudi National?',
+                'employees-lbl-isactive': 'Active Employee?',
+                'evaluations-lbl-employee': 'Employee',
+                'evaluations-lbl-date': 'Evaluation Date',
+                'evaluations-lbl-score': 'Score (0-100)',
+                'evaluations-lbl-notes-en': 'Notes / Feedback (EN)',
+                'evaluations-lbl-notes-ar': 'Notes / Feedback (AR)',
+                'employees-modal-title-add': 'Add New Employee',
+                'employees-modal-title-edit': 'Edit Employee Details',
+                'evaluations-modal-title-add': 'Add Performance Evaluation',
+                'evaluations-modal-title-edit': 'Edit Performance Evaluation'
             },
             'ar': {
                 // Layout & Common
@@ -610,7 +661,55 @@
                 'operationalaudits-lbl-critical': 'عدد الملاحظات الحرجة',
                 'operationalaudits-lbl-recommendations': 'عدد التوصيات',
                 'operationalaudits-lbl-mitigation': 'معدل معالجة المخاطر (%)',
-                'operationalaudits-lbl-status': 'حالة التدقيق'
+                'operationalaudits-lbl-status': 'حالة التدقيق',
+
+                // Employees & HR Management
+                'nav-employees': 'إدارة الموارد البشرية',
+                'employees-title': 'إدارة الموارد البشرية',
+                'employees-subtitle': 'إدارة شؤون الموظفين، تقييم الأداء، وتوزيع المهام والأدوار الأمنية',
+                'employees-btn-add': 'إضافة موظف جديد',
+                'employees-btn-add-evaluation': 'إضافة تقييم جديد',
+                'tab-employees': 'قائمة الموظفين',
+                'tab-evaluations': 'تقييمات الأداء',
+                'employees-th-name': 'الاسم',
+                'employees-th-phone': 'رقم الهاتف',
+                'employees-lbl-phone': 'رقم الهاتف',
+                'employees-th-role': 'المسمى الوظيفي',
+                'employees-th-dept': 'الإدارة',
+                'employees-th-joindate': 'تاريخ الانضمام',
+                'employees-th-salary': 'الراتب',
+                'employees-th-rating': 'التقييم',
+                'employees-th-nationality': 'الجنسية',
+                'employees-th-tasks': 'المهام المسندة',
+                'employees-th-status': 'الحالة',
+                'employees-th-actions': 'الإجراءات',
+                'evaluations-th-empname': 'اسم الموظف',
+                'evaluations-th-date': 'تاريخ التقييم',
+                'evaluations-th-score': 'النتيجة',
+                'evaluations-th-notes': 'الملاحظات والتعليقات',
+                'evaluations-th-actions': 'الإجراءات',
+                'card-hr-title': 'إدارة الموارد البشرية',
+                'card-hr-desc': 'إدارة شؤون الموظفين، تقييم الأداء، وتوزيع المهام والأدوار الأمنية',
+                'card-hr-btn': 'إدارة الموارد البشرية ←',
+                'employees-lbl-name-en': 'الاسم بالإنجليزية',
+                'employees-lbl-name-ar': 'الاسم بالعربية',
+                'employees-lbl-role': 'المسمى الوظيفي',
+                'employees-lbl-dept': 'الإدارة',
+                'employees-lbl-joindate': 'تاريخ الانضمام',
+                'employees-lbl-salary': 'الراتب (ريال سعودي)',
+                'employees-lbl-rating': 'التقييم (1-5)',
+                'employees-lbl-userlink': 'ربط حساب النظام',
+                'employees-lbl-issaudi': 'هل الموظف سعودي؟',
+                'employees-lbl-isactive': 'هل الموظف نشط؟',
+                'evaluations-lbl-employee': 'الموظف',
+                'evaluations-lbl-date': 'تاريخ التقييم',
+                'evaluations-lbl-score': 'النتيجة (0-100)',
+                'evaluations-lbl-notes-en': 'الملاحظات بالإنجليزية',
+                'evaluations-lbl-notes-ar': 'الملاحظات بالعربية',
+                'employees-modal-title-add': 'إضافة موظف جديد',
+                'employees-modal-title-edit': 'تعديل بيانات موظف',
+                'evaluations-modal-title-add': 'إضافة تقييم أداء جديد',
+                'evaluations-modal-title-edit': 'تعديل تقييم أداء'
             }
         };
 

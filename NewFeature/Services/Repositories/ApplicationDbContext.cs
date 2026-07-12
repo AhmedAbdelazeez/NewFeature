@@ -31,6 +31,8 @@ namespace NewFeature.Services.Repositories
         public DbSet<InternalAudit> InternalAudits { get; set; } = null!;
         public DbSet<ImprovementAction> ImprovementActions { get; set; } = null!;
         public DbSet<OperationalAudit> OperationalAudits { get; set; } = null!;
+        public DbSet<Employee> Employees { get; set; } = null!;
+        public DbSet<EmployeeEvaluation> EmployeeEvaluations { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,6 +49,10 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<ContractItem>()
                 .Property(ci => ci.UnitPrice)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.Salary)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<ContractItem>()
@@ -225,6 +231,24 @@ namespace NewFeature.Services.Repositories
                 .WithMany()
                 .HasForeignKey(ia => ia.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.Department)
+                .WithMany()
+                .HasForeignKey(e => e.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmployeeEvaluation>()
+                .HasOne(ee => ee.Employee)
+                .WithMany(e => e.Evaluations)
+                .HasForeignKey(ee => ee.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

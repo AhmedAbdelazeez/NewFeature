@@ -47,6 +47,7 @@ builder.Services.AddScoped<IFleetService, FleetService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IComplianceService, ComplianceService>();
 builder.Services.AddScoped<IOperationalAuditService, OperationalAuditService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 
 builder.Services.AddRazorPages();

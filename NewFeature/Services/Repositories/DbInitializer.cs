@@ -408,6 +408,134 @@ namespace NewFeature.Services.Repositories
                 context.OperationalAudits.AddRange(operationalAudits);
                 context.SaveChanges();
             }
+
+            // Seed Employees and Evaluations if empty or containing old names
+            if (!context.Employees.Any() || context.Employees.Any(e => e.FullNameEn == "John Doe"))
+            {
+                // Clear old records to replace with Saudi names
+                var oldEvals = context.EmployeeEvaluations.ToList();
+                context.EmployeeEvaluations.RemoveRange(oldEvals);
+                var oldEmps = context.Employees.ToList();
+                context.Employees.RemoveRange(oldEmps);
+                context.SaveChanges();
+
+                var hrDept = context.Departments.First(d => d.Code == "HR");
+                var finDept = context.Departments.First(d => d.Code == "FIN");
+                var opsDept = context.Departments.First(d => d.Code == "OPS");
+                var itDept = context.Departments.First(d => d.Code == "IT");
+                var compDept = context.Departments.First(d => d.Code == "COMP");
+
+                var adminUser = context.Users.FirstOrDefault(u => u.Email == "admin@company.com");
+
+                var employees = new List<Employee>
+                {
+                    new Employee
+                    {
+                        FullNameEn = "Ahmed Al-Harthi",
+                        FullNameAr = "أحمد الحارثي",
+                        PhoneNumber = "0501111111",
+                        Role = "HR Director",
+                        DepartmentId = hrDept.Id,
+                        JoinDate = DateTime.UtcNow.AddYears(-3),
+                        Salary = 15000.00m,
+                        Rating = 5,
+                        IsSaudi = true,
+                        IsActive = true
+                    },
+                    new Employee
+                    {
+                        FullNameEn = "Yasser Al-Harbi",
+                        FullNameAr = "ياسر الحربي",
+                        PhoneNumber = "0502222222",
+                        Role = "Senior Developer",
+                        DepartmentId = itDept.Id,
+                        JoinDate = DateTime.UtcNow.AddYears(-1),
+                        Salary = 12000.00m,
+                        Rating = 4,
+                        IsSaudi = true,
+                        IsActive = true
+                    },
+                    new Employee
+                    {
+                        FullNameEn = "Sarah Al-Otaibi",
+                        FullNameAr = "سارة العتيبي",
+                        PhoneNumber = "0503333333",
+                        Role = "Logistical Coordinator",
+                        DepartmentId = opsDept.Id,
+                        JoinDate = DateTime.UtcNow.AddMonths(-6),
+                        Salary = 8500.00m,
+                        Rating = 4,
+                        IsSaudi = true,
+                        IsActive = true,
+                        UserId = adminUser?.Id // Link to admin user so they have assigned tasks!
+                    },
+                    new Employee
+                    {
+                        FullNameEn = "Mohammed Al-Shammari",
+                        FullNameAr = "محمد الشمري",
+                        PhoneNumber = "0504444444",
+                        Role = "Senior Accountant",
+                        DepartmentId = finDept.Id,
+                        JoinDate = DateTime.UtcNow.AddYears(-2),
+                        Salary = 10500.00m,
+                        Rating = 3,
+                        IsSaudi = true,
+                        IsActive = true
+                    },
+                    new Employee
+                    {
+                        FullNameEn = "Khalid Al-Dawsari",
+                        FullNameAr = "خالد الدوسري",
+                        PhoneNumber = "0505555555",
+                        Role = "Compliance Officer",
+                        DepartmentId = compDept.Id,
+                        JoinDate = DateTime.UtcNow.AddYears(-4),
+                        Salary = 9000.00m,
+                        Rating = 5,
+                        IsSaudi = true,
+                        IsActive = false
+                    }
+                };
+
+                context.Employees.AddRange(employees);
+                context.SaveChanges();
+
+                var employeeList = context.Employees.ToList();
+                var empAhmed = employeeList.First(e => e.PhoneNumber == "0501111111");
+                var empYasser = employeeList.First(e => e.PhoneNumber == "0502222222");
+                var empSarah = employeeList.First(e => e.PhoneNumber == "0503333333");
+
+                var evaluations = new List<EmployeeEvaluation>
+                {
+                    new EmployeeEvaluation
+                    {
+                        EmployeeId = empAhmed.Id,
+                        EvaluationDate = DateTime.UtcNow.AddMonths(-1),
+                        EvaluationScore = 92,
+                        NotesEn = "Excellent leadership of the HR team and policies renewal.",
+                        NotesAr = "قيادة ممتازة لفريق الموارد البشرية وتجديد السياسات."
+                    },
+                    new EmployeeEvaluation
+                    {
+                        EmployeeId = empYasser.Id,
+                        EvaluationDate = DateTime.UtcNow.AddMonths(-2),
+                        EvaluationScore = 84,
+                        NotesEn = "Very good technical contribution in development sprints.",
+                        NotesAr = "مساهمة تقنية جيدة جداً في دورات التطوير البرمجية."
+                    },
+                    new EmployeeEvaluation
+                    {
+                        EmployeeId = empSarah.Id,
+                        EvaluationDate = DateTime.UtcNow.AddMonths(-1),
+                        EvaluationScore = 88,
+                        NotesEn = "Great performance in operations coordination.",
+                        NotesAr = "أداء رائع في تنسيق وتنظيم العمليات اللوجستية."
+                    }
+                };
+
+                context.EmployeeEvaluations.AddRange(evaluations);
+                context.SaveChanges();
+            }
         }
     }
 }

@@ -1,0 +1,634 @@
+@page
+@model NewFeature.Pages.EmployeesModel
+@{
+    ViewData["Title"] = "Human Resources - Employee Management";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-people me-2"></i> <span data-i18n="employees-title">إدارة الموارد البشرية</span></h1>
+            <p class="text-muted mb-0" data-i18n="employees-subtitle">إدارة شؤون الموظفين، تقييم الأداء، وتوزيع المهام والأدوار الأمنية</p>
+        </div>
+        <div>
+            <button class="btn btn-neon me-2" onclick="openAddEmployeeModal()">
+                <i class="bi bi-person-plus me-1"></i> <span data-i18n="employees-btn-add">إضافة موظف جديد</span>
+            </button>
+            <button class="btn btn-neon-outline" onclick="openAddEvaluationModal()">
+                <i class="bi bi-award me-1"></i> <span data-i18n="employees-btn-add-evaluation">إضافة تقييم جديد</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs mb-4 border-bottom border-glass" id="hrTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-3 py-2 border-0 bg-transparent border-bottom text-white" id="employees-tab" data-bs-toggle="tab" data-bs-target="#employees-tab-content" type="button" role="tab" aria-selected="true" style="border-width: 3px !important; border-color: transparent; transition: all 0.25s;">
+                <i class="bi bi-people-fill me-2 text-[#b0841a]"></i><span data-i18n="tab-employees">قائمة الموظفين</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 py-2 border-0 bg-transparent border-bottom text-white" id="evaluations-tab" data-bs-toggle="tab" data-bs-target="#evaluations-tab-content" type="button" role="tab" aria-selected="false" style="border-width: 3px !important; border-color: transparent; transition: all 0.25s;">
+                <i class="bi bi-award-fill me-2 text-[#b0841a]"></i><span data-i18n="tab-evaluations">تقييمات الأداء</span>
+            </button>
+        </li>
+    </ul>
+
+    <style>
+        #hrTabs .nav-link {
+            color: #64748b !important;
+        }
+        #hrTabs .nav-link.active {
+            color: #b0841a !important;
+            border-bottom-color: #b0841a !important;
+        }
+        #hrTabs .nav-link:hover {
+            color: #b0841a !important;
+        }
+    </style>
+
+    <div class="tab-content" id="hrTabContent">
+        <!-- Tab 1: Employees Management -->
+        <div class="tab-pane fade show active" id="employees-tab-content" role="tabpanel" aria-labelledby="employees-tab">
+            <!-- Search & Filter Toolbar -->
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-12">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="employeeSearch" class="form-control form-control-glass" placeholder="Search employees by name, role, email..." onkeyup="filterEmployees()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees Grid Table -->
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="employeesTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="employees-th-name">Name</th>
+                                <th data-i18n="employees-th-phone">Phone Number</th>
+                                <th data-i18n="employees-th-role">Role / Position</th>
+                                <th data-i18n="employees-th-dept">Department</th>
+                                <th data-i18n="employees-th-joindate">Join Date</th>
+                                <th data-i18n="employees-th-salary">Salary (SAR)</th>
+                                <th data-i18n="employees-th-rating">Rating</th>
+                                <th data-i18n="employees-th-nationality">Saudi?</th>
+                                <th data-i18n="employees-th-tasks">Assigned Tasks</th>
+                                <th data-i18n="employees-th-status">Status</th>
+                                <th data-i18n="employees-th-actions" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesList">
+                            <tr>
+                                <td colspan="11" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading employees...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Employee Evaluations -->
+        <div class="tab-pane fade" id="evaluations-tab-content" role="tabpanel" aria-labelledby="evaluations-tab">
+            <!-- Search & Filter Toolbar -->
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-12">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="evaluationSearch" class="form-control form-control-glass" placeholder="Search evaluations by employee..." onkeyup="filterEvaluations()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluations Table -->
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="evaluationsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="evaluations-th-empname">Employee Name</th>
+                                <th data-i18n="evaluations-th-date">Evaluation Date</th>
+                                <th data-i18n="evaluations-th-score">Score (100)</th>
+                                <th data-i18n="evaluations-th-notes">Notes / Feedback</th>
+                                <th data-i18n="evaluations-th-actions" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evaluationsList">
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading evaluations...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Add/Edit Employee -->
+<div class="modal fade" id="employeeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="employeeModalTitle" data-i18n="employees-modal-title-add">إضافة موظف جديد</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="employeeForm" onsubmit="saveEmployee(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="employeeId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="empFullNameEn" class="form-label" data-i18n="employees-lbl-name-en">Employee Name (EN)</label>
+                            <input type="text" id="empFullNameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="empFullNameAr" class="form-label" data-i18n="employees-lbl-name-ar">Employee Name (AR)</label>
+                            <input type="text" id="empFullNameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="empPhoneNumber" class="form-label" data-i18n="employees-lbl-phone">Phone Number</label>
+                            <input type="text" id="empPhoneNumber" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="empRole" class="form-label" data-i18n="employees-lbl-role">Role / Position</label>
+                            <input type="text" id="empRole" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="empDepartmentId" class="form-label" data-i18n="employees-lbl-dept">Department</label>
+                            <select id="empDepartmentId" class="form-control form-control-glass" required>
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="empJoinDate" class="form-label" data-i18n="employees-lbl-joindate">Join Date</label>
+                            <input type="date" id="empJoinDate" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <input type="hidden" id="empRating" value="5">
+                        <div class="col-md-6">
+                            <label for="empSalary" class="form-label" data-i18n="employees-lbl-salary">Salary (SAR)</label>
+                            <input type="number" step="0.01" id="empSalary" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="empUserId" class="form-label" data-i18n="employees-lbl-userlink">Link System Account</label>
+                            <select id="empUserId" class="form-control form-control-glass">
+                                <option value="">No System Account</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4 pt-2">
+                                <input class="form-check-input" type="checkbox" id="empIsSaudi">
+                                <label class="form-check-label font-bold ms-2 text-slate-900" for="empIsSaudi" data-i18n="employees-lbl-issaudi">Saudi National?</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4 pt-2">
+                                <input class="form-check-input" type="checkbox" id="empIsActive" checked>
+                                <label class="form-check-label font-bold ms-2 text-slate-900" for="empIsActive" data-i18n="employees-lbl-isactive">Active Employee?</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Add/Edit Evaluation -->
+<div class="modal fade" id="evaluationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="evaluationModalTitle" data-i18n="evaluations-modal-title-add">إضافة تقييم جديد</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="evaluationForm" onsubmit="saveEvaluation(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="evaluationId">
+
+                    <div class="mb-3">
+                        <label for="evalEmployeeId" class="form-label" data-i18n="evaluations-lbl-employee">Employee</label>
+                        <select id="evalEmployeeId" class="form-control form-control-glass" required>
+                            <option value="">Select Employee</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="evalDate" class="form-label" data-i18n="evaluations-lbl-date">Evaluation Date</label>
+                            <input type="date" id="evalDate" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="evalScore" class="form-label" data-i18n="evaluations-lbl-score">Score (0-100)</label>
+                            <input type="number" step="0.1" id="evalScore" class="form-control form-control-glass" min="0" max="100" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="evalNotesEn" class="form-label" data-i18n="evaluations-lbl-notes-en">Notes / Feedback (EN)</label>
+                        <textarea id="evalNotesEn" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="evalNotesAr" class="form-label" data-i18n="evaluations-lbl-notes-ar">Notes / Feedback (AR)</label>
+                        <textarea id="evalNotesAr" class="form-control form-control-glass" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Evaluation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let employees = [];
+        let evaluations = [];
+        let departments = [];
+        let systemUsers = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadDropdowns();
+            loadEmployees();
+            loadEvaluations();
+        });
+
+        // ───────── API Fetches ─────────
+        async function loadDropdowns() {
+            try {
+                // Fetch Departments
+                const deptRes = await fetch('/api/compliance/departments');
+                if (deptRes.ok) {
+                    departments = await deptRes.json();
+                    const deptSelect = document.getElementById("empDepartmentId");
+                    deptSelect.innerHTML = '<option value="">Select Department</option>';
+                    departments.forEach(d => {
+                        const isAr = document.documentElement.lang === 'ar';
+                        deptSelect.innerHTML += `<option value="${d.id}">${isAr ? d.nameAr : d.nameEn}</option>`;
+                    });
+                }
+
+                // Fetch System Users
+                const userRes = await fetch('/api/users');
+                if (userRes.ok) {
+                    systemUsers = await userRes.json();
+                    const userSelect = document.getElementById("empUserId");
+                    userSelect.innerHTML = '<option value="">No System Account</option>';
+                    systemUsers.forEach(u => {
+                        userSelect.innerHTML += `<option value="${u.id}">${u.username} (${u.fullName})</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error("Error loading dropdowns:", err);
+            }
+        }
+
+        async function loadEmployees() {
+            try {
+                const res = await fetch('/api/employees');
+                if (res.ok) {
+                    employees = await res.json();
+                    renderEmployees(employees);
+
+                    // Update employee select list in evaluations form
+                    const evalEmpSelect = document.getElementById("evalEmployeeId");
+                    evalEmpSelect.innerHTML = '<option value="">Select Employee</option>';
+                    employees.forEach(e => {
+                        evalEmpSelect.innerHTML += `<option value="${e.id}">${e.fullName}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error("Error loading employees:", err);
+            }
+        }
+
+        async function loadEvaluations() {
+            try {
+                const res = await fetch('/api/employees/evaluations');
+                if (res.ok) {
+                    evaluations = await res.json();
+                    renderEvaluations(evaluations);
+                }
+            } catch (err) {
+                console.error("Error loading evaluations:", err);
+            }
+        }
+
+        // ───────── Render UI ─────────
+        function renderEmployees(list) {
+            const listContainer = document.getElementById("employeesList");
+            const isAr = document.documentElement.lang === 'ar' || document.documentElement.getAttribute('lang') === 'ar';
+            
+            if (list.length === 0) {
+                listContainer.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">${isAr ? 'لا يوجد موظفين مسجلين' : 'No employees found'}</td></tr>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            list.forEach(e => {
+                const joinDateStr = new Date(e.joinDate).toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+                const activeBadge = e.isActive 
+                    ? `<span class="badge badge-glow-success">${isAr ? 'نشط' : 'Active'}</span>` 
+                    : `<span class="badge badge-glow-danger">${isAr ? 'غير نشط' : 'Inactive'}</span>`;
+                
+                const saudiBadge = e.isSaudi
+                    ? `<span class="badge badge-glow-success">${isAr ? 'سعودي 🇸🇦' : 'Saudi 🇸🇦'}</span>`
+                    : `<span class="badge badge-glow-info">${isAr ? 'مقيم' : 'Resident'}</span>`;
+
+                const ratingStars = '⭐'.repeat(e.rating) + '☆'.repeat(5 - e.rating);
+
+                listContainer.innerHTML += `
+                    <tr>
+                        <td><strong>${isAr ? e.fullNameAr : e.fullNameEn}</strong></td>
+                        <td class="font-mono text-muted" style="font-size:11px;">${e.phoneNumber}</td>
+                        <td class="font-semibold">${e.role}</td>
+                        <td>${isAr ? e.departmentNameAr : e.departmentNameEn}</td>
+                        <td class="font-mono text-muted" style="font-size:11px;">${joinDateStr}</td>
+                        <td class="text-neon font-bold font-mono">${e.salary.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="font-bold text-warning" style="letter-spacing:1px; color: #b0841a !important;">${ratingStars}</td>
+                        <td>${saudiBadge}</td>
+                        <td class="text-center"><span class="badge badge-glow-info font-mono">${e.assignedTasksCount}</span></td>
+                        <td>${activeBadge}</td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1 flex-nowrap">
+                                <button onclick="editEmployee(${e.id})" class="btn btn-neon-outline btn-sm" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                                <button onclick="deleteEmployee(${e.id})" class="btn btn-neon-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderEvaluations(list) {
+            const listContainer = document.getElementById("evaluationsList");
+            const isAr = document.documentElement.lang === 'ar' || document.documentElement.getAttribute('lang') === 'ar';
+
+            if (list.length === 0) {
+                listContainer.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">${isAr ? 'لا يوجد تقييمات مسجلة' : 'No evaluations found'}</td></tr>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            list.forEach(ee => {
+                const evalDateStr = new Date(ee.evaluationDate).toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+                
+                let scoreBadge = '';
+                if (ee.evaluationScore >= 85) scoreBadge = 'badge-glow-success';
+                else if (ee.evaluationScore >= 65) scoreBadge = 'badge-glow-warning';
+                else scoreBadge = 'badge-glow-danger';
+
+                listContainer.innerHTML += `
+                    <tr>
+                        <td><strong>${ee.employeeName}</strong></td>
+                        <td class="font-mono text-muted" style="font-size:11px;">${evalDateStr}</td>
+                        <td><span class="badge ${scoreBadge} font-mono font-bold">${ee.evaluationScore}%</span></td>
+                        <td class="text-wrap">${isAr ? ee.notesAr : ee.notesEn}</td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1 flex-nowrap">
+                                <button onclick="editEvaluation(${ee.id})" class="btn btn-neon-outline btn-sm" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                                <button onclick="deleteEvaluation(${ee.id})" class="btn btn-neon-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ───────── Search Filters ─────────
+        function filterEmployees() {
+            const query = document.getElementById("employeeSearch").value.toLowerCase();
+            const filtered = employees.filter(e => 
+                e.fullNameEn.toLowerCase().includes(query) || 
+                e.fullNameAr.includes(query) || 
+                e.phoneNumber.includes(query) || 
+                e.role.toLowerCase().includes(query)
+            );
+            renderEmployees(filtered);
+        }
+
+        function filterEvaluations() {
+            const query = document.getElementById("evaluationSearch").value.toLowerCase();
+            const filtered = evaluations.filter(ee => 
+                ee.employeeName.toLowerCase().includes(query) || 
+                ee.notesEn.toLowerCase().includes(query) ||
+                ee.notesAr.includes(query)
+            );
+            renderEvaluations(filtered);
+        }
+
+        // ───────── Add / Edit Modals ─────────
+        function openAddEmployeeModal() {
+            document.getElementById("employeeForm").reset();
+            document.getElementById("employeeId").value = '';
+            
+            document.getElementById("employeeModalTitle").setAttribute("data-i18n", "employees-modal-title-add");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+            document.getElementById("empJoinDate").value = new Date().toISOString().split('T')[0];
+            
+            const modal = new bootstrap.Modal(document.getElementById("employeeModal"));
+            modal.show();
+        }
+
+        async function editEmployee(id) {
+            try {
+                const res = await fetch(`/api/employees/${id}`);
+                if (res.ok) {
+                    const e = await res.json();
+                    document.getElementById("employeeId").value = e.id;
+                    document.getElementById("empFullNameEn").value = e.fullNameEn;
+                    document.getElementById("empFullNameAr").value = e.fullNameAr;
+                    document.getElementById("empPhoneNumber").value = e.phoneNumber;
+                    document.getElementById("empRole").value = e.role;
+                    document.getElementById("empDepartmentId").value = e.departmentId;
+                    document.getElementById("empJoinDate").value = e.joinDate.split('T')[0];
+                    document.getElementById("empSalary").value = e.salary;
+                    document.getElementById("empRating").value = e.rating;
+                    document.getElementById("empUserId").value = e.userId || '';
+                    document.getElementById("empIsSaudi").checked = e.isSaudi;
+                    document.getElementById("empIsActive").checked = e.isActive;
+
+                    document.getElementById("employeeModalTitle").setAttribute("data-i18n", "employees-modal-title-edit");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+                    
+                    const modal = new bootstrap.Modal(document.getElementById("employeeModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading employee for edit:", err);
+            }
+        }
+
+        function openAddEvaluationModal() {
+            document.getElementById("evaluationForm").reset();
+            document.getElementById("evaluationId").value = '';
+
+            document.getElementById("evaluationModalTitle").setAttribute("data-i18n", "evaluations-modal-title-add");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+            document.getElementById("evalDate").value = new Date().toISOString().split('T')[0];
+
+            const modal = new bootstrap.Modal(document.getElementById("evaluationModal"));
+            modal.show();
+        }
+
+        async function editEvaluation(id) {
+            try {
+                const res = await fetch(`/api/employees/evaluations/${id}`);
+                if (res.ok) {
+                    const ee = await res.json();
+                    document.getElementById("evaluationId").value = ee.id;
+                    document.getElementById("evalEmployeeId").value = ee.employeeId;
+                    document.getElementById("evalDate").value = ee.evaluationDate.split('T')[0];
+                    document.getElementById("evalScore").value = ee.evaluationScore;
+                    document.getElementById("evalNotesEn").value = ee.notesEn;
+                    document.getElementById("evalNotesAr").value = ee.notesAr;
+
+                    document.getElementById("evaluationModalTitle").setAttribute("data-i18n", "evaluations-modal-title-edit");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("evaluationModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading evaluation for edit:", err);
+            }
+        }
+
+        // ───────── Save Form Operations ─────────
+        async function saveEmployee(event) {
+            event.preventDefault();
+            const id = document.getElementById("employeeId").value;
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                fullNameEn: document.getElementById("empFullNameEn").value,
+                fullNameAr: document.getElementById("empFullNameAr").value,
+                phoneNumber: document.getElementById("empPhoneNumber").value,
+                role: document.getElementById("empRole").value,
+                departmentId: parseInt(document.getElementById("empDepartmentId").value),
+                joinDate: document.getElementById("empJoinDate").value,
+                salary: parseFloat(document.getElementById("empSalary").value),
+                rating: parseInt(document.getElementById("empRating").value),
+                userId: document.getElementById("empUserId").value || null,
+                isSaudi: document.getElementById("empIsSaudi").checked,
+                isActive: document.getElementById("empIsActive").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/employees/${id}` : '/api/employees';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("employeeModal")).hide();
+                    loadEmployees();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving employee:", err);
+            }
+        }
+
+        async function saveEvaluation(event) {
+            event.preventDefault();
+            const id = document.getElementById("evaluationId").value;
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                employeeId: parseInt(document.getElementById("evalEmployeeId").value),
+                evaluationDate: document.getElementById("evalDate").value,
+                evaluationScore: parseFloat(document.getElementById("evalScore").value),
+                notesEn: document.getElementById("evalNotesEn").value,
+                notesAr: document.getElementById("evalNotesAr").value
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/employees/evaluations/${id}` : '/api/employees/evaluations';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("evaluationModal")).hide();
+                    loadEvaluations();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving evaluation:", err);
+            }
+        }
+
+        // ───────── Delete Operations ─────────
+        async function deleteEmployee(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا الموظف؟" : "Are you sure you want to delete this employee?")) return;
+
+            try {
+                const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadEmployees();
+                    loadEvaluations();
+                }
+            } catch (err) {
+                console.error("Error deleting employee:", err);
+            }
+        }
+
+        async function deleteEvaluation(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا التقييم؟" : "Are you sure you want to delete this evaluation?")) return;
+
+            try {
+                const res = await fetch(`/api/employees/evaluations/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadEvaluations();
+                }
+            } catch (err) {
+                console.error("Error deleting evaluation:", err);
+            }
+        }
+    </script>
+}
