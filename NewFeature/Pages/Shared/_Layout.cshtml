@@ -56,6 +56,9 @@
                             <li class="nav-item">
                                 <a class="nav-link nav-link-custom" asp-area="" asp-page="/Compliance" data-i18n="nav-compliance">Compliance</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/OperationalAudits" data-i18n="nav-operationalaudits">Operational Audits</a>
+                            </li>
                         }
                     </ul>
                     <!-- Language Switcher Button -->
@@ -316,7 +319,36 @@
                 'chart-violations-severity': 'Violations by Severity',
                 'chart-violations-status': 'Violations by Status',
                 'chart-audits-department': 'Internal Audit Passing Rate by Department (%)',
-                'chart-improvements-status': 'Improvement Actions by Status'
+                'chart-improvements-status': 'Improvement Actions by Status',
+
+                // Operational Audits
+                'nav-operationalaudits': 'Operational Audits',
+                'card-operational-title': 'Internal Audit - Operational Analysis',
+                'card-operational-desc': 'Manage operational process audits, track critical findings, and monitor risk mitigation',
+                'card-operational-btn': 'Manage Audits →',
+                'operationalaudits-title': 'Internal Audit - Operational Analysis',
+                'operationalaudits-subtitle': 'Manage operational process audits, track critical findings, and monitor risk mitigation',
+                'operationalaudits-btn-add': 'Add Operational Audit',
+                'operationalaudits-th-title': 'Audit Title',
+                'operationalaudits-th-dept': 'Department',
+                'operationalaudits-th-date': 'Audit Date',
+                'operationalaudits-th-audited': 'Audited Processes',
+                'operationalaudits-th-passed': 'Passed Processes',
+                'operationalaudits-th-critical': 'Critical Findings',
+                'operationalaudits-th-recommendations': 'Recommendations',
+                'operationalaudits-th-mitigation': 'Risk Mitigation Rate',
+                'operationalaudits-th-status': 'Status',
+                'operationalaudits-th-actions': 'Actions',
+                'operationalaudits-lbl-title-en': 'Audit Title (EN)',
+                'operationalaudits-lbl-title-ar': 'Audit Title (AR)',
+                'operationalaudits-lbl-dept': 'Department',
+                'operationalaudits-lbl-date': 'Audit Date',
+                'operationalaudits-lbl-audited': 'Audited Processes Count',
+                'operationalaudits-lbl-passed': 'Passed Processes Count',
+                'operationalaudits-lbl-critical': 'Critical Findings Count',
+                'operationalaudits-lbl-recommendations': 'Recommendations Count',
+                'operationalaudits-lbl-mitigation': 'Risk Mitigation Rate (%)',
+                'operationalaudits-lbl-status': 'Audit Status'
             },
             'ar': {
                 // Layout & Common
@@ -549,7 +581,36 @@
                 'chart-violations-severity': 'المخالفات حسب مستوى الخطورة',
                 'chart-violations-status': 'المخالفات حسب الحالة',
                 'chart-audits-department': 'نسبة نجاح التدقيق حسب الإدارة (%)',
-                'chart-improvements-status': 'إجراءات التحسين حسب الحالة'
+                'chart-improvements-status': 'إجراءات التحسين حسب الحالة',
+
+                // Operational Audits (Arabic)
+                'nav-operationalaudits': 'التدقيق التشغيلي',
+                'card-operational-title': 'التدقيق الداخلي - التحليل التشغيلي',
+                'card-operational-desc': 'إدارة عمليات تدقيق العمليات التشغيلية، ومتابعة الملاحظات الحرجة، ومراقبة معالجة المخاطر',
+                'card-operational-btn': 'إدارة عمليات التدقيق ←',
+                'operationalaudits-title': 'التدقيق الداخلي - التحليل التشغيلي',
+                'operationalaudits-subtitle': 'إدارة عمليات تدقيق العمليات التشغيلية، وتتبع الملاحظات الحرجة، ومراقبة معالجة المخاطر التشغيلية',
+                'operationalaudits-btn-add': 'إضافة تدقيق تشغيلي',
+                'operationalaudits-th-title': 'عنوان التدقيق',
+                'operationalaudits-th-dept': 'الإدارة',
+                'operationalaudits-th-date': 'تاريخ التدقيق',
+                'operationalaudits-th-audited': 'العمليات المفحوصة',
+                'operationalaudits-th-passed': 'العمليات السليمة',
+                'operationalaudits-th-critical': 'الملاحظات الحرجة',
+                'operationalaudits-th-recommendations': 'التوصيات',
+                'operationalaudits-th-mitigation': 'معدل معالجة المخاطر',
+                'operationalaudits-th-status': 'الحالة',
+                'operationalaudits-th-actions': 'الإجراءات',
+                'operationalaudits-lbl-title-en': 'عنوان التدقيق (EN)',
+                'operationalaudits-lbl-title-ar': 'عنوان التدقيق (AR)',
+                'operationalaudits-lbl-dept': 'الإدارة',
+                'operationalaudits-lbl-date': 'تاريخ التدقيق',
+                'operationalaudits-lbl-audited': 'عدد العمليات المفحوصة',
+                'operationalaudits-lbl-passed': 'عدد العمليات السليمة',
+                'operationalaudits-lbl-critical': 'عدد الملاحظات الحرجة',
+                'operationalaudits-lbl-recommendations': 'عدد التوصيات',
+                'operationalaudits-lbl-mitigation': 'معدل معالجة المخاطر (%)',
+                'operationalaudits-lbl-status': 'حالة التدقيق'
             }
         };
 

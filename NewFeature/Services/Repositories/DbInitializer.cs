@@ -324,6 +324,90 @@ namespace NewFeature.Services.Repositories
                 context.ImprovementActions.AddRange(improvements);
                 context.SaveChanges();
             }
+
+            // Seed Operational Audits if empty
+            if (!context.OperationalAudits.Any())
+            {
+                var hrDept = context.Departments.First(d => d.Code == "HR");
+                var finDept = context.Departments.First(d => d.Code == "FIN");
+                var opsDept = context.Departments.First(d => d.Code == "OPS");
+                var itDept = context.Departments.First(d => d.Code == "IT");
+                var compDept = context.Departments.First(d => d.Code == "COMP");
+
+                var now = DateTime.UtcNow;
+
+                var operationalAudits = new List<OperationalAudit>
+                {
+                    new OperationalAudit
+                    {
+                        TitleEn = "IT Infrastructure Security Audit",
+                        TitleAr = "تدقيق أمن البنية التحتية لتقنية المعلومات",
+                        AuditDate = now.AddDays(-25),
+                        DepartmentId = itDept.Id,
+                        AuditedProcessCount = 20,
+                        PassedProcessCount = 19,
+                        CriticalFindingsCount = 0,
+                        RecommendationsCount = 5,
+                        RiskMitigationRate = 95.0,
+                        Status = OperationalAuditStatus.Completed
+                    },
+                    new OperationalAudit
+                    {
+                        TitleEn = "Operations Driver Schedule Review",
+                        TitleAr = "مراجعة جدولة سائقي العمليات",
+                        AuditDate = now.AddDays(-18),
+                        DepartmentId = opsDept.Id,
+                        AuditedProcessCount = 25,
+                        PassedProcessCount = 21,
+                        CriticalFindingsCount = 1,
+                        RecommendationsCount = 8,
+                        RiskMitigationRate = 84.0,
+                        Status = OperationalAuditStatus.FollowUp
+                    },
+                    new OperationalAudit
+                    {
+                        TitleEn = "Finance Payroll Control Review",
+                        TitleAr = "مراجعة ضوابط رواتب الإدارة المالية",
+                        AuditDate = now.AddDays(-10),
+                        DepartmentId = finDept.Id,
+                        AuditedProcessCount = 15,
+                        PassedProcessCount = 15,
+                        CriticalFindingsCount = 0,
+                        RecommendationsCount = 2,
+                        RiskMitigationRate = 100.0,
+                        Status = OperationalAuditStatus.Completed
+                    },
+                    new OperationalAudit
+                    {
+                        TitleEn = "HR Performance Evaluation Process Review",
+                        TitleAr = "مراجعة عملية تقييم أداء الموارد البشرية",
+                        AuditDate = now.AddDays(-5),
+                        DepartmentId = hrDept.Id,
+                        AuditedProcessCount = 12,
+                        PassedProcessCount = 10,
+                        CriticalFindingsCount = 0,
+                        RecommendationsCount = 4,
+                        RiskMitigationRate = 90.0,
+                        Status = OperationalAuditStatus.InProgress
+                    },
+                    new OperationalAudit
+                    {
+                        TitleEn = "Legal & Contractual Compliance Review",
+                        TitleAr = "مراجعة الالتزام القانوني والتعاقدي للامتثال",
+                        AuditDate = now.AddDays(5),
+                        DepartmentId = compDept.Id,
+                        AuditedProcessCount = 10,
+                        PassedProcessCount = 0,
+                        CriticalFindingsCount = 0,
+                        RecommendationsCount = 0,
+                        RiskMitigationRate = 0.0,
+                        Status = OperationalAuditStatus.Planned
+                    }
+                };
+
+                context.OperationalAudits.AddRange(operationalAudits);
+                context.SaveChanges();
+            }
         }
     }
 }

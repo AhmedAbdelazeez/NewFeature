@@ -30,6 +30,7 @@ namespace NewFeature.Services.Repositories
         public DbSet<Violation> Violations { get; set; } = null!;
         public DbSet<InternalAudit> InternalAudits { get; set; } = null!;
         public DbSet<ImprovementAction> ImprovementActions { get; set; } = null!;
+        public DbSet<OperationalAudit> OperationalAudits { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -216,6 +217,12 @@ namespace NewFeature.Services.Repositories
             modelBuilder.Entity<ImprovementAction>()
                 .HasOne(ia => ia.Department)
                 .WithMany(d => d.ImprovementActions)
+                .HasForeignKey(ia => ia.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OperationalAudit>()
+                .HasOne(ia => ia.Department)
+                .WithMany()
                 .HasForeignKey(ia => ia.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
