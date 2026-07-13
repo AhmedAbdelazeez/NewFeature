@@ -536,6 +536,125 @@ namespace NewFeature.Services.Repositories
                 context.EmployeeEvaluations.AddRange(evaluations);
                 context.SaveChanges();
             }
+
+            // Seed IT Data
+            if (!context.ItTickets.Any())
+            {
+                context.ItTickets.AddRange(
+                    new ItTicket 
+                    { 
+                        TitleEn = "Network Uptime Issue in Workshop", 
+                        TitleAr = "مشكلة جاهزية الشبكة في الورشة", 
+                        DescriptionEn = "Slow wireless connection and printer disconnection.", 
+                        DescriptionAr = "بطء الاتصال اللاسلكي وفصل الطابعات المتكرر.",
+                        Status = "Resolved", 
+                        Priority = "High", 
+                        CreatedAt = DateTime.UtcNow.AddDays(-5), 
+                        ResolvedAt = DateTime.UtcNow.AddDays(-4), 
+                        UserSatisfaction = 5 
+                    },
+                    new ItTicket 
+                    { 
+                        TitleEn = "ERP System Backup Delay", 
+                        TitleAr = "تأخر النسخ الاحتياطي لنظام ERP", 
+                        DescriptionEn = "Daily backup routine took longer than expected.", 
+                        DescriptionAr = "استغرق إجراء النسخ الاحتياطي اليومي وقتًا أطول من المتوقع.",
+                        Status = "Resolved", 
+                        Priority = "Medium", 
+                        CreatedAt = DateTime.UtcNow.AddDays(-2), 
+                        ResolvedAt = DateTime.UtcNow.AddDays(-1), 
+                        UserSatisfaction = 4 
+                    },
+                    new ItTicket 
+                    { 
+                        TitleEn = "Printers Connection Issue in HQ", 
+                        TitleAr = "مشكلة اتصال الطابعات بالمقر الرئيسي", 
+                        DescriptionEn = "HQ users cannot print PDF documents.", 
+                        DescriptionAr = "لا يمكن لمستخدمي المقر الرئيسي طباعة ملفات PDF.",
+                        Status = "In Progress", 
+                        Priority = "Low", 
+                        CreatedAt = DateTime.UtcNow.AddHours(-6) 
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            if (!context.ItSystems.Any())
+            {
+                context.ItSystems.AddRange(
+                    new ItSystem { NameEn = "Fleet Management ERP", NameAr = "نظام إدارة الأسطول الموحد", UptimePercentage = 99.8, LastBackupStatus = true, Status = "Active", IsAutomated = true },
+                    new ItSystem { NameEn = "Driver Dispatch Portal", NameAr = "بوابة توزيع رحلات السائقين", UptimePercentage = 99.5, LastBackupStatus = true, Status = "Active", IsAutomated = true },
+                    new ItSystem { NameEn = "Workshop Operations Web", NameAr = "شبكة عمليات الورش الفنية", UptimePercentage = 98.2, LastBackupStatus = false, Status = "Active", IsAutomated = false }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed HSE Data
+            if (!context.HseIncidents.Any())
+            {
+                context.HseIncidents.AddRange(
+                    new HseIncident 
+                    { 
+                        TitleEn = "Near-Miss bus collision in yard", 
+                        TitleAr = "حادث وشيك لتصادم حافلة في الساحة", 
+                        Type = "NearMiss", 
+                        Date = DateTime.UtcNow.AddDays(-10), 
+                        DescriptionEn = "Two buses backing up simultaneously nearly collided. Traffic routing adjusted.", 
+                        DescriptionAr = "كادت حافلتان أن تتصادما أثناء الرجوع للخلف في نفس الوقت. تم تعديل مسارات السير.",
+                        Severity = "Low", 
+                        Location = "Main Bus Yard" 
+                    },
+                    new HseIncident 
+                    { 
+                        TitleEn = "Minor hand scratch during tire change", 
+                        TitleAr = "خدش بسيط في اليد أثناء تغيير الإطارات", 
+                        Type = "Injury", 
+                        Date = DateTime.UtcNow.AddDays(-3), 
+                        DescriptionEn = "Technician scratched hand on rusty rim. First aid applied.", 
+                        DescriptionAr = "تعرض الفني لخدش في اليد بسبب حافة إطار صدئة. تم تقديم الإسعافات الأولية.",
+                        Severity = "Medium", 
+                        Location = "Workshop Bay 2" 
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            if (!context.HseInspections.Any())
+            {
+                context.HseInspections.AddRange(
+                    new HseInspection 
+                    { 
+                        TitleEn = "Annual Safety Compliance Audit", 
+                        TitleAr = "التدقيق السنوي للالتزام بالسلامة", 
+                        InspectionDate = DateTime.UtcNow.AddMonths(-1), 
+                        InspectorName = "Yousef Al-Ahmadi", 
+                        Status = "Completed", 
+                        ComplianceScore = 96.5, 
+                        TrainingHours = 40.0 
+                    },
+                    new HseInspection 
+                    { 
+                        TitleEn = "Monthly Fire Extinguisher Check", 
+                        TitleAr = "الفحص الشهري لطفايات الحريق", 
+                        InspectionDate = DateTime.UtcNow.AddDays(-12), 
+                        InspectorName = "Yousef Al-Ahmadi", 
+                        Status = "Completed", 
+                        ComplianceScore = 92.0, 
+                        TrainingHours = 15.0 
+                    },
+                    new HseInspection 
+                    { 
+                        TitleEn = "Emergency Evacuation Drill", 
+                        TitleAr = "تدريب على الإخلاء في حالات الطوارئ", 
+                        InspectionDate = DateTime.UtcNow.AddDays(5), 
+                        InspectorName = "HSE Committee", 
+                        Status = "Planned", 
+                        ComplianceScore = 0.0, 
+                        TrainingHours = 0.0 
+                    }
+                );
+                context.SaveChanges();
+            }
         }
     }
 }

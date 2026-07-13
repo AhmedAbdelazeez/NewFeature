@@ -1,0 +1,588 @@
+@page
+@model ItModel
+@{
+    ViewData["Title"] = "IT Department Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" data-i18n="it-title" style="font-family: var(--font-outfit);">إدارة تقنية المعلومات</h1>
+            <p class="text-muted fs-6 mb-0" data-i18n="it-subtitle">إدارة تذاكر الدعم الفني، تتبع جاهزية الأنظمة والشبكات، وإنجاز مشاريع التحول الرقمي</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddTicketModal()" data-i18n="it-btn-add-ticket">إضافة تذكرة دعم جديدة</button>
+            <button class="btn btn-neon-outline" onclick="openAddSystemModal()" data-i18n="it-btn-add-system">إضافة نظام جديد</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="itTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="tickets-tab" data-bs-toggle="tab" data-bs-target="#tickets-tab-content" type="button" role="tab" aria-selected="true" data-i18n="tab-it-tickets">تذاكر الدعم الفني</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="systems-tab" data-bs-toggle="tab" data-bs-target="#systems-tab-content" type="button" role="tab" aria-selected="false" data-i18n="tab-it-systems">الأنظمة والشبكات</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="itTabsContent">
+        
+        <!-- Tab 1: IT Tickets -->
+        <div class="tab-pane fade show active" id="tickets-tab-content" role="tabpanel" aria-labelledby="tickets-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="ticketSearch" class="form-control form-control-glass" placeholder="البحث في تذاكر الدعم..." onkeyup="filterTickets()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="ticketStatusFilter" class="form-control form-control-glass" onchange="filterTickets()">
+                            <option value="" data-i18n="opt-all-statuses">كل الحالات</option>
+                            <option value="Open" data-i18n="opt-status-open">مفتوحة (Open)</option>
+                            <option value="In Progress" data-i18n="opt-status-inprogress">قيد المعالجة (In Progress)</option>
+                            <option value="Resolved" data-i18n="opt-status-resolved">مكتملة (Resolved)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="ticketsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="it-th-ticket-id">رقم التذكرة</th>
+                                <th data-i18n="it-th-title">العنوان</th>
+                                <th data-i18n="it-th-priority">الأولوية</th>
+                                <th data-i18n="it-th-status">الحالة</th>
+                                <th data-i18n="it-th-createdat">تاريخ الإنشاء</th>
+                                <th data-i18n="it-th-resolvedat">تاريخ الإغلاق</th>
+                                <th data-i18n="it-th-satisfaction">التقييم</th>
+                                <th data-i18n="it-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsList">
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل التذاكر...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: IT Systems -->
+        <div class="tab-pane fade" id="systems-tab-content" role="tabpanel" aria-labelledby="systems-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="systemSearch" class="form-control form-control-glass" placeholder="البحث في الأنظمة..." onkeyup="filterSystems()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="systemsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="it-th-sys-name">اسم النظام</th>
+                                <th data-i18n="it-th-sys-uptime">نسبة الجاهزية Uptime</th>
+                                <th data-i18n="it-th-sys-backup">النسخ الاحتياطي</th>
+                                <th data-i18n="it-th-sys-automated">أتمتة النظام</th>
+                                <th data-i18n="it-th-sys-status">الحالة</th>
+                                <th data-i18n="it-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="systemsList">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الأنظمة...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Add/Edit Ticket -->
+<div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="ticketModalTitle" data-i18n="it-modal-title-add-ticket">إضافة تذكرة دعم جديدة</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="ticketForm" onsubmit="saveTicket(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="ticketId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ticketTitleEn" class="form-label" data-i18n="it-lbl-title-en">العنوان (English)</label>
+                            <input type="text" id="ticketTitleEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ticketTitleAr" class="form-label" data-i18n="it-lbl-title-ar">العنوان (عربي)</label>
+                            <input type="text" id="ticketTitleAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ticketDescriptionEn" class="form-label" data-i18n="it-lbl-desc-en">الوصف (English)</label>
+                            <textarea id="ticketDescriptionEn" class="form-control form-control-glass" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ticketDescriptionAr" class="form-label" data-i18n="it-lbl-desc-ar">الوصف (عربي)</label>
+                            <textarea id="ticketDescriptionAr" class="form-control form-control-glass" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ticketPriority" class="form-label" data-i18n="it-lbl-priority">الأولوية</label>
+                            <select id="ticketPriority" class="form-control form-control-glass" required>
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ticketStatus" class="form-label" data-i18n="it-lbl-status">الحالة</label>
+                            <select id="ticketStatus" class="form-control form-control-glass" required onchange="toggleSatisfactionField()">
+                                <option value="Open">Open</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="satisfactionContainer" style="display: none;">
+                        <label for="ticketSatisfaction" class="form-label" data-i18n="it-lbl-satisfaction">تقييم رضا المستخدم (1-5 نجوم)</label>
+                        <select id="ticketSatisfaction" class="form-control form-control-glass">
+                            <option value="">لا يوجد تقييم</option>
+                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4)</option>
+                            <option value="3">⭐⭐⭐ (3)</option>
+                            <option value="2">⭐⭐ (2)</option>
+                            <option value="1">⭐ (1)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ التغييرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Add/Edit System -->
+<div class="modal fade" id="systemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="systemModalTitle" data-i18n="it-modal-title-add-system">إضافة نظام جديد</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="systemForm" onsubmit="saveSystem(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="systemId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sysNameEn" class="form-label" data-i18n="it-lbl-sys-en">اسم النظام (English)</label>
+                            <input type="text" id="sysNameEn" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sysNameAr" class="form-label" data-i18n="it-lbl-sys-ar">اسم النظام (عربي)</label>
+                            <input type="text" id="sysNameAr" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sysUptime" class="form-label" data-i18n="it-lbl-sys-uptime">نسبة الجاهزية Uptime (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" id="sysUptime" class="form-control form-control-glass" value="100.00" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sysStatus" class="form-label" data-i18n="it-lbl-sys-status">الحالة</label>
+                            <select id="sysStatus" class="form-control form-control-glass" required>
+                                <option value="Active">Active</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3 mt-4">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="sysBackup" checked>
+                                <label class="form-check-label font-bold ms-2 text-slate-900" for="sysBackup" data-i18n="it-lbl-sys-backup">هل تم عمل النسخ الاحتياطي بنجاح؟</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="sysAutomated">
+                                <label class="form-check-label font-bold ms-2 text-slate-900" for="sysAutomated" data-i18n="it-lbl-sys-automated">هل النظام مؤتمت بالكامل؟</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ التغييرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let tickets = [];
+        let systems = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadTickets();
+            loadSystems();
+        });
+
+        // ───────── Tickets Fetch & Render ─────────
+        async function loadTickets() {
+            try {
+                const res = await fetch("/api/it/tickets");
+                if (res.ok) {
+                    tickets = await res.json();
+                    renderTickets(tickets);
+                }
+            } catch (err) {
+                console.error("Error loading tickets:", err);
+            }
+        }
+
+        function renderTickets(list) {
+            const listContainer = document.getElementById("ticketsList");
+            const isAr = document.documentElement.lang === 'ar';
+            listContainer.innerHTML = "";
+
+            if (list.length === 0) {
+                listContainer.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted" data-i18n="it-empty-tickets">لا توجد تذاكر دعم مسجلة حالياً</td></tr>`;
+                return;
+            }
+
+            list.forEach(t => {
+                const title = isAr ? t.titleAr : t.titleEn;
+                const createdDateStr = new Date(t.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+                const resolvedDateStr = t.resolvedAt ? new Date(t.resolvedAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US') : '—';
+                
+                const satisfactionStars = t.userSatisfaction ? '⭐'.repeat(t.userSatisfaction) : '—';
+
+                let priorityClass = 'badge-glow-info';
+                if (t.priority === 'High') priorityClass = 'badge-glow-danger';
+                if (t.priority === 'Critical') priorityClass = 'badge-glow-danger';
+                
+                let statusClass = 'badge-glow-info';
+                if (t.status === 'Open') statusClass = 'badge-glow-success';
+                if (t.status === 'Resolved') statusClass = 'badge-glow-success';
+
+                listContainer.innerHTML += `
+                    <tr>
+                        <td class="font-mono font-bold">#${t.id}</td>
+                        <td><strong>${title}</strong></td>
+                        <td><span class="badge ${priorityClass}">${t.priority}</span></td>
+                        <td><span class="badge ${statusClass}">${t.status}</span></td>
+                        <td class="font-mono text-muted text-sm">${createdDateStr}</td>
+                        <td class="font-mono text-muted text-sm">${resolvedDateStr}</td>
+                        <td class="text-warning">${satisfactionStars}</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-neon-outline" onclick="editTicket(${t.id})"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-neon-outline" onclick="deleteTicket(${t.id})"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterTickets() {
+            const query = document.getElementById("ticketSearch").value.toLowerCase();
+            const statusFilter = document.getElementById("ticketStatusFilter").value;
+            const isAr = document.documentElement.lang === 'ar';
+
+            const filtered = tickets.filter(t => {
+                const title = isAr ? t.titleAr : t.titleEn;
+                const description = isAr ? t.descriptionAr : t.descriptionEn;
+                const matchesQuery = title.toLowerCase().includes(query) || (description && description.toLowerCase().includes(query));
+                const matchesStatus = !statusFilter || t.status === statusFilter;
+                return matchesQuery && matchesStatus;
+            });
+
+            renderTickets(filtered);
+        }
+
+        // ───────── Systems Fetch & Render ─────────
+        async function loadSystems() {
+            try {
+                const res = await fetch("/api/it/systems");
+                if (res.ok) {
+                    systems = await res.json();
+                    renderSystems(systems);
+                }
+            } catch (err) {
+                console.error("Error loading systems:", err);
+            }
+        }
+
+        function renderSystems(list) {
+            const listContainer = document.getElementById("systemsList");
+            const isAr = document.documentElement.lang === 'ar';
+            listContainer.innerHTML = "";
+
+            if (list.length === 0) {
+                listContainer.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted" data-i18n="it-empty-systems">لا توجد أنظمة مسجلة حالياً</td></tr>`;
+                return;
+            }
+
+            list.forEach(s => {
+                const sysName = isAr ? s.nameAr : s.nameEn;
+                const backupBadge = s.lastBackupStatus 
+                    ? `<span class="badge badge-glow-success">${isAr ? 'ناجح' : 'Success'}</span>` 
+                    : `<span class="badge badge-glow-danger">${isAr ? 'فاشل' : 'Failed'}</span>`;
+                
+                const automatedBadge = s.isAutomated
+                    ? `<span class="badge badge-glow-success">${isAr ? 'مؤتمت' : 'Automated'}</span>`
+                    : `<span class="badge badge-glow-info">${isAr ? 'يدوي' : 'Manual'}</span>`;
+
+                let statusClass = 'badge-glow-info';
+                if (s.status === 'Active') statusClass = 'badge-glow-success';
+                if (s.status === 'Inactive') statusClass = 'badge-glow-danger';
+
+                listContainer.innerHTML += `
+                    <tr>
+                        <td><strong>${sysName}</strong></td>
+                        <td class="font-mono font-bold text-neon">${s.uptimePercentage.toFixed(2)}%</td>
+                        <td>${backupBadge}</td>
+                        <td>${automatedBadge}</td>
+                        <td><span class="badge ${statusClass}">${s.status}</span></td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-neon-outline" onclick="editSystem(${s.id})"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-neon-outline" onclick="deleteSystem(${s.id})"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterSystems() {
+            const query = document.getElementById("systemSearch").value.toLowerCase();
+            const filtered = systems.filter(s => s.nameEn.toLowerCase().includes(query) || s.nameAr.includes(query));
+            renderSystems(filtered);
+        }
+
+        // ───────── Ticket Modals / CRUD ─────────
+        function openAddTicketModal() {
+            document.getElementById("ticketForm").reset();
+            document.getElementById("ticketId").value = '';
+            toggleSatisfactionField();
+
+            document.getElementById("ticketModalTitle").setAttribute("data-i18n", "it-modal-title-add-ticket");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("ticketModal"));
+            modal.show();
+        }
+
+        function toggleSatisfactionField() {
+            const status = document.getElementById("ticketStatus").value;
+            const container = document.getElementById("satisfactionContainer");
+            if (status === 'Resolved') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        async function editTicket(id) {
+            try {
+                const res = await fetch(`/api/it/tickets/${id}`);
+                if (res.ok) {
+                    const t = await res.json();
+                    document.getElementById("ticketId").value = t.id;
+                    document.getElementById("ticketTitleEn").value = t.titleEn;
+                    document.getElementById("ticketTitleAr").value = t.titleAr;
+                    document.getElementById("ticketDescriptionEn").value = t.descriptionEn || '';
+                    document.getElementById("ticketDescriptionAr").value = t.descriptionAr || '';
+                    document.getElementById("ticketPriority").value = t.priority;
+                    document.getElementById("ticketStatus").value = t.status;
+                    document.getElementById("ticketSatisfaction").value = t.userSatisfaction || '';
+                    toggleSatisfactionField();
+
+                    document.getElementById("ticketModalTitle").setAttribute("data-i18n", "it-modal-title-edit-ticket");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("ticketModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading ticket for edit:", err);
+            }
+        }
+
+        async function saveTicket(event) {
+            event.preventDefault();
+            const id = document.getElementById("ticketId").value;
+            const satisfactionVal = document.getElementById("ticketSatisfaction").value;
+            
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("ticketTitleEn").value,
+                titleAr: document.getElementById("ticketTitleAr").value,
+                descriptionEn: document.getElementById("ticketDescriptionEn").value,
+                descriptionAr: document.getElementById("ticketDescriptionAr").value,
+                priority: document.getElementById("ticketPriority").value,
+                status: document.getElementById("ticketStatus").value,
+                userSatisfaction: satisfactionVal ? parseInt(satisfactionVal) : null
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/it/tickets/${id}` : '/api/it/tickets';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("ticketModal")).hide();
+                    loadTickets();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving ticket:", err);
+            }
+        }
+
+        async function deleteTicket(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذه التذكرة؟" : "Are you sure you want to delete this ticket?")) return;
+
+            try {
+                const res = await fetch(`/api/it/tickets/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadTickets();
+                }
+            } catch (err) {
+                console.error("Error deleting ticket:", err);
+            }
+        }
+
+        // ───────── System Modals / CRUD ─────────
+        function openAddSystemModal() {
+            document.getElementById("systemForm").reset();
+            document.getElementById("systemId").value = '';
+
+            document.getElementById("systemModalTitle").setAttribute("data-i18n", "it-modal-title-add-system");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("systemModal"));
+            modal.show();
+        }
+
+        async function editSystem(id) {
+            try {
+                const res = await fetch(`/api/it/systems/${id}`);
+                if (res.ok) {
+                    const s = await res.json();
+                    document.getElementById("systemId").value = s.id;
+                    document.getElementById("sysNameEn").value = s.nameEn;
+                    document.getElementById("sysNameAr").value = s.nameAr;
+                    document.getElementById("sysUptime").value = s.uptimePercentage;
+                    document.getElementById("sysStatus").value = s.status;
+                    document.getElementById("sysBackup").checked = s.lastBackupStatus;
+                    document.getElementById("sysAutomated").checked = s.isAutomated;
+
+                    document.getElementById("systemModalTitle").setAttribute("data-i18n", "it-modal-title-edit-system");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("systemModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading system for edit:", err);
+            }
+        }
+
+        async function saveSystem(event) {
+            event.preventDefault();
+            const id = document.getElementById("systemId").value;
+            
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                nameEn: document.getElementById("sysNameEn").value,
+                nameAr: document.getElementById("sysNameAr").value,
+                uptimePercentage: parseFloat(document.getElementById("sysUptime").value),
+                status: document.getElementById("sysStatus").value,
+                lastBackupStatus: document.getElementById("sysBackup").checked,
+                isAutomated: document.getElementById("sysAutomated").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/it/systems/${id}` : '/api/it/systems';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("systemModal")).hide();
+                    loadSystems();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving system:", err);
+            }
+        }
+
+        async function deleteSystem(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا النظام؟" : "Are you sure you want to delete this system?")) return;
+
+            try {
+                const res = await fetch(`/api/it/systems/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadSystems();
+                }
+            } catch (err) {
+                console.error("Error deleting system:", err);
+            }
+        }
+    </script>
+}

@@ -33,6 +33,10 @@ namespace NewFeature.Services.Repositories
         public DbSet<OperationalAudit> OperationalAudits { get; set; } = null!;
         public DbSet<Employee> Employees { get; set; } = null!;
         public DbSet<EmployeeEvaluation> EmployeeEvaluations { get; set; } = null!;
+        public DbSet<ItTicket> ItTickets { get; set; } = null!;
+        public DbSet<ItSystem> ItSystems { get; set; } = null!;
+        public DbSet<HseIncident> HseIncidents { get; set; } = null!;
+        public DbSet<HseInspection> HseInspections { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

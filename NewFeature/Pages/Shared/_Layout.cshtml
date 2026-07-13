@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <script>
         (function() {
-            const lang = localStorage.getItem('lang') || 'en';
+            const lang = localStorage.getItem('lang') || 'ar';
             document.documentElement.setAttribute('lang', lang);
             document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
         })();
@@ -61,6 +61,12 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link nav-link-custom" asp-area="" asp-page="/Employees" data-i18n="nav-employees">Human Resources</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/It" data-i18n="nav-it">IT Department</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Hse" data-i18n="nav-hse">HSE Department</a>
                             </li>
                         }
                     </ul>
@@ -399,7 +405,15 @@
                 'employees-modal-title-add': 'Add New Employee',
                 'employees-modal-title-edit': 'Edit Employee Details',
                 'evaluations-modal-title-add': 'Add Performance Evaluation',
-                'evaluations-modal-title-edit': 'Edit Performance Evaluation'
+                'evaluations-modal-title-edit': 'Edit Performance Evaluation',
+                'nav-it': 'IT Department',
+                'nav-hse': 'HSE Department',
+                'card-it-title': 'IT Department',
+                'card-it-desc': 'Manage IT support tickets, track systems uptime, monitor backups, and automation rates',
+                'card-it-btn': 'Manage IT →',
+                'card-hse-title': 'HSE Department',
+                'card-hse-desc': 'Manage safety incidents, log near-misses, track safety inspections, and training hours',
+                'card-hse-btn': 'Manage HSE →'
             },
             'ar': {
                 // Layout & Common
@@ -709,7 +723,15 @@
                 'employees-modal-title-add': 'إضافة موظف جديد',
                 'employees-modal-title-edit': 'تعديل بيانات موظف',
                 'evaluations-modal-title-add': 'إضافة تقييم أداء جديد',
-                'evaluations-modal-title-edit': 'تعديل تقييم أداء'
+                'evaluations-modal-title-edit': 'تعديل تقييم أداء',
+                'nav-it': 'تقنية المعلومات',
+                'nav-hse': 'الصحة والسلامة والبيئة',
+                'card-it-title': 'إدارة تقنية المعلومات',
+                'card-it-desc': 'إدارة تذاكر الدعم الفني، تتبع جاهزية الأنظمة والشبكات، ومراقبة النسخ الاحتياطي ومعدلات الأتمتة',
+                'card-it-btn': 'إدارة تقنية المعلومات ←',
+                'card-hse-title': 'إدارة الصحة والسلامة والبيئة (HSE)',
+                'card-hse-desc': 'سجل الحوادث والسلامة، الإبلاغ عن الحوادث الوشيكة، تتبع جولات التفتيش، وساعات التدريب',
+                'card-hse-btn': 'إدارة السلامة والبيئة ←'
             }
         };
 
@@ -745,7 +767,7 @@
         }
 
         (function() {
-            const lang = localStorage.getItem('lang') || 'en';
+            const lang = localStorage.getItem('lang') || 'ar';
             applyLanguage(lang);
 
             // Intercept global fetch requests to automatically append request headers
@@ -753,7 +775,7 @@
             window.fetch = function(input, init) {
                 init = init || {};
                 init.headers = init.headers || {};
-                const currentLang = localStorage.getItem('lang') || 'en';
+                const currentLang = localStorage.getItem('lang') || 'ar';
                 
                 if (init.headers instanceof Headers) {
                     init.headers.set('X-Language', currentLang);
