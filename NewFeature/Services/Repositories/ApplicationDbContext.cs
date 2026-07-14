@@ -37,6 +37,10 @@ namespace NewFeature.Services.Repositories
         public DbSet<ItSystem> ItSystems { get; set; } = null!;
         public DbSet<HseIncident> HseIncidents { get; set; } = null!;
         public DbSet<HseInspection> HseInspections { get; set; } = null!;
+        public DbSet<ProcurementRequest> ProcurementRequests { get; set; } = null!;
+        public DbSet<InventoryItem> InventoryItems { get; set; } = null!;
+        public DbSet<StrategicGoal> StrategicGoals { get; set; } = null!;
+        public DbSet<PmoInitiative> PmoInitiatives { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -81,6 +85,18 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<TimeLog>()
                 .Property(tl => tl.HoursLogged)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<ProcurementRequest>()
+                .Property(pr => pr.Amount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<InventoryItem>()
+                .Property(ii => ii.UnitPrice)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<PmoInitiative>()
+                .Property(pi => pi.Budget)
                 .HasPrecision(18, 2);
 
             // Cascade Deletes Mitigation (Preventing cycles in SQL Server)

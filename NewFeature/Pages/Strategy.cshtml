@@ -1,0 +1,590 @@
+@page
+@model StrategyModel
+@{
+    ViewData["Title"] = "Strategy & Performance Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" data-i18n="strat-title" style="font-family: var(--font-outfit);">إدارة الاستراتيجية والأداء</h1>
+            <p class="text-muted fs-6 mb-0" data-i18n="strat-subtitle">متابعة الأهداف الاستراتيجية الخمسية، كفاءة مبادرات مكتب إدارة المشاريع PMO، ومستويات الحوكمة</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddGoalModal()" data-i18n="strat-btn-add-goal">إضافة هدف استراتيجي جديد</button>
+            <button class="btn btn-neon-outline" onclick="openAddInitiativeModal()" data-i18n="strat-btn-add-initiative">إضافة مبادرة PMO جديدة</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="stratTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals-tab-content" type="button" role="tab" aria-selected="true" data-i18n="tab-strat-goals">الأهداف الاستراتيجية</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="initiatives-tab" data-bs-toggle="tab" data-bs-target="#initiatives-tab-content" type="button" role="tab" aria-selected="false" data-i18n="tab-strat-initiatives">مبادرات مكتب PMO</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="stratTabsContent">
+        
+        <!-- Tab 1: Strategic Goals -->
+        <div class="tab-pane fade show active" id="goals-tab-content" role="tabpanel" aria-labelledby="goals-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="goalSearch" class="form-control form-control-glass" placeholder="البحث في الأهداف الاستراتيجية..." onkeyup="filterGoals()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="goalsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="strat-th-goal-id">رقم الهدف</th>
+                                <th data-i18n="strat-th-title">العنوان</th>
+                                <th data-i18n="strat-th-weight">الوزن النسبي (%)</th>
+                                <th data-i18n="strat-th-progress">نسبة الإنجاز الفعلي</th>
+                                <th data-i18n="strat-th-status">الحالة</th>
+                                <th data-i18n="strat-th-target-date">تاريخ الإنجاز المستهدف</th>
+                                <th data-i18n="strat-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="goalsList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الأهداف...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: PMO Initiatives -->
+        <div class="tab-pane fade" id="initiatives-tab-content" role="tabpanel" aria-labelledby="initiatives-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="initiativeSearch" class="form-control form-control-glass" placeholder="البحث في المبادرات..." onkeyup="filterInitiatives()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="initiativesTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="strat-th-init-id">رقم المبادرة</th>
+                                <th data-i18n="strat-th-init-title">عنوان المبادرة</th>
+                                <th data-i18n="strat-th-manager">مدير المبادرة</th>
+                                <th data-i18n="strat-th-progress">نسبة الإنجاز</th>
+                                <th data-i18n="strat-th-budget">الميزانية المرصودة</th>
+                                <th data-i18n="strat-th-status">الحالة</th>
+                                <th data-i18n="strat-th-dates">التاريخ</th>
+                                <th data-i18n="strat-th-maturity">مؤشر الحوكمة (1-5)</th>
+                                <th data-i18n="strat-th-milestone">معالم المبادرة بالوقت</th>
+                                <th data-i18n="strat-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="initiativesList">
+                            <tr>
+                                <td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل مبادرات PMO...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Strategic Goal Modal -->
+<div class="modal fade" id="goalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header border-glass">
+                <h5 class="modal-title fw-bold" id="goalModalTitle" data-i18n="strat-modal-title-add-goal">إضافة هدف استراتيجي جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="goalForm" onsubmit="saveGoal(event)">
+                <input type="hidden" id="goalId" />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-en">العنوان بالإنجليزية</label>
+                            <input type="text" id="goalTitleEn" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-ar">العنوان بالعربية</label>
+                            <input type="text" id="goalTitleAr" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-weight">الوزن النسبي (%)</label>
+                            <input type="number" step="0.1" min="0" max="100" id="goalWeight" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-progress">نسبة التقدم (%)</label>
+                            <input type="number" step="0.1" min="0" max="100" id="goalProgress" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-status">الحالة</label>
+                            <select id="goalStatus" class="form-control form-control-glass">
+                                <option value="NotStarted">Not Started</option>
+                                <option value="OnTrack">On Track</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-target-date">تاريخ الإنجاز المستهدف</label>
+                            <input type="date" id="goalTargetDate" class="form-control form-control-glass" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: PMO Initiative Modal -->
+<div class="modal fade" id="initiativeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header border-glass">
+                <h5 class="modal-title fw-bold" id="initiativeModalTitle" data-i18n="strat-modal-title-add-initiative">إضافة مبادرة PMO جديدة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="initiativeForm" onsubmit="saveInitiative(event)">
+                <input type="hidden" id="initiativeId" />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-en">عنوان المبادرة بالإنجليزية</label>
+                            <input type="text" id="initTitleEn" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-ar">عنوان المبادرة بالعربية</label>
+                            <input type="text" id="initTitleAr" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-manager">مدير المبادرة</label>
+                            <input type="text" id="initManager" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-progress">نسبة الإنجاز (%)</label>
+                            <input type="number" step="0.1" min="0" max="100" id="initProgress" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-budget">الميزانية المرصودة</label>
+                            <input type="number" step="0.01" id="initBudget" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-status">الحالة</label>
+                            <select id="initStatus" class="form-control form-control-glass">
+                                <option value="InProgress">In Progress</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-start-date">تاريخ البدء</label>
+                            <input type="date" id="initStartDate" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-end-date">تاريخ الانتهاء</label>
+                            <input type="date" id="initEndDate" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-governance-score">مستوى تطبيق الحوكمة (1-5)</label>
+                            <input type="number" step="0.1" min="1" max="5" id="initMaturity" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="initMilestone" checked>
+                                <label class="form-check-label ms-2" for="initMilestone" data-i18n="label-milestone-ontime">المعالم الاستراتيجية بالوقت المحدد</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allGoals = [];
+        let allInitiatives = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadGoals();
+            loadInitiatives();
+        });
+
+        // ───────── Goals Data Loading & Filter ─────────
+        async function loadGoals() {
+            try {
+                const res = await fetch('/api/strategy/goals');
+                if (res.ok) {
+                    allGoals = await res.json();
+                    renderGoals(allGoals);
+                }
+            } catch (err) {
+                console.error("Error loading strategic goals:", err);
+            }
+        }
+
+        function renderGoals(list) {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("goalsList");
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">${isAr ? 'لا توجد أهداف استراتيجية مطابقة' : 'No matching strategic goals found'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(g => {
+                const title = isAr ? g.titleAr : g.titleEn;
+                const targetDateStr = new Date(g.targetDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const statusBadge = `<span class="badge bg-${getGoalStatusClass(g.status)}">${g.status}</span>`;
+                
+                return `
+                    <tr>
+                        <td>#${g.id}</td>
+                        <td class="fw-bold">${title}</td>
+                        <td>${g.weight}%</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                                    <div class="progress-bar bg-neon" role="progressbar" style="width: ${g.progress}%"></div>
+                                </div>
+                                <span class="fs-7 fw-bold font-mono">${g.progress}%</span>
+                            </div>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td>${targetDateStr}</td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-neon-outline btn-sm py-1" onclick="editGoal(${g.id})">${isAr ? 'تعديل' : 'Edit'}</button>
+                                <button class="btn btn-danger-neon btn-sm py-1" onclick="deleteGoal(${g.id})">${isAr ? 'حذف' : 'Delete'}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterGoals() {
+            const search = document.getElementById("goalSearch").value.toLowerCase();
+            const isAr = document.documentElement.lang === 'ar';
+
+            const filtered = allGoals.filter(g => {
+                const title = (isAr ? g.titleAr : g.titleEn).toLowerCase();
+                return title.includes(search);
+            });
+
+            renderGoals(filtered);
+        }
+
+        function getGoalStatusClass(status) {
+            switch (status) {
+                case 'NotStarted': return 'secondary';
+                case 'OnTrack': return 'success';
+                case 'Delayed': return 'danger';
+                case 'Completed': return 'primary';
+                default: return 'secondary';
+            }
+        }
+
+        // ───────── PMO Initiatives Data Loading & Filter ─────────
+        async function loadInitiatives() {
+            try {
+                const res = await fetch('/api/strategy/initiatives');
+                if (res.ok) {
+                    allInitiatives = await res.json();
+                    renderInitiatives(allInitiatives);
+                }
+            } catch (err) {
+                console.error("Error loading PMO initiatives:", err);
+            }
+        }
+
+        function renderInitiatives(list) {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("initiativesList");
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">${isAr ? 'لا توجد مبادرات مطابقة' : 'No matching PMO initiatives found'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(i => {
+                const title = isAr ? i.titleAr : i.titleEn;
+                const startDateStr = new Date(i.startDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const endDateStr = new Date(i.endDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const statusBadge = `<span class="badge bg-${getInitiativeStatusClass(i.status)}">${i.status}</span>`;
+                const milestoneBadge = i.milestoneOnTime
+                    ? `<span class="text-emerald-400 font-bold"><i class="bi bi-patch-check-fill"></i> ${isAr ? 'بالوقت المحدد' : 'On Time'}</span>`
+                    : `<span class="text-danger font-bold"><i class="bi bi-x-circle-fill"></i> ${isAr ? 'متأخر' : 'Delayed'}</span>`;
+
+                return `
+                    <tr>
+                        <td>#${i.id}</td>
+                        <td class="fw-bold">${title}</td>
+                        <td>${i.managerName}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                                    <div class="progress-bar bg-neon-cyan" role="progressbar" style="width: ${i.progress}%"></div>
+                                </div>
+                                <span class="fs-7 fw-bold font-mono">${i.progress}%</span>
+                            </div>
+                        </td>
+                        <td>$${i.budget.toLocaleString()}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <span class="fs-7 text-muted d-block">${isAr ? 'البدء' : 'Start'}: ${startDateStr}</span>
+                            <span class="fs-7 text-muted d-block">${isAr ? 'الانتهاء' : 'End'}: ${endDateStr}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-dark border border-glass font-mono text-neon-gold">${i.governanceMaturityScore.toFixed(1)} / 5.0</span>
+                        </td>
+                        <td>${milestoneBadge}</td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-neon-outline btn-sm py-1" onclick="editInitiative(${i.id})">${isAr ? 'تعديل' : 'Edit'}</button>
+                                <button class="btn btn-danger-neon btn-sm py-1" onclick="deleteInitiative(${i.id})">${isAr ? 'حذف' : 'Delete'}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterInitiatives() {
+            const search = document.getElementById("initiativeSearch").value.toLowerCase();
+            const isAr = document.documentElement.lang === 'ar';
+
+            const filtered = allInitiatives.filter(i => {
+                const title = (isAr ? i.titleAr : i.titleEn).toLowerCase();
+                const manager = i.managerName.toLowerCase();
+                return title.includes(search) || manager.includes(search);
+            });
+
+            renderInitiatives(filtered);
+        }
+
+        function getInitiativeStatusClass(status) {
+            switch (status) {
+                case 'InProgress': return 'info';
+                case 'Delayed': return 'danger';
+                case 'Completed': return 'success';
+                default: return 'secondary';
+            }
+        }
+
+        // ───────── Goal Modal / CRUD ─────────
+        function openAddGoalModal() {
+            document.getElementById("goalForm").reset();
+            document.getElementById("goalId").value = '';
+            document.getElementById("goalTargetDate").value = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().substring(0, 10);
+
+            document.getElementById("goalModalTitle").setAttribute("data-i18n", "strat-modal-title-add-goal");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("goalModal"));
+            modal.show();
+        }
+
+        async function editGoal(id) {
+            try {
+                const res = await fetch(`/api/strategy/goals/${id}`);
+                if (res.ok) {
+                    const g = await res.json();
+                    document.getElementById("goalId").value = g.id;
+                    document.getElementById("goalTitleEn").value = g.titleEn;
+                    document.getElementById("goalTitleAr").value = g.titleAr;
+                    document.getElementById("goalWeight").value = g.weight;
+                    document.getElementById("goalProgress").value = g.progress;
+                    document.getElementById("goalStatus").value = g.status;
+                    document.getElementById("goalTargetDate").value = new Date(g.targetDate).toISOString().substring(0, 10);
+
+                    document.getElementById("goalModalTitle").setAttribute("data-i18n", "strat-modal-title-edit-goal");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("goalModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading goal for edit:", err);
+            }
+        }
+
+        async function saveGoal(event) {
+            event.preventDefault();
+            const id = document.getElementById("goalId").value;
+
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("goalTitleEn").value,
+                titleAr: document.getElementById("goalTitleAr").value,
+                weight: parseFloat(document.getElementById("goalWeight").value),
+                progress: parseFloat(document.getElementById("goalProgress").value),
+                status: document.getElementById("goalStatus").value,
+                targetDate: new Date(document.getElementById("goalTargetDate").value).toISOString()
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/strategy/goals/${id}` : '/api/strategy/goals';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("goalModal")).hide();
+                    loadGoals();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving goal:", err);
+            }
+        }
+
+        async function deleteGoal(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا الهدف الاستراتيجي؟" : "Are you sure you want to delete this strategic goal?")) return;
+
+            try {
+                const res = await fetch(`/api/strategy/goals/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadGoals();
+                }
+            } catch (err) {
+                console.error("Error deleting goal:", err);
+            }
+        }
+
+        // ───────── Initiative Modal / CRUD ─────────
+        function openAddInitiativeModal() {
+            document.getElementById("initiativeForm").reset();
+            document.getElementById("initiativeId").value = '';
+            document.getElementById("initStartDate").value = new Date().toISOString().substring(0, 10);
+            document.getElementById("initEndDate").value = new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().substring(0, 10);
+
+            document.getElementById("initiativeModalTitle").setAttribute("data-i18n", "strat-modal-title-add-initiative");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("initiativeModal"));
+            modal.show();
+        }
+
+        async function editInitiative(id) {
+            try {
+                const res = await fetch(`/api/strategy/initiatives/${id}`);
+                if (res.ok) {
+                    const i = await res.json();
+                    document.getElementById("initiativeId").value = i.id;
+                    document.getElementById("initTitleEn").value = i.titleEn;
+                    document.getElementById("initTitleAr").value = i.titleAr;
+                    document.getElementById("initManager").value = i.managerName;
+                    document.getElementById("initProgress").value = i.progress;
+                    document.getElementById("initBudget").value = i.budget;
+                    document.getElementById("initStatus").value = i.status;
+                    document.getElementById("initStartDate").value = new Date(i.startDate).toISOString().substring(0, 10);
+                    document.getElementById("initEndDate").value = new Date(i.endDate).toISOString().substring(0, 10);
+                    document.getElementById("initMaturity").value = i.governanceMaturityScore;
+                    document.getElementById("initMilestone").checked = i.milestoneOnTime;
+
+                    document.getElementById("initiativeModalTitle").setAttribute("data-i18n", "strat-modal-title-edit-initiative");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("initiativeModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading initiative for edit:", err);
+            }
+        }
+
+        async function saveInitiative(event) {
+            event.preventDefault();
+            const id = document.getElementById("initiativeId").value;
+
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("initTitleEn").value,
+                titleAr: document.getElementById("initTitleAr").value,
+                managerName: document.getElementById("initManager").value,
+                progress: parseFloat(document.getElementById("initProgress").value),
+                budget: parseFloat(document.getElementById("initBudget").value),
+                status: document.getElementById("initStatus").value,
+                startDate: new Date(document.getElementById("initStartDate").value).toISOString(),
+                endDate: new Date(document.getElementById("initEndDate").value).toISOString(),
+                governanceMaturityScore: parseFloat(document.getElementById("initMaturity").value),
+                milestoneOnTime: document.getElementById("initMilestone").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/strategy/initiatives/${id}` : '/api/strategy/initiatives';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("initiativeModal")).hide();
+                    loadInitiatives();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving initiative:", err);
+            }
+        }
+
+        async function deleteInitiative(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذه المبادرة؟" : "Are you sure you want to delete this initiative?")) return;
+
+            try {
+                const res = await fetch(`/api/strategy/initiatives/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadInitiatives();
+                }
+            } catch (err) {
+                console.error("Error deleting initiative:", err);
+            }
+        }
+    </script>
+}

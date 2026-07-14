@@ -655,6 +655,169 @@ namespace NewFeature.Services.Repositories
                 );
                 context.SaveChanges();
             }
+
+            // Seed Procurement Data
+            if (!context.ProcurementRequests.Any())
+            {
+                context.ProcurementRequests.AddRange(
+                    new ProcurementRequest
+                    {
+                        TitleEn = "Spare parts procurement cycle",
+                        TitleAr = "دورة توريد قطع غيار الصيانة",
+                        RequesterName = "Ali Al-Fahad",
+                        SupplierName = "Al-Rashed Auto Parts",
+                        Amount = 25000,
+                        Status = "Received",
+                        RequestDate = DateTime.UtcNow.AddDays(-10),
+                        DeliveryDate = DateTime.UtcNow.AddDays(-4),
+                        BudgetCompliant = true
+                    },
+                    new ProcurementRequest
+                    {
+                        TitleEn = "New vehicle fleet software",
+                        TitleAr = "نظام برمجة وجدولة الأسطول الجديد",
+                        RequesterName = "Ali Al-Fahad",
+                        SupplierName = "Smart Fleet Solutions",
+                        Amount = 80000,
+                        Status = "Approved",
+                        RequestDate = DateTime.UtcNow.AddDays(-3),
+                        BudgetCompliant = true
+                    },
+                    new ProcurementRequest
+                    {
+                        TitleEn = "Office stationery supply",
+                        TitleAr = "توفير مستلزمات وقرطاسية المكاتب",
+                        RequesterName = "Khaled Saeed",
+                        SupplierName = "Jarir Bookstore",
+                        Amount = 12000,
+                        Status = "Requested",
+                        RequestDate = DateTime.UtcNow.AddDays(-1),
+                        BudgetCompliant = false
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            if (!context.InventoryItems.Any())
+            {
+                context.InventoryItems.AddRange(
+                    new InventoryItem
+                    {
+                        ItemNameEn = "Tire 295/80R22.5",
+                        ItemNameAr = "إطارات حافلات مقاس 295/80R22.5",
+                        Category = "Spare Parts",
+                        Quantity = 150,
+                        ReorderLevel = 80,
+                        UnitPrice = 1200,
+                        LastAuditDate = DateTime.UtcNow.AddDays(-15),
+                        DiscrepancyCount = 0
+                    },
+                    new InventoryItem
+                    {
+                        ItemNameEn = "Oil Filter LF16015",
+                        ItemNameAr = "فلتر زيت محرك LF16015",
+                        Category = "Spare Parts",
+                        Quantity = 90,
+                        ReorderLevel = 100,
+                        UnitPrice = 150,
+                        LastAuditDate = DateTime.UtcNow.AddDays(-15),
+                        DiscrepancyCount = 0
+                    },
+                    new InventoryItem
+                    {
+                        ItemNameEn = "Brake Pads Set",
+                        ItemNameAr = "مجموعة أقمشة فرامل خلفية",
+                        Category = "Spare Parts",
+                        Quantity = 60,
+                        ReorderLevel = 40,
+                        UnitPrice = 350,
+                        LastAuditDate = DateTime.UtcNow.AddDays(-15),
+                        DiscrepancyCount = 1
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Strategy & Performance Data
+            if (!context.StrategicGoals.Any())
+            {
+                context.StrategicGoals.AddRange(
+                    new StrategicGoal
+                    {
+                        TitleEn = "Expand fleet to Makkah suburban routes",
+                        TitleAr = "توسيع نطاق تشغيل الأسطول لضواحي مكة المكرمة",
+                        Weight = 30.0,
+                        Progress = 85.0,
+                        Status = "OnTrack",
+                        TargetDate = DateTime.UtcNow.AddYears(1)
+                    },
+                    new StrategicGoal
+                    {
+                        TitleEn = "Acquire 20% market share in VIP leasing",
+                        TitleAr = "الاستحواذ على 20% من حصة التأجير الفاخر لكبار الشخصيات",
+                        Weight = 25.0,
+                        Progress = 75.0,
+                        Status = "OnTrack",
+                        TargetDate = DateTime.UtcNow.AddMonths(8)
+                    },
+                    new StrategicGoal
+                    {
+                        TitleEn = "Implement 100% digital ticketing solution",
+                        TitleAr = "تطبيق نظام التذاكر والتشغيل الرقمي بالكامل بنسبة 100%",
+                        Weight = 20.0,
+                        Progress = 90.0,
+                        Status = "Completed",
+                        TargetDate = DateTime.UtcNow.AddMonths(-2)
+                    }
+                );
+                context.SaveChanges();
+            }
+
+            if (!context.PmoInitiatives.Any())
+            {
+                context.PmoInitiatives.AddRange(
+                    new PmoInitiative
+                    {
+                        TitleEn = "Unified Fleet Operation Center (FOC)",
+                        TitleAr = "مركز العمليات والتحكم الموحد للأسطول FOC",
+                        ManagerName = "Samer Al-Otaibi",
+                        Progress = 80.0,
+                        Budget = 5000000,
+                        Status = "InProgress",
+                        StartDate = DateTime.UtcNow.AddMonths(-3),
+                        EndDate = DateTime.UtcNow.AddMonths(3),
+                        GovernanceMaturityScore = 4.5,
+                        MilestoneOnTime = true
+                    },
+                    new PmoInitiative
+                    {
+                        TitleEn = "Rawahel Mobile Application Launch",
+                        TitleAr = "إطلاق تطبيق الهواتف الذكية لشركة رواحل المشاعر",
+                        ManagerName = "Mona Al-Shahri",
+                        Progress = 95.0,
+                        Budget = 1200000,
+                        Status = "InProgress",
+                        StartDate = DateTime.UtcNow.AddMonths(-4),
+                        EndDate = DateTime.UtcNow.AddMonths(1),
+                        GovernanceMaturityScore = 4.8,
+                        MilestoneOnTime = true
+                    },
+                    new PmoInitiative
+                    {
+                        TitleEn = "Eco-friendly EV Bus Trial",
+                        TitleAr = "المشروع التجريبي لتشغيل الحافلات الكهربائية الصديقة للبيئة",
+                        ManagerName = "Samer Al-Otaibi",
+                        Progress = 30.0,
+                        Budget = 3500000,
+                        Status = "Delayed",
+                        StartDate = DateTime.UtcNow.AddMonths(-2),
+                        EndDate = DateTime.UtcNow.AddMonths(6),
+                        GovernanceMaturityScore = 3.5,
+                        MilestoneOnTime = false
+                    }
+                );
+                context.SaveChanges();
+            }
         }
     }
 }

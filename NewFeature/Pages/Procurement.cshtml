@@ -1,0 +1,584 @@
+@page
+@model ProcurementModel
+@{
+    ViewData["Title"] = "Procurement & Support Services";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" data-i18n="proc-title" style="font-family: var(--font-outfit);">إدارة المشتريات والخدمات المساندة</h1>
+            <p class="text-muted fs-6 mb-0" data-i18n="proc-subtitle">متابعة طلبات الشراء، كفاءة الموردين، وإدارة المخازن وقطع الغيار الحرجة</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddRequestModal()" data-i18n="proc-btn-add-request">إضافة طلب شراء جديد</button>
+            <button class="btn btn-neon-outline" onclick="openAddItemModal()" data-i18n="proc-btn-add-item">إضافة صنف مخزون جديد</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="procTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests-tab-content" type="button" role="tab" aria-selected="true" data-i18n="tab-proc-requests">طلبات الشراء</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-tab-content" type="button" role="tab" aria-selected="false" data-i18n="tab-proc-inventory">المخزون والمستودعات</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="procTabsContent">
+        
+        <!-- Tab 1: Procurement Requests -->
+        <div class="tab-pane fade show active" id="requests-tab-content" role="tabpanel" aria-labelledby="requests-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="requestSearch" class="form-control form-control-glass" placeholder="البحث في طلبات الشراء..." onkeyup="filterRequests()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="requestStatusFilter" class="form-control form-control-glass" onchange="filterRequests()">
+                            <option value="" data-i18n="opt-all-statuses">كل الحالات</option>
+                            <option value="Requested" data-i18n="opt-status-requested">مطلوب (Requested)</option>
+                            <option value="Approved" data-i18n="opt-status-approved">معتمد (Approved)</option>
+                            <option value="Ordered" data-i18n="opt-status-ordered">مطلوب من المورد (Ordered)</option>
+                            <option value="Received" data-i18n="opt-status-received">مستلم (Received)</option>
+                            <option value="Cancelled" data-i18n="opt-status-cancelled">ملغي (Cancelled)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="requestsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="proc-th-req-id">رقم الطلب</th>
+                                <th data-i18n="proc-th-title">العنوان</th>
+                                <th data-i18n="proc-th-requester">مقدم الطلب</th>
+                                <th data-i18n="proc-th-supplier">المورد</th>
+                                <th data-i18n="proc-th-amount">المبلغ</th>
+                                <th data-i18n="proc-th-status">الحالة</th>
+                                <th data-i18n="proc-th-date">تاريخ الطلب</th>
+                                <th data-i18n="proc-th-budget">مطابقة الميزانية</th>
+                                <th data-i18n="proc-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsList">
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل طلبات الشراء...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Inventory -->
+        <div class="tab-pane fade" id="inventory-tab-content" role="tabpanel" aria-labelledby="inventory-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="inventorySearch" class="form-control form-control-glass" placeholder="البحث في المستودعات..." onkeyup="filterInventory()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="inventoryTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="proc-th-item-id">رقم الصنف</th>
+                                <th data-i18n="proc-th-item-name">اسم الصنف</th>
+                                <th data-i18n="proc-th-category">الفئة</th>
+                                <th data-i18n="proc-th-qty">الكمية المتوفرة</th>
+                                <th data-i18n="proc-th-reorder">حد إعادة الطلب</th>
+                                <th data-i18n="proc-th-price">سعر الوحدة</th>
+                                <th data-i18n="proc-th-audit-date">آخر تدقيق</th>
+                                <th data-i18n="proc-th-discrepancy">الفروقات</th>
+                                <th data-i18n="proc-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryList">
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل المخزون...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Procurement Request Modal -->
+<div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header border-glass">
+                <h5 class="modal-title fw-bold" id="requestModalTitle" data-i18n="proc-modal-title-add-request">إضافة طلب شراء جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="requestForm" onsubmit="saveRequest(event)">
+                <input type="hidden" id="requestId" />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-en">العنوان بالإنجليزية</label>
+                            <input type="text" id="reqTitleEn" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-title-ar">العنوان بالعربية</label>
+                            <input type="text" id="reqTitleAr" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-requester">مقدم الطلب</label>
+                            <input type="text" id="reqRequester" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-supplier">المورد</label>
+                            <input type="text" id="reqSupplier" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-amount">المبلغ</label>
+                            <input type="number" step="0.01" id="reqAmount" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-status">الحالة</label>
+                            <select id="reqStatus" class="form-control form-control-glass">
+                                <option value="Requested">Requested</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Ordered">Ordered</option>
+                                <option value="Received">Received</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-request-date">تاريخ الطلب</label>
+                            <input type="datetime-local" id="reqDate" class="form-control form-control-glass" />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="reqBudget" checked>
+                                <label class="form-check-label ms-2" for="reqBudget" data-i18n="label-budget-compliant">مطابقة الميزانية المقررة</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Inventory Item Modal -->
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header border-glass">
+                <h5 class="modal-title fw-bold" id="itemModalTitle" data-i18n="proc-modal-title-add-item">إضافة صنف مخزون جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="itemForm" onsubmit="saveItem(event)">
+                <input type="hidden" id="itemId" />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-item-name-en">اسم الصنف بالإنجليزية</label>
+                            <input type="text" id="itemNameEn" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-item-name-ar">اسم الصنف بالعربية</label>
+                            <input type="text" id="itemNameAr" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-category">الفئة</label>
+                            <select id="itemCategory" class="form-control form-control-glass">
+                                <option value="Spare Parts">Spare Parts</option>
+                                <option value="Office Supply">Office Supply</option>
+                                <option value="Tech Hardware">Tech Hardware</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-quantity">الكمية المتوفرة</label>
+                            <input type="number" id="itemQuantity" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-reorder">حد إعادة الطلب</label>
+                            <input type="number" id="itemReorder" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-unit-price">سعر الوحدة</label>
+                            <input type="number" step="0.01" id="itemPrice" class="form-control form-control-glass" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="label-discrepancy">الفروقات المكتشفة بالجرد</label>
+                            <input type="number" id="itemDiscrepancy" class="form-control form-control-glass" default="0" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allRequests = [];
+        let allInventory = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadRequests();
+            loadInventory();
+        });
+
+        // ───────── Requests Data Loading & Filter ─────────
+        async function loadRequests() {
+            try {
+                const res = await fetch('/api/procurement/requests');
+                if (res.ok) {
+                    allRequests = await res.json();
+                    renderRequests(allRequests);
+                }
+            } catch (err) {
+                console.error("Error loading requests:", err);
+            }
+        }
+
+        function renderRequests(list) {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("requestsList");
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">${isAr ? 'لا توجد طلبات شراء مطابقة' : 'No matching procurement requests found'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(r => {
+                const title = isAr ? r.titleAr : r.titleEn;
+                const dateStr = new Date(r.requestDate).toLocaleString(isAr ? 'ar-SA' : 'en-US');
+                const statusBadge = `<span class="badge bg-${getStatusClass(r.status)}">${r.status}</span>`;
+                const budgetBadge = r.budgetCompliant
+                    ? `<span class="text-emerald-400 font-bold"><i class="bi bi-patch-check-fill me-1"></i> ${isAr ? 'نعم' : 'Compliant'}</span>`
+                    : `<span class="text-danger font-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> ${isAr ? 'تجاوز مالي' : 'Over Budget'}</span>`;
+
+                return `
+                    <tr>
+                        <td>#${r.id}</td>
+                        <td class="fw-bold">${title}</td>
+                        <td>${r.requesterName}</td>
+                        <td>${r.supplierName}</td>
+                        <td>$${r.amount.toLocaleString()}</td>
+                        <td>${statusBadge}</td>
+                        <td>${dateStr}</td>
+                        <td>${budgetBadge}</td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-neon-outline btn-sm py-1" onclick="editRequest(${r.id})">${isAr ? 'تعديل' : 'Edit'}</button>
+                                <button class="btn btn-danger-neon btn-sm py-1" onclick="deleteRequest(${r.id})">${isAr ? 'حذف' : 'Delete'}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterRequests() {
+            const search = document.getElementById("requestSearch").value.toLowerCase();
+            const status = document.getElementById("requestStatusFilter").value;
+            const isAr = document.documentElement.lang === 'ar';
+
+            const filtered = allRequests.filter(r => {
+                const title = (isAr ? r.titleAr : r.titleEn).toLowerCase();
+                const req = r.requesterName.toLowerCase();
+                const sup = r.supplierName.toLowerCase();
+                const matchesSearch = title.includes(search) || req.includes(search) || sup.includes(search);
+                const matchesStatus = !status || r.status === status;
+                return matchesSearch && matchesStatus;
+            });
+
+            renderRequests(filtered);
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Requested': return 'info';
+                case 'Approved': return 'primary';
+                case 'Ordered': return 'warning text-dark';
+                case 'Received': return 'success';
+                case 'Cancelled': return 'danger';
+                default: return 'secondary';
+            }
+        }
+
+        // ───────── Inventory Data Loading & Filter ─────────
+        async function loadInventory() {
+            try {
+                const res = await fetch('/api/procurement/inventory');
+                if (res.ok) {
+                    allInventory = await res.json();
+                    renderInventory(allInventory);
+                }
+            } catch (err) {
+                console.error("Error loading inventory:", err);
+            }
+        }
+
+        function renderInventory(list) {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("inventoryList");
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">${isAr ? 'لا يوجد أصناف مطابقة' : 'No matching inventory items found'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(i => {
+                const name = isAr ? i.itemNameAr : i.itemNameEn;
+                const auditDateStr = new Date(i.lastAuditDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const isUnderReorder = i.quantity <= i.reorderLevel;
+                const qtyBadge = isUnderReorder
+                    ? `<span class="badge bg-danger-subtle text-danger border border-danger fw-bold"><i class="bi bi-arrow-down-circle-fill me-1"></i> ${i.quantity} (إعادة طلب)</span>`
+                    : `<span class="badge bg-success-subtle text-success border border-success fw-bold">${i.quantity}</span>`;
+
+                const discrepancyBadge = i.discrepancyCount > 0
+                    ? `<span class="text-warning font-bold"><i class="bi bi-exclamation-circle-fill me-1"></i> ${i.discrepancyCount}</span>`
+                    : `<span class="text-emerald-400 font-bold"><i class="bi bi-check-circle-fill me-1"></i> ${isAr ? 'مطابق' : 'Zero'}</span>`;
+
+                return `
+                    <tr>
+                        <td>#${i.id}</td>
+                        <td class="fw-bold">${name}</td>
+                        <td>${i.category}</td>
+                        <td>${qtyBadge}</td>
+                        <td>${i.reorderLevel}</td>
+                        <td>$${i.unitPrice.toLocaleString()}</td>
+                        <td>${auditDateStr}</td>
+                        <td>${discrepancyBadge}</td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-neon-outline btn-sm py-1" onclick="editItem(${i.id})">${isAr ? 'تعديل' : 'Edit'}</button>
+                                <button class="btn btn-danger-neon btn-sm py-1" onclick="deleteItem(${i.id})">${isAr ? 'حذف' : 'Delete'}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterInventory() {
+            const search = document.getElementById("inventorySearch").value.toLowerCase();
+            const isAr = document.documentElement.lang === 'ar';
+
+            const filtered = allInventory.filter(i => {
+                const name = (isAr ? i.itemNameAr : i.itemNameEn).toLowerCase();
+                const cat = i.category.toLowerCase();
+                return name.includes(search) || cat.includes(search);
+            });
+
+            renderInventory(filtered);
+        }
+
+        // ───────── Request Modal / CRUD ─────────
+        function openAddRequestModal() {
+            document.getElementById("requestForm").reset();
+            document.getElementById("requestId").value = '';
+            document.getElementById("reqDate").value = new Date().toISOString().substring(0, 16);
+
+            document.getElementById("requestModalTitle").setAttribute("data-i18n", "proc-modal-title-add-request");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("requestModal"));
+            modal.show();
+        }
+
+        async function editRequest(id) {
+            try {
+                const res = await fetch(`/api/procurement/requests/${id}`);
+                if (res.ok) {
+                    const r = await res.json();
+                    document.getElementById("requestId").value = r.id;
+                    document.getElementById("reqTitleEn").value = r.titleEn;
+                    document.getElementById("reqTitleAr").value = r.titleAr;
+                    document.getElementById("reqRequester").value = r.requesterName;
+                    document.getElementById("reqSupplier").value = r.supplierName;
+                    document.getElementById("reqAmount").value = r.amount;
+                    document.getElementById("reqStatus").value = r.status;
+                    document.getElementById("reqDate").value = new Date(r.requestDate).toISOString().substring(0, 16);
+                    document.getElementById("reqBudget").checked = r.budgetCompliant;
+
+                    document.getElementById("requestModalTitle").setAttribute("data-i18n", "proc-modal-title-edit-request");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("requestModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading request for edit:", err);
+            }
+        }
+
+        async function saveRequest(event) {
+            event.preventDefault();
+            const id = document.getElementById("requestId").value;
+
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                titleEn: document.getElementById("reqTitleEn").value,
+                titleAr: document.getElementById("reqTitleAr").value,
+                requesterName: document.getElementById("reqRequester").value,
+                supplierName: document.getElementById("reqSupplier").value,
+                amount: parseFloat(document.getElementById("reqAmount").value),
+                status: document.getElementById("reqStatus").value,
+                requestDate: new Date(document.getElementById("reqDate").value).toISOString(),
+                budgetCompliant: document.getElementById("reqBudget").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/procurement/requests/${id}` : '/api/procurement/requests';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("requestModal")).hide();
+                    loadRequests();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving request:", err);
+            }
+        }
+
+        async function deleteRequest(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا الطلب؟" : "Are you sure you want to delete this request?")) return;
+
+            try {
+                const res = await fetch(`/api/procurement/requests/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadRequests();
+                }
+            } catch (err) {
+                console.error("Error deleting request:", err);
+            }
+        }
+
+        // ───────── Inventory Modal / CRUD ─────────
+        function openAddItemModal() {
+            document.getElementById("itemForm").reset();
+            document.getElementById("itemId").value = '';
+
+            document.getElementById("itemModalTitle").setAttribute("data-i18n", "proc-modal-title-add-item");
+            if (typeof applyLanguage === "function") {
+                applyLanguage(localStorage.getItem('lang') || 'en');
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById("itemModal"));
+            modal.show();
+        }
+
+        async function editItem(id) {
+            try {
+                const res = await fetch(`/api/procurement/inventory/${id}`);
+                if (res.ok) {
+                    const i = await res.json();
+                    document.getElementById("itemId").value = i.id;
+                    document.getElementById("itemNameEn").value = i.itemNameEn;
+                    document.getElementById("itemNameAr").value = i.itemNameAr;
+                    document.getElementById("itemCategory").value = i.category;
+                    document.getElementById("itemQuantity").value = i.quantity;
+                    document.getElementById("itemReorder").value = i.reorderLevel;
+                    document.getElementById("itemPrice").value = i.unitPrice;
+                    document.getElementById("itemDiscrepancy").value = i.discrepancyCount;
+
+                    document.getElementById("itemModalTitle").setAttribute("data-i18n", "proc-modal-title-edit-item");
+                    if (typeof applyLanguage === "function") {
+                        applyLanguage(localStorage.getItem('lang') || 'en');
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById("itemModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading item for edit:", err);
+            }
+        }
+
+        async function saveItem(event) {
+            event.preventDefault();
+            const id = document.getElementById("itemId").value;
+
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                itemNameEn: document.getElementById("itemNameEn").value,
+                itemNameAr: document.getElementById("itemNameAr").value,
+                category: document.getElementById("itemCategory").value,
+                quantity: parseInt(document.getElementById("itemQuantity").value),
+                reorderLevel: parseInt(document.getElementById("itemReorder").value),
+                unitPrice: parseFloat(document.getElementById("itemPrice").value),
+                lastAuditDate: new Date().toISOString(),
+                discrepancyCount: parseInt(document.getElementById("itemDiscrepancy").value || 0)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/procurement/inventory/${id}` : '/api/procurement/inventory';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("itemModal")).hide();
+                    loadInventory();
+                } else {
+                    const err = await res.json();
+                    alert(JSON.stringify(err));
+                }
+            } catch (err) {
+                console.error("Error saving inventory item:", err);
+            }
+        }
+
+        async function deleteItem(id) {
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا الصنف؟" : "Are you sure you want to delete this inventory item?")) return;
+
+            try {
+                const res = await fetch(`/api/procurement/inventory/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadInventory();
+                }
+            } catch (err) {
+                console.error("Error deleting item:", err);
+            }
+        }
+    </script>
+}
