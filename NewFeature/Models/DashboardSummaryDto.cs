@@ -49,6 +49,26 @@ namespace NewFeature.Models
         public double AvailabilityRate { get; set; }
         public decimal TotalCapacity { get; set; }
         public decimal AverageCapacity { get; set; }
+
+        // Operational Sub-metrics
+        public double BusReplacementTime { get; set; } // ops-d-15
+        public double StationEvacuationTime { get; set; } // ops-d-16
+        public double DriverAbsenceRate { get; set; } // ops-d-17
+        public double OperatorComplianceRate { get; set; } // ops-d-18
+        public double UniformComplianceRate { get; set; } // ops-d-19
+        public int BreakdownsCount { get; set; } // ops-d-20
+        public double StationBreakdownResponseTime { get; set; } // ops-d-21
+        public double InnerRouteBreakdownResponseTime { get; set; } // ops-d-22
+        public double OuterRouteBreakdownResponseTime { get; set; } // ops-d-23
+        public double ContractStandardComplianceRate { get; set; } // ops-d-24
+        public double CapacityComplianceRate { get; set; } // ops-d-25
+        public double BusCountComplianceRate { get; set; } // ops-d-26
+        public double GuideBoardsComplianceRate { get; set; } // ops-d-27
+        public double OperationalBoardsComplianceRate { get; set; } // ops-d-28
+        public int UnauthorizedBusEntryViolations { get; set; } // ops-d-29
+        public double SecurityGuardAvailabilityRate { get; set; } // ops-d-30
+        public double SafetyQualifiedBusesRate { get; set; } // ops-d-31
+        public double BusTrackingComplianceRate { get; set; } // ops-d-32
     }
 
     public class TripsSummaryDto
