@@ -1,0 +1,540 @@
+@page
+@model CommercialModel
+@{
+    ViewData["Title"] = "Commercial Department Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" data-i18n="com-title" style="font-family: var(--font-outfit);">الإدارة التجارية</h1>
+            <p class="text-muted fs-6 mb-0" data-i18n="com-subtitle">إدارة العقود التجارية B2B، متابعة العملاء المحتملين، وحساب معدلات الاحتفاظ والتحويل</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddContractModal()" data-i18n="com-btn-add-contract">إضافة عقد جديد</button>
+            <button class="btn btn-neon-outline" onclick="openAddLeadModal()" data-i18n="com-btn-add-lead">إضافة عميل محتمل</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="commercialTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="contracts-tab" data-bs-toggle="tab" data-bs-target="#contracts-tab-content" type="button" role="tab" aria-selected="true" data-i18n="tab-com-contracts">العقود التجارية (Contracts)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="leads-tab" data-bs-toggle="tab" data-bs-target="#leads-tab-content" type="button" role="tab" aria-selected="false" data-i18n="tab-com-leads">العملاء المحتملين (Leads)</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="commercialTabsContent">
+        
+        <!-- Tab 1: Contracts -->
+        <div class="tab-pane fade show active" id="contracts-tab-content" role="tabpanel" aria-labelledby="contracts-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="contractSearch" class="form-control form-control-glass" placeholder="البحث في العقود..." onkeyup="filterContracts()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="contractStatusFilter" class="form-control form-control-glass" onchange="filterContracts()">
+                            <option value="" data-i18n="opt-all-statuses">كل الحالات</option>
+                            <option value="Active" data-i18n="opt-status-active">نشط (Active)</option>
+                            <option value="Pending" data-i18n="opt-status-pending">معلق (Pending)</option>
+                            <option value="Renewed" data-i18n="opt-status-renewed">مجدد (Renewed)</option>
+                            <option value="Expired" data-i18n="opt-status-expired">منتهي (Expired)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="contractsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="com-th-contract-num">رقم العقد</th>
+                                <th data-i18n="com-th-client">العميل</th>
+                                <th data-i18n="com-th-val">قيمة العقد</th>
+                                <th data-i18n="com-th-dates">الفترة الزمنية</th>
+                                <th data-i18n="com-th-status">الحالة</th>
+                                <th data-i18n="com-th-dispute">النزاعات</th>
+                                <th data-i18n="com-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contractsList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل العقود...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Leads -->
+        <div class="tab-pane fade" id="leads-tab-content" role="tabpanel" aria-labelledby="leads-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="leadSearch" class="form-control form-control-glass" placeholder="البحث في العملاء المحتملين..." onkeyup="filterLeads()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="leadStatusFilter" class="form-control form-control-glass" onchange="filterLeads()">
+                            <option value="" data-i18n="opt-all-leads">كل الحالات</option>
+                            <option value="New" data-i18n="opt-lead-new">جديد (New)</option>
+                            <option value="InProgress" data-i18n="opt-lead-inprogress">قيد التفاوض (In Progress)</option>
+                            <option value="Won" data-i18n="opt-lead-won">مكتمل/ناجح (Won)</option>
+                            <option value="Lost" data-i18n="opt-lead-lost">خاسر (Lost)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="leadsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="com-th-lead-name">الصفقة / العميل المحتمل</th>
+                                <th data-i18n="com-th-source">المصدر</th>
+                                <th data-i18n="com-th-est-val">القيمة المتوقعة</th>
+                                <th data-i18n="com-th-cac-cost">تكلفة الجذب</th>
+                                <th data-i18n="com-th-status">الحالة</th>
+                                <th data-i18n="com-th-created">تاريخ الإنشاء</th>
+                                <th data-i18n="com-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل العملاء المحتملين...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contract Add/Edit Modal -->
+<div class="modal fade" id="contractModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="contractModalTitle" data-i18n="com-modal-title-add-contract">إضافة عقد جديد</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="contractForm" onsubmit="saveContract(event)">
+                <input type="hidden" id="contractId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="clientNameAr" class="form-label small" data-i18n="lbl-client-ar">اسم العميل (بالعربية)</label>
+                        <input type="text" class="form-control form-control-glass" id="clientNameAr" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="clientNameEn" class="form-label small" data-i18n="lbl-client-en">اسم العميل (بالإنجليزية)</label>
+                        <input type="text" class="form-control form-control-glass" id="clientNameEn" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="contractNum" class="form-label small" data-i18n="lbl-contract-num">رقم العقد</label>
+                            <input type="text" class="form-control form-control-glass" id="contractNum" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="contractVal" class="form-label small" data-i18n="lbl-contract-val">قيمة العقد</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="contractVal" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="startDate" class="form-label small" data-i18n="lbl-start-date">تاريخ البدء</label>
+                            <input type="date" class="form-control form-control-glass" id="startDate" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="endDate" class="form-label small" data-i18n="lbl-end-date">تاريخ الانتهاء</label>
+                            <input type="date" class="form-control form-control-glass" id="endDate" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="prepDate" class="form-label small" data-i18n="lbl-prep-date">تاريخ الإعداد</label>
+                            <input type="date" class="form-control form-control-glass" id="prepDate" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="activeDate" class="form-label small" data-i18n="lbl-active-date">تاريخ التفعيل</label>
+                            <input type="date" class="form-control form-control-glass" id="activeDate">
+                        </div>
+                    </div>
+                    <div class="row align-items-center">
+                        <div class="col-6">
+                            <label for="contractStatus" class="form-label small" data-i18n="lbl-status">الحالة</label>
+                            <select class="form-control form-control-glass" id="contractStatus" required>
+                                <option value="Active">Active (نشط)</option>
+                                <option value="Pending">Pending (معلق)</option>
+                                <option value="Renewed">Renewed (مجدد)</option>
+                                <option value="Expired">Expired (منتهي)</option>
+                            </select>
+                        </div>
+                        <div class="col-6 pt-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isDisputed">
+                                <label class="form-check-label small" for="isDisputed" data-i18n="lbl-is-disputed">نزاع قانوني قائم</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Lead Add/Edit Modal -->
+<div class="modal fade" id="leadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="leadModalTitle" data-i18n="com-modal-title-add-lead">إضافة عميل محتمل</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="leadForm" onsubmit="saveLead(event)">
+                <input type="hidden" id="leadId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="leadName" class="form-label small" data-i18n="lbl-lead-name">اسم العميل المحتمل / الصفقة</label>
+                        <input type="text" class="form-control form-control-glass" id="leadName" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="leadSource" class="form-label small" data-i18n="lbl-source">مصدر العميل</label>
+                            <select class="form-control form-control-glass" id="leadSource" required>
+                                <option value="Campaign">Campaign (حملة إعلانية)</option>
+                                <option value="Referral">Referral (ترشيح)</option>
+                                <option value="Web">Web (موقع إلكتروني)</option>
+                                <option value="Direct">Direct (تواصل مباشر)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="leadStatus" class="form-label small" data-i18n="lbl-status">الحالة</label>
+                            <select class="form-control form-control-glass" id="leadStatus" required>
+                                <option value="New">New (جديد)</option>
+                                <option value="InProgress">InProgress (قيد المعالجة)</option>
+                                <option value="Won">Won (مكتمل بنجاح)</option>
+                                <option value="Lost">Lost (خاسر)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="estValue" class="form-label small" data-i18n="lbl-est-val">القيمة المتوقعة</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="estValue" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="cacCost" class="form-label small" data-i18n="lbl-cac-cost">تكلفة جذب العميل</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="cacCost" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allContracts = [];
+        let allLeads = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadContracts();
+            loadLeads();
+        });
+
+        // ───────── Contracts CRUD ─────────
+        async function loadContracts() {
+            try {
+                const res = await fetch('/api/commercial/contracts');
+                if (res.ok) {
+                    allContracts = await res.json();
+                    renderContracts(allContracts);
+                }
+            } catch (err) {
+                console.error("Error loading contracts:", err);
+            }
+        }
+
+        function renderContracts(list) {
+            const container = document.getElementById("contractsList");
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!list.length) {
+                container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted" data-i18n="no-contracts">لا يوجد عقود مسجلة</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = list.map(c => {
+                const name = isAr ? c.clientNameAr : c.clientNameEn;
+                const startStr = new Date(c.startDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const endStr = new Date(c.endDate).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const badgeColor = c.status === 'Active' ? 'badge-success' : c.status === 'Renewed' ? 'badge-info' : c.status === 'Expired' ? 'badge-danger' : 'badge-warning';
+
+                return `
+                    <tr>
+                        <td class="fw-bold">${c.contractNumber}</td>
+                        <td>${name}</td>
+                        <td class="text-neon fw-bold">${c.value.toLocaleString(isAr ? 'ar-SA' : 'en-US')} ر.س</td>
+                        <td><small class="text-muted">${startStr} - ${endStr}</small></td>
+                        <td><span class="badge ${badgeColor}">${c.status}</span></td>
+                        <td>
+                            ${c.isDisputed ? 
+                                `<span class="badge badge-danger" data-i18n="disputed"><i class="bi bi-exclamation-triangle me-1"></i>نزاع قائم</span>` : 
+                                `<span class="badge badge-success" data-i18n="no-disputes"><i class="bi bi-check-circle me-1"></i>سليم</span>`
+                            }
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-light me-1" onclick="editContract(${c.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteContract(${c.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterContracts() {
+            const search = document.getElementById("contractSearch").value.toLowerCase();
+            const status = document.getElementById("contractStatusFilter").value;
+
+            const filtered = allContracts.filter(c => {
+                const matchesSearch = c.clientNameEn.toLowerCase().includes(search) || c.clientNameAr.toLowerCase().includes(search) || c.contractNumber.toLowerCase().includes(search);
+                const matchesStatus = !status || c.status === status;
+                return matchesSearch && matchesStatus;
+            });
+            renderContracts(filtered);
+        }
+
+        function openAddContractModal() {
+            document.getElementById("contractForm").reset();
+            document.getElementById("contractId").value = '';
+            document.getElementById("startDate").value = new Date().toISOString().substring(0, 10);
+            document.getElementById("endDate").value = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().substring(0, 10);
+            document.getElementById("prepDate").value = new Date().toISOString().substring(0, 10);
+            document.getElementById("contractModalTitle").setAttribute("data-i18n", "com-modal-title-add-contract");
+            const modal = new bootstrap.Modal(document.getElementById("contractModal"));
+            modal.show();
+        }
+
+        async function editContract(id) {
+            try {
+                const res = await fetch(`/api/commercial/contracts/${id}`);
+                if (res.ok) {
+                    const c = await res.json();
+                    document.getElementById("contractId").value = c.id;
+                    document.getElementById("clientNameAr").value = c.clientNameAr;
+                    document.getElementById("clientNameEn").value = c.clientNameEn;
+                    document.getElementById("contractNum").value = c.contractNumber;
+                    document.getElementById("contractVal").value = c.value;
+                    document.getElementById("startDate").value = c.startDate.substring(0, 10);
+                    document.getElementById("endDate").value = c.endDate.substring(0, 10);
+                    document.getElementById("prepDate").value = c.preparationDate.substring(0, 10);
+                    document.getElementById("activeDate").value = c.activeDate ? c.activeDate.substring(0, 10) : '';
+                    document.getElementById("contractStatus").value = c.status;
+                    document.getElementById("isDisputed").checked = c.isDisputed;
+
+                    document.getElementById("contractModalTitle").setAttribute("data-i18n", "com-modal-title-edit-contract");
+                    const modal = new bootstrap.Modal(document.getElementById("contractModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading contract for edit:", err);
+            }
+        }
+
+        async function saveContract(event) {
+            event.preventDefault();
+            const id = document.getElementById("contractId").value;
+            const activeVal = document.getElementById("activeDate").value;
+
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                clientNameAr: document.getElementById("clientNameAr").value,
+                clientNameEn: document.getElementById("clientNameEn").value,
+                contractNumber: document.getElementById("contractNum").value,
+                value: parseFloat(document.getElementById("contractVal").value),
+                startDate: new Date(document.getElementById("startDate").value),
+                endDate: new Date(document.getElementById("endDate").value),
+                preparationDate: new Date(document.getElementById("prepDate").value),
+                activeDate: activeVal ? new Date(activeVal) : null,
+                status: document.getElementById("contractStatus").value,
+                isDisputed: document.getElementById("isDisputed").checked
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/commercial/contracts/${id}` : '/api/commercial/contracts';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("contractModal")).hide();
+                    loadContracts();
+                }
+            } catch (err) {
+                console.error("Error saving contract:", err);
+            }
+        }
+
+        async function deleteContract(id) {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا العقد؟" : "Are you sure you want to delete this contract?")) return;
+
+            try {
+                const res = await fetch(`/api/commercial/contracts/${id}`, { method: 'DELETE' });
+                if (res.ok) loadContracts();
+            } catch (err) {
+                console.error("Error deleting contract:", err);
+            }
+        }
+
+        // ───────── Leads CRUD ─────────
+        async function loadLeads() {
+            try {
+                const res = await fetch('/api/commercial/leads');
+                if (res.ok) {
+                    allLeads = await res.json();
+                    renderLeads(allLeads);
+                }
+            } catch (err) {
+                console.error("Error loading leads:", err);
+            }
+        }
+
+        function renderLeads(list) {
+            const container = document.getElementById("leadsList");
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!list.length) {
+                container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted" data-i18n="no-leads">لا يوجد عملاء محتملين مسجلين</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = list.map(l => {
+                const dateStr = new Date(l.createdAt).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const badgeColor = l.status === 'Won' ? 'badge-success' : l.status === 'Lost' ? 'badge-danger' : l.status === 'New' ? 'badge-warning' : 'badge-info';
+
+                return `
+                    <tr>
+                        <td class="fw-bold">${l.leadName}</td>
+                        <td>${l.source}</td>
+                        <td class="text-neon fw-bold">${l.estimatedValue.toLocaleString(isAr ? 'ar-SA' : 'en-US')} ر.س</td>
+                        <td>${l.acquisitionCost.toLocaleString(isAr ? 'ar-SA' : 'en-US')} ر.س</td>
+                        <td><span class="badge ${badgeColor}">${l.status}</span></td>
+                        <td>${dateStr}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-light me-1" onclick="editLead(${l.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLead(${l.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterLeads() {
+            const search = document.getElementById("leadSearch").value.toLowerCase();
+            const status = document.getElementById("leadStatusFilter").value;
+
+            const filtered = allLeads.filter(l => {
+                const matchesSearch = l.leadName.toLowerCase().includes(search) || l.source.toLowerCase().includes(search);
+                const matchesStatus = !status || l.status === status;
+                return matchesSearch && matchesStatus;
+            });
+            renderLeads(filtered);
+        }
+
+        function openAddLeadModal() {
+            document.getElementById("leadForm").reset();
+            document.getElementById("leadId").value = '';
+            document.getElementById("leadModalTitle").setAttribute("data-i18n", "com-modal-title-add-lead");
+            const modal = new bootstrap.Modal(document.getElementById("leadModal"));
+            modal.show();
+        }
+
+        async function editLead(id) {
+            try {
+                const res = await fetch(`/api/commercial/leads/${id}`);
+                if (res.ok) {
+                    const l = await res.json();
+                    document.getElementById("leadId").value = l.id;
+                    document.getElementById("leadName").value = l.leadName;
+                    document.getElementById("leadSource").value = l.source;
+                    document.getElementById("leadStatus").value = l.status;
+                    document.getElementById("estValue").value = l.estimatedValue;
+                    document.getElementById("cacCost").value = l.acquisitionCost;
+
+                    document.getElementById("leadModalTitle").setAttribute("data-i18n", "com-modal-title-edit-lead");
+                    const modal = new bootstrap.Modal(document.getElementById("leadModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading lead for edit:", err);
+            }
+        }
+
+        async function saveLead(event) {
+            event.preventDefault();
+            const id = document.getElementById("leadId").value;
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                leadName: document.getElementById("leadName").value,
+                source: document.getElementById("leadSource").value,
+                status: document.getElementById("leadStatus").value,
+                estimatedValue: parseFloat(document.getElementById("estValue").value),
+                acquisitionCost: parseFloat(document.getElementById("cacCost").value)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/commercial/leads/${id}` : '/api/commercial/leads';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("leadModal")).hide();
+                    loadLeads();
+                }
+            } catch (err) {
+                console.error("Error saving lead:", err);
+            }
+        }
+
+        async function deleteLead(id) {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذا العميل المحتمل؟" : "Are you sure you want to delete this lead?")) return;
+
+            try {
+                const res = await fetch(`/api/commercial/leads/${id}`, { method: 'DELETE' });
+                if (res.ok) loadLeads();
+            } catch (err) {
+                console.error("Error deleting lead:", err);
+            }
+        }
+    </script>
+}

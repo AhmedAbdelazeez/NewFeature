@@ -52,6 +52,8 @@ builder.Services.AddScoped<IItService, ItService>();
 builder.Services.AddScoped<IHseService, HseService>();
 builder.Services.AddScoped<IProcurementService, ProcurementService>();
 builder.Services.AddScoped<IStrategyService, StrategyService>();
+builder.Services.AddScoped<IFinanceService, FinanceService>();
+builder.Services.AddScoped<ICommercialService, CommercialService>();
 
 
 builder.Services.AddRazorPages();

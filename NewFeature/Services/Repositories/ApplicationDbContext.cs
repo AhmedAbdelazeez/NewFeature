@@ -41,6 +41,10 @@ namespace NewFeature.Services.Repositories
         public DbSet<InventoryItem> InventoryItems { get; set; } = null!;
         public DbSet<StrategicGoal> StrategicGoals { get; set; } = null!;
         public DbSet<PmoInitiative> PmoInitiatives { get; set; } = null!;
+        public DbSet<FinanceTransaction> FinanceTransactions { get; set; } = null!;
+        public DbSet<FinanceBudget> FinanceBudgets { get; set; } = null!;
+        public DbSet<CommercialContract> CommercialContracts { get; set; } = null!;
+        public DbSet<CommercialLead> CommercialLeads { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -97,6 +101,30 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<PmoInitiative>()
                 .Property(pi => pi.Budget)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinanceTransaction>()
+                .Property(ft => ft.Amount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinanceBudget>()
+                .Property(fb => fb.AllocatedAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinanceBudget>()
+                .Property(fb => fb.SpentAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<CommercialContract>()
+                .Property(cc => cc.Value)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<CommercialLead>()
+                .Property(cl => cl.EstimatedValue)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<CommercialLead>()
+                .Property(cl => cl.AcquisitionCost)
                 .HasPrecision(18, 2);
 
             // Cascade Deletes Mitigation (Preventing cycles in SQL Server)

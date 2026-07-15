@@ -818,6 +818,60 @@ namespace NewFeature.Services.Repositories
                 );
                 context.SaveChanges();
             }
+
+            // Seed Finance Transactions
+            if (!context.FinanceTransactions.Any())
+            {
+                context.FinanceTransactions.AddRange(
+                    new FinanceTransaction { DescriptionEn = "Monthly Passenger Ticket Revenues", DescriptionAr = "إيرادات بيع تذاكر الركاب الشهرية", Amount = 1200000m, Type = "Revenue", Date = DateTime.UtcNow.AddDays(-10), CategoryEn = "Operations", CategoryAr = "العمليات" },
+                    new FinanceTransaction { DescriptionEn = "VIP Bus Rental Contract", DescriptionAr = "عقد تأجير حافلات كبار الشخصيات", Amount = 350000m, Type = "Revenue", Date = DateTime.UtcNow.AddDays(-5), CategoryEn = "Operations", CategoryAr = "العمليات" },
+                    new FinanceTransaction { DescriptionEn = "Workshop Spare Parts Purchase", DescriptionAr = "شراء قطع غيار للورشة الفنية", Amount = 150000m, Type = "Expense", Date = DateTime.UtcNow.AddDays(-12), CategoryEn = "Fleet", CategoryAr = "الأسطول" },
+                    new FinanceTransaction { DescriptionEn = "Staff Fuel Allowance", DescriptionAr = "مصروفات محروقات وديزل الحافلات", Amount = 80000m, Type = "Expense", Date = DateTime.UtcNow.AddDays(-8), CategoryEn = "Operations", CategoryAr = "العمليات" },
+                    new FinanceTransaction { DescriptionEn = "Office Building Monthly Rent", DescriptionAr = "إيجار مبنى المكاتب الرئيسي", Amount = 45000m, Type = "Expense", Date = DateTime.UtcNow.AddDays(-15), CategoryEn = "General", CategoryAr = "عام" },
+                    new FinanceTransaction { DescriptionEn = "Depreciation of Fleet Assets", DescriptionAr = "إهلاك أصول أسطول المركبات", Amount = 60000m, Type = "Expense", Date = DateTime.UtcNow.AddDays(-2), CategoryEn = "Depreciation", CategoryAr = "إهلاك" },
+                    new FinanceTransaction { DescriptionEn = "Fixed Assets - New Buses Purchase", DescriptionAr = "أصول ثابتة - شراء حافلات جديدة", Amount = 5000000m, Type = "Asset", Date = DateTime.UtcNow.AddMonths(-1), CategoryEn = "Assets", CategoryAr = "الأصول" },
+                    new FinanceTransaction { DescriptionEn = "Bank Loan Balance", DescriptionAr = "التزام القرض البنكي المتبقي", Amount = 2000000m, Type = "Liability", Date = DateTime.UtcNow.AddMonths(-2), CategoryEn = "Liabilities", CategoryAr = "الالتزامات" },
+                    new FinanceTransaction { DescriptionEn = "Outstanding Client Receivables", DescriptionAr = "مستحقات معلقة تحت التحصيل من العملاء", Amount = 400000m, Type = "Receivables", Date = DateTime.UtcNow.AddDays(-1), CategoryEn = "Receivables", CategoryAr = "الذمم المدينة" }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Finance Budgets
+            if (!context.FinanceBudgets.Any())
+            {
+                context.FinanceBudgets.AddRange(
+                    new FinanceBudget { DepartmentNameEn = "Operations", DepartmentNameAr = "التشغيل والعمليات", AllocatedAmount = 1500000m, SpentAmount = 1420000m, Year = DateTime.UtcNow.Year },
+                    new FinanceBudget { DepartmentNameEn = "Information Technology", DepartmentNameAr = "تقنية المعلومات", AllocatedAmount = 500000m, SpentAmount = 520000m, Year = DateTime.UtcNow.Year },
+                    new FinanceBudget { DepartmentNameEn = "Human Resources", DepartmentNameAr = "الموارد البشرية", AllocatedAmount = 300000m, SpentAmount = 280000m, Year = DateTime.UtcNow.Year },
+                    new FinanceBudget { DepartmentNameEn = "Fleet Maintenance", DepartmentNameAr = "صيانة الأسطول", AllocatedAmount = 800000m, SpentAmount = 790000m, Year = DateTime.UtcNow.Year }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Commercial Contracts
+            if (!context.CommercialContracts.Any())
+            {
+                context.CommercialContracts.AddRange(
+                    new CommercialContract { ClientNameEn = "Al-Mashair Pilgrims Co", ClientNameAr = "شركة حجاج المشاعر", ContractNumber = "B2B-2026-091", Value = 800000m, StartDate = DateTime.UtcNow.AddMonths(-3), EndDate = DateTime.UtcNow.AddMonths(9), PreparationDate = DateTime.UtcNow.AddMonths(-4), ActiveDate = DateTime.UtcNow.AddMonths(-3), Status = "Active", IsDisputed = false },
+                    new CommercialContract { ClientNameEn = "Makkah Transport Authority", ClientNameAr = "هيئة النقل بمكة المكرمة", ContractNumber = "B2B-2026-092", Value = 1500000m, StartDate = DateTime.UtcNow.AddMonths(-1), EndDate = DateTime.UtcNow.AddMonths(11), PreparationDate = DateTime.UtcNow.AddMonths(-2), ActiveDate = DateTime.UtcNow.AddMonths(-1), Status = "Active", IsDisputed = false },
+                    new CommercialContract { ClientNameEn = "Zamazem Water Company", ClientNameAr = "شركة زمازمة للمياه", ContractNumber = "B2B-2026-093", Value = 450000m, StartDate = DateTime.UtcNow.AddMonths(-6), EndDate = DateTime.UtcNow.AddMonths(-1), PreparationDate = DateTime.UtcNow.AddMonths(-7), ActiveDate = DateTime.UtcNow.AddMonths(-6), Status = "Renewed", IsDisputed = false },
+                    new CommercialContract { ClientNameEn = "Hajj Service Alliance", ClientNameAr = "تحالف خدمات الحج والعمرة", ContractNumber = "B2B-2026-094", Value = 600000m, StartDate = DateTime.UtcNow.AddDays(-25), EndDate = DateTime.UtcNow.AddMonths(5), PreparationDate = DateTime.UtcNow.AddDays(-40), ActiveDate = DateTime.UtcNow.AddDays(-25), Status = "Active", IsDisputed = true },
+                    new CommercialContract { ClientNameEn = "Rawafed Logistics Group", ClientNameAr = "مجموعة روافد للخدمات اللوجستية", ContractNumber = "B2B-2026-095", Value = 300000m, StartDate = DateTime.UtcNow.AddMonths(-12), EndDate = DateTime.UtcNow.AddMonths(-2), PreparationDate = DateTime.UtcNow.AddMonths(-13), ActiveDate = DateTime.UtcNow.AddMonths(-12), Status = "Expired", IsDisputed = false }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Commercial Leads
+            if (!context.CommercialLeads.Any())
+            {
+                context.CommercialLeads.AddRange(
+                    new CommercialLead { LeadName = "Umrah VIP Transport Deal", Source = "Campaign", Status = "Won", EstimatedValue = 500000m, AcquisitionCost = 25000m, CreatedAt = DateTime.UtcNow.AddMonths(-2) },
+                    new CommercialLead { LeadName = "Jeddah Airport Shuttle Service", Source = "Referral", Status = "Won", EstimatedValue = 700000m, AcquisitionCost = 35000m, CreatedAt = DateTime.UtcNow.AddMonths(-1) },
+                    new CommercialLead { LeadName = "Hajj Season Catering Bus Rental", Source = "Web", Status = "New", EstimatedValue = 300000m, AcquisitionCost = 5000m, CreatedAt = DateTime.UtcNow.AddDays(-5) },
+                    new CommercialLead { LeadName = "Hotel Staff Daily Commute Contract", Source = "Direct", Status = "InProgress", EstimatedValue = 250000m, AcquisitionCost = 10000m, CreatedAt = DateTime.UtcNow.AddDays(-10) }
+                );
+                context.SaveChanges();
+            }
         }
     }
 }

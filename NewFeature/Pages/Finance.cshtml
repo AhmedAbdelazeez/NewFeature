@@ -1,0 +1,478 @@
+@page
+@model FinanceModel
+@{
+    ViewData["Title"] = "Financial Department Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" data-i18n="fin-title" style="font-family: var(--font-outfit);">الإدارة المالية</h1>
+            <p class="text-muted fs-6 mb-0" data-i18n="fin-subtitle">إدارة الحركات المالية، التدفق النقدي، ومراقبة الميزانيات المخصصة للأقسام</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddTransactionModal()" data-i18n="fin-btn-add-tx">إضافة حركة مالية جديدة</button>
+            <button class="btn btn-neon-outline" onclick="openAddBudgetModal()" data-i18n="fin-btn-add-budget">إضافة ميزانية قسم</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="financeTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="tx-tab" data-bs-toggle="tab" data-bs-target="#tx-tab-content" type="button" role="tab" aria-selected="true" data-i18n="tab-fin-tx">الحركات المالية (Transactions)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="budgets-tab" data-bs-toggle="tab" data-bs-target="#budgets-tab-content" type="button" role="tab" aria-selected="false" data-i18n="tab-fin-budgets">ميزانيات الأقسام (Budgets)</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="financeTabsContent">
+        
+        <!-- Tab 1: Transactions -->
+        <div class="tab-pane fade show active" id="tx-tab-content" role="tabpanel" aria-labelledby="tx-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="txSearch" class="form-control form-control-glass" placeholder="البحث في العمليات المالية..." onkeyup="filterTransactions()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="txTypeFilter" class="form-control form-control-glass" onchange="filterTransactions()">
+                            <option value="" data-i18n="opt-all-types">كل الأنواع</option>
+                            <option value="Revenue" data-i18n="opt-type-revenue">إيرادات (Revenue)</option>
+                            <option value="Expense" data-i18n="opt-type-expense">مصاريف (Expense)</option>
+                            <option value="Asset" data-i18n="opt-type-asset">أصول (Asset)</option>
+                            <option value="Liability" data-i18n="opt-type-liability">التزامات (Liability)</option>
+                            <option value="Receivables" data-i18n="opt-type-receivables">ذمم مدينة (Receivables)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="txTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="fin-th-tx-id">رقم العملية</th>
+                                <th data-i18n="fin-th-desc">البيان / الوصف</th>
+                                <th data-i18n="fin-th-amount">المبلغ</th>
+                                <th data-i18n="fin-th-type">النوع</th>
+                                <th data-i18n="fin-th-category">التصنيف</th>
+                                <th data-i18n="fin-th-date">التاريخ</th>
+                                <th data-i18n="fin-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="txList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الحركات المالية...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Budgets -->
+        <div class="tab-pane fade" id="budgets-tab-content" role="tabpanel" aria-labelledby="budgets-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="budgetSearch" class="form-control form-control-glass" placeholder="البحث في ميزانيات الأقسام..." onkeyup="filterBudgets()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="budgetsTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="fin-th-dept-name">اسم القسم</th>
+                                <th data-i18n="fin-th-allocated">الميزانية المعتمدة</th>
+                                <th data-i18n="fin-th-spent">المبلغ المصروف</th>
+                                <th data-i18n="fin-th-variance">نسبة الانحراف</th>
+                                <th data-i18n="fin-th-year">السنة المالئية</th>
+                                <th data-i18n="fin-th-actions" class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budgetsList">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل ميزانيات الأقسام...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Add/Edit Modal -->
+<div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="txModalTitle" data-i18n="fin-modal-title-add-tx">إضافة حركة مالية جديدة</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="txForm" onsubmit="saveTransaction(event)">
+                <input type="hidden" id="txId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="txDescAr" class="form-label small" data-i18n="lbl-desc-ar">الوصف (بالعربية)</label>
+                        <input type="text" class="form-control form-control-glass" id="txDescAr" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="txDescEn" class="form-label small" data-i18n="lbl-desc-en">الوصف (بالإنجليزية)</label>
+                        <input type="text" class="form-control form-control-glass" id="txDescEn" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="txAmount" class="form-label small" data-i18n="lbl-amount">المبلغ</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="txAmount" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="txType" class="form-label small" data-i18n="lbl-type">النوع</label>
+                            <select class="form-control form-control-glass" id="txType" required>
+                                <option value="Revenue">Revenue (إيرادات)</option>
+                                <option value="Expense">Expense (مصاريف)</option>
+                                <option value="Asset">Asset (أصول)</option>
+                                <option value="Liability">Liability (التزامات)</option>
+                                <option value="Receivables">Receivables (ذمم مدينة)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="txDate" class="form-label small" data-i18n="lbl-date">التاريخ</label>
+                        <input type="date" class="form-control form-control-glass" id="txDate" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label for="txCategoryAr" class="form-label small" data-i18n="lbl-category-ar">التصنيف (بالعربية)</label>
+                            <input type="text" class="form-control form-control-glass" id="txCategoryAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="txCategoryEn" class="form-label small" data-i18n="lbl-category-en">التصنيف (بالإنجليزية)</label>
+                            <input type="text" class="form-control form-control-glass" id="txCategoryEn" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Add/Edit Modal -->
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="budgetModalTitle" data-i18n="fin-modal-title-add-budget">إضافة ميزانية قسم</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="budgetForm" onsubmit="saveBudget(event)">
+                <input type="hidden" id="budgetId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="budgetDeptAr" class="form-label small" data-i18n="lbl-dept-ar">اسم القسم (بالعربية)</label>
+                        <input type="text" class="form-control form-control-glass" id="budgetDeptAr" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="budgetDeptEn" class="form-label small" data-i18n="lbl-dept-en">اسم القسم (بالإنجليزية)</label>
+                        <input type="text" class="form-control form-control-glass" id="budgetDeptEn" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="budgetAllocated" class="form-label small" data-i18n="lbl-allocated">الميزانية المعتمدة</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="budgetAllocated" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="budgetSpent" class="form-label small" data-i18n="lbl-spent">المبلغ المصروف</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="budgetSpent" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="budgetYear" class="form-label small" data-i18n="lbl-year">السنة</label>
+                        <input type="number" class="form-control form-control-glass" id="budgetYear" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allTransactions = [];
+        let allBudgets = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadTransactions();
+            loadBudgets();
+        });
+
+        // ───────── Transactions CRUD ─────────
+        async function loadTransactions() {
+            try {
+                const res = await fetch('/api/finance/transactions');
+                if (res.ok) {
+                    allTransactions = await res.json();
+                    renderTransactions(allTransactions);
+                }
+            } catch (err) {
+                console.error("Error loading transactions:", err);
+            }
+        }
+
+        function renderTransactions(list) {
+            const container = document.getElementById("txList");
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!list.length) {
+                container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted" data-i18n="no-tx">لا يوجد حركات مالية مسجلة</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = list.map(t => {
+                const desc = isAr ? t.descriptionAr : t.descriptionEn;
+                const cat = isAr ? t.categoryAr : t.categoryEn;
+                const dateStr = new Date(t.date).toLocaleDateString(isAr ? 'ar-SA' : 'en-US');
+                const badgeColor = t.type === 'Revenue' ? 'badge-success' : t.type === 'Expense' ? 'badge-danger' : 'badge-warning';
+
+                return `
+                    <tr>
+                        <td><span class="text-muted">#</span>${t.id}</td>
+                        <td class="fw-bold">${desc}</td>
+                        <td class="text-neon fw-bold">${t.amount.toLocaleString(isAr ? 'ar-SA' : 'en-US', { minimumFractionDigits: 2 })} ر.س</td>
+                        <td><span class="badge ${badgeColor}">${t.type}</span></td>
+                        <td><span class="text-muted">${cat}</span></td>
+                        <td>${dateStr}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-light me-1" onclick="editTransaction(${t.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction(${t.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterTransactions() {
+            const search = document.getElementById("txSearch").value.toLowerCase();
+            const type = document.getElementById("txTypeFilter").value;
+
+            const filtered = allTransactions.filter(t => {
+                const matchesSearch = t.descriptionEn.toLowerCase().includes(search) || t.descriptionAr.toLowerCase().includes(search) || t.categoryEn.toLowerCase().includes(search) || t.categoryAr.toLowerCase().includes(search);
+                const matchesType = !type || t.type === type;
+                return matchesSearch && matchesType;
+            });
+            renderTransactions(filtered);
+        }
+
+        function openAddTransactionModal() {
+            document.getElementById("txForm").reset();
+            document.getElementById("txId").value = '';
+            document.getElementById("txDate").value = new Date().toISOString().substring(0, 10);
+            document.getElementById("txModalTitle").setAttribute("data-i18n", "fin-modal-title-add-tx");
+            const modal = new bootstrap.Modal(document.getElementById("txModal"));
+            modal.show();
+        }
+
+        async function editTransaction(id) {
+            try {
+                const res = await fetch(`/api/finance/transactions/${id}`);
+                if (res.ok) {
+                    const t = await res.json();
+                    document.getElementById("txId").value = t.id;
+                    document.getElementById("txDescAr").value = t.descriptionAr;
+                    document.getElementById("txDescEn").value = t.descriptionEn;
+                    document.getElementById("txAmount").value = t.amount;
+                    document.getElementById("txType").value = t.type;
+                    document.getElementById("txDate").value = t.date.substring(0, 10);
+                    document.getElementById("txCategoryAr").value = t.categoryAr;
+                    document.getElementById("txCategoryEn").value = t.categoryEn;
+
+                    document.getElementById("txModalTitle").setAttribute("data-i18n", "fin-modal-title-edit-tx");
+                    const modal = new bootstrap.Modal(document.getElementById("txModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading transaction for edit:", err);
+            }
+        }
+
+        async function saveTransaction(event) {
+            event.preventDefault();
+            const id = document.getElementById("txId").value;
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                descriptionAr: document.getElementById("txDescAr").value,
+                descriptionEn: document.getElementById("txDescEn").value,
+                amount: parseFloat(document.getElementById("txAmount").value),
+                type: document.getElementById("txType").value,
+                date: new Date(document.getElementById("txDate").value),
+                categoryAr: document.getElementById("txCategoryAr").value,
+                categoryEn: document.getElementById("txCategoryEn").value
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/finance/transactions/${id}` : '/api/finance/transactions';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("txModal")).hide();
+                    loadTransactions();
+                }
+            } catch (err) {
+                console.error("Error saving transaction:", err);
+            }
+        }
+
+        async function deleteTransaction(id) {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذه الحركة المالية؟" : "Are you sure you want to delete this transaction?")) return;
+
+            try {
+                const res = await fetch(`/api/finance/transactions/${id}`, { method: 'DELETE' });
+                if (res.ok) loadTransactions();
+            } catch (err) {
+                console.error("Error deleting transaction:", err);
+            }
+        }
+
+        // ───────── Budgets CRUD ─────────
+        async function loadBudgets() {
+            try {
+                const res = await fetch('/api/finance/budgets');
+                if (res.ok) {
+                    allBudgets = await res.json();
+                    renderBudgets(allBudgets);
+                }
+            } catch (err) {
+                console.error("Error loading budgets:", err);
+            }
+        }
+
+        function renderBudgets(list) {
+            const container = document.getElementById("budgetsList");
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!list.length) {
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted" data-i18n="no-budgets">لا يوجد ميزانيات مسجلة</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = list.map(b => {
+                const name = isAr ? b.departmentNameAr : b.departmentNameEn;
+                const variance = b.allocatedAmount > 0 ? ((b.allocatedAmount - b.spentAmount) / b.allocatedAmount * 100.0).toFixed(1) : '0';
+                const varColor = parseFloat(variance) < 0 ? 'text-danger' : 'text-success';
+
+                return `
+                    <tr>
+                        <td class="fw-bold">${name}</td>
+                        <td>${b.allocatedAmount.toLocaleString(isAr ? 'ar-SA' : 'en-US')} ر.س</td>
+                        <td>${b.spentAmount.toLocaleString(isAr ? 'ar-SA' : 'en-US')} ر.س</td>
+                        <td><span class="fw-bold ${varColor}">${variance}%</span></td>
+                        <td>${b.year}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-light me-1" onclick="editBudget(${b.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBudget(${b.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterBudgets() {
+            const search = document.getElementById("budgetSearch").value.toLowerCase();
+            const filtered = allBudgets.filter(b => b.departmentNameEn.toLowerCase().includes(search) || b.departmentNameAr.toLowerCase().includes(search));
+            renderBudgets(filtered);
+        }
+
+        function openAddBudgetModal() {
+            document.getElementById("budgetForm").reset();
+            document.getElementById("budgetId").value = '';
+            document.getElementById("budgetYear").value = new Date().getFullYear();
+            document.getElementById("budgetModalTitle").setAttribute("data-i18n", "fin-modal-title-add-budget");
+            const modal = new bootstrap.Modal(document.getElementById("budgetModal"));
+            modal.show();
+        }
+
+        async function editBudget(id) {
+            try {
+                const res = await fetch(`/api/finance/budgets/${id}`);
+                if (res.ok) {
+                    const b = await res.json();
+                    document.getElementById("budgetId").value = b.id;
+                    document.getElementById("budgetDeptAr").value = b.departmentNameAr;
+                    document.getElementById("budgetDeptEn").value = b.departmentNameEn;
+                    document.getElementById("budgetAllocated").value = b.allocatedAmount;
+                    document.getElementById("budgetSpent").value = b.spentAmount;
+                    document.getElementById("budgetYear").value = b.year;
+
+                    document.getElementById("budgetModalTitle").setAttribute("data-i18n", "fin-modal-title-edit-budget");
+                    const modal = new bootstrap.Modal(document.getElementById("budgetModal"));
+                    modal.show();
+                }
+            } catch (err) {
+                console.error("Error loading budget for edit:", err);
+            }
+        }
+
+        async function saveBudget(event) {
+            event.preventDefault();
+            const id = document.getElementById("budgetId").value;
+            const payload = {
+                id: id ? parseInt(id) : 0,
+                departmentNameAr: document.getElementById("budgetDeptAr").value,
+                departmentNameEn: document.getElementById("budgetDeptEn").value,
+                allocatedAmount: parseFloat(document.getElementById("budgetAllocated").value),
+                spentAmount: parseFloat(document.getElementById("budgetSpent").value),
+                year: parseInt(document.getElementById("budgetYear").value)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/finance/budgets/${id}` : '/api/finance/budgets';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("budgetModal")).hide();
+                    loadBudgets();
+                }
+            } catch (err) {
+                console.error("Error saving budget:", err);
+            }
+        }
+
+        async function deleteBudget(id) {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            if (!confirm(isAr ? "هل أنت متأكد من حذف هذه الميزانية؟" : "Are you sure you want to delete this budget?")) return;
+
+            try {
+                const res = await fetch(`/api/finance/budgets/${id}`, { method: 'DELETE' });
+                if (res.ok) loadBudgets();
+            } catch (err) {
+                console.error("Error deleting budget:", err);
+            }
+        }
+    </script>
+}
