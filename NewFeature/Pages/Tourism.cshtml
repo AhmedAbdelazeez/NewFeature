@@ -1,0 +1,540 @@
+@page
+@model TourismModel
+@{
+    ViewData["Title"] = "Tourism Department Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">إدارة السياحة</h1>
+            <p class="text-muted fs-6 mb-0">إدارة حجوزات الفنادق والبرامج والجولات السياحية لضيوف الرحمن</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddBookingModal()">إضافة حجز فندق جديد</button>
+            <button class="btn btn-neon-outline" onclick="openAddTourModal()">إضافة جولة سياحية</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="tourismTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings-tab-content" type="button" role="tab" aria-selected="true">حجوزات الفنادق (Hotel Bookings)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tours-tab" data-bs-toggle="tab" data-bs-target="#tours-tab-content" type="button" role="tab" aria-selected="false">الجولات السياحية (Sightseeing Tours)</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="tourismTabsContent">
+        
+        <!-- Tab 1: Hotel Bookings -->
+        <div class="tab-pane fade show active" id="bookings-tab-content" role="tabpanel" aria-labelledby="bookings-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="bookingSearch" class="form-control form-control-glass" placeholder="البحث في الحجوزات..." onkeyup="filterBookings()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="bookingStatusFilter" class="form-control form-control-glass" onchange="filterBookings()">
+                            <option value="">كل الحالات</option>
+                            <option value="Confirmed">Confirmed (مؤكد)</option>
+                            <option value="Cancelled">Cancelled (ملغي)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="bookingsTable">
+                        <thead>
+                            <tr>
+                                <th>العميل</th>
+                                <th>الفندق</th>
+                                <th>عدد الغرف</th>
+                                <th>تاريخ الوصول</th>
+                                <th>تاريخ المغادرة</th>
+                                <th>القيمة</th>
+                                <th>التقييم</th>
+                                <th>الحالة</th>
+                                <th class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsList">
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الحجوزات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Sightseeing Tours -->
+        <div class="tab-pane fade" id="tours-tab-content" role="tabpanel" aria-labelledby="tours-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="tourSearch" class="form-control form-control-glass" placeholder="البحث في الجولات..." onkeyup="filterTours()">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="toursTable">
+                        <thead>
+                            <tr>
+                                <th>اسم الجولة</th>
+                                <th>المرشد السياحي</th>
+                                <th>تاريخ الجولة</th>
+                                <th>عدد الركاب</th>
+                                <th>مهلة الحجز (ساعة)</th>
+                                <th>الحالة</th>
+                                <th class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="toursList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الجولات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hotel Booking Add/Edit Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="bookingModalTitle">إضافة حجز فندق جديد</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="bookingForm" onsubmit="saveBooking(event)">
+                <input type="hidden" id="bookingId">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="clientAr" class="form-label small">اسم العميل (عربي)</label>
+                            <input type="text" class="form-control form-control-glass" id="clientAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="clientEn" class="form-label small">اسم العميل (إنجليزي)</label>
+                            <input type="text" class="form-control form-control-glass" id="clientEn" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="hotelAr" class="form-label small">اسم الفندق (عربي)</label>
+                            <input type="text" class="form-control form-control-glass" id="hotelAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="hotelEn" class="form-label small">اسم الفندق (إنجليزي)</label>
+                            <input type="text" class="form-control form-control-glass" id="hotelEn" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="roomCount" class="form-label small">عدد الغرف</label>
+                            <input type="number" class="form-control form-control-glass" id="roomCount" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="bookingValue" class="form-label small">قيمة الحجز</label>
+                            <input type="number" step="0.01" class="form-control form-control-glass" id="bookingValue" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="checkIn" class="form-label small">تاريخ الوصول</label>
+                            <input type="date" class="form-control form-control-glass" id="checkIn" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="checkOut" class="form-label small">تاريخ المغادرة</label>
+                            <input type="date" class="form-control form-control-glass" id="checkOut" required>
+                        </div>
+                    </div>
+                    <div class="row align-items-center">
+                        <div class="col-6">
+                            <label for="bookingStatus" class="form-label small">الحالة</label>
+                            <select class="form-control form-control-glass" id="bookingStatus" required>
+                                <option value="Confirmed">Confirmed (مؤكد)</option>
+                                <option value="Cancelled">Cancelled (ملغي)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="guestRating" class="form-label small">تقييم النزيل (1-5)</label>
+                            <input type="number" min="1" max="5" class="form-control form-control-glass" id="guestRating">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-neon">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tour Add/Edit Modal -->
+<div class="modal fade" id="tourModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="tourModalTitle">إضافة جولة سياحية جديدة</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="tourForm" onsubmit="saveTour(event)">
+                <input type="hidden" id="tourId">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="tourNameAr" class="form-label small">اسم الجولة (عربي)</label>
+                            <input type="text" class="form-control form-control-glass" id="tourNameAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="tourNameEn" class="form-label small">اسم الجولة (إنجليزي)</label>
+                            <input type="text" class="form-control form-control-glass" id="tourNameEn" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="guideAr" class="form-label small">المرشد السياحي (عربي)</label>
+                            <input type="text" class="form-control form-control-glass" id="guideAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="guideEn" class="form-label small">المرشد السياحي (إنجليزي)</label>
+                            <input type="text" class="form-control form-control-glass" id="guideEn" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="tourDate" class="form-label small">تاريخ الجولة</label>
+                            <input type="datetime-local" class="form-control form-control-glass" id="tourDate" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="passengerCount" class="form-label small">عدد الركاب</label>
+                            <input type="number" class="form-control form-control-glass" id="passengerCount" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="bookingLeadTime" class="form-label small">مهلة حجز الجولة (ساعة)</label>
+                            <input type="number" step="0.1" class="form-control form-control-glass" id="bookingLeadTime" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="tourStatus" class="form-label small">الحالة</label>
+                            <select class="form-control form-control-glass" id="tourStatus" required>
+                                <option value="Scheduled">Scheduled (مجدولة)</option>
+                                <option value="Completed">Completed (منفذة)</option>
+                                <option value="Cancelled">Cancelled (ملغية)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-neon">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allBookings = [];
+        let allTours = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadBookings();
+            loadTours();
+        });
+
+        // ================= Bookings operations =================
+        async function loadBookings() {
+            try {
+                const res = await fetch("/api/tourism/bookings");
+                if (res.ok) {
+                    allBookings = await res.json();
+                    renderBookings(allBookings);
+                }
+            } catch (err) {
+                console.error("Error loading bookings:", err);
+            }
+        }
+
+        function renderBookings(list) {
+            const tbody = document.getElementById("bookingsList");
+            if (!tbody) return;
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">لا يوجد حجوزات فندقية حالياً</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(b => `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${b.clientNameAr}</div>
+                        <div class="small text-muted">${b.clientNameEn}</div>
+                    </td>
+                    <td>
+                        <div>${b.hotelNameAr}</div>
+                        <div class="small text-muted">${b.hotelNameEn}</div>
+                    </td>
+                    <td>${b.roomCount}</td>
+                    <td>${new Date(b.checkInDate).toLocaleDateString("ar-SA")}</td>
+                    <td>${new Date(b.checkOutDate).toLocaleDateString("ar-SA")}</td>
+                    <td class="text-neon font-monospace">${b.value.toLocaleString()} ر.س</td>
+                    <td>${b.guestRating ? '⭐'.repeat(b.guestRating) : '<span class="text-muted">-</span>'}</td>
+                    <td>
+                        <span class="badge ${b.status === 'Confirmed' ? 'bg-success-glass text-success' : 'bg-danger-glass text-danger'} px-2.5 py-1">
+                            ${b.status}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-glass text-warning me-1" onclick="editBooking(${b.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-glass text-danger" onclick="deleteBooking(${b.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function filterBookings() {
+            const query = document.getElementById("bookingSearch").value.toLowerCase();
+            const status = document.getElementById("bookingStatusFilter").value;
+            const filtered = allBookings.filter(b => {
+                const matchQuery = b.clientNameAr.toLowerCase().includes(query) || b.clientNameEn.toLowerCase().includes(query) || b.hotelNameAr.toLowerCase().includes(query) || b.hotelNameEn.toLowerCase().includes(query);
+                const matchStatus = status === "" || b.status === status;
+                return matchQuery && matchStatus;
+            });
+            renderBookings(filtered);
+        }
+
+        function openAddBookingModal() {
+            document.getElementById("bookingModalTitle").innerText = "إضافة حجز فندق جديد";
+            document.getElementById("bookingId").value = "";
+            document.getElementById("bookingForm").reset();
+            new bootstrap.Modal(document.getElementById("bookingModal")).show();
+        }
+
+        async function editBooking(id) {
+            try {
+                const res = await fetch(`/api/tourism/bookings/${id}`);
+                if (res.ok) {
+                    const b = await res.json();
+                    document.getElementById("bookingModalTitle").innerText = "تعديل حجز الفندق";
+                    document.getElementById("bookingId").value = b.id;
+                    document.getElementById("clientAr").value = b.clientNameAr;
+                    document.getElementById("clientEn").value = b.clientNameEn;
+                    document.getElementById("hotelAr").value = b.hotelNameAr;
+                    document.getElementById("hotelEn").value = b.hotelNameEn;
+                    document.getElementById("roomCount").value = b.roomCount;
+                    document.getElementById("bookingValue").value = b.value;
+                    document.getElementById("checkIn").value = b.checkInDate.substring(0, 10);
+                    document.getElementById("checkOut").value = b.checkOutDate.substring(0, 10);
+                    document.getElementById("bookingStatus").value = b.status;
+                    document.getElementById("guestRating").value = b.guestRating || "";
+                    new bootstrap.Modal(document.getElementById("bookingModal")).show();
+                }
+            } catch (err) {
+                console.error("Error editing booking:", err);
+            }
+        }
+
+        async function saveBooking(e) {
+            e.preventDefault();
+            const id = document.getElementById("bookingId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                clientNameAr: document.getElementById("clientAr").value,
+                clientNameEn: document.getElementById("clientEn").value,
+                hotelNameAr: document.getElementById("hotelAr").value,
+                hotelNameEn: document.getElementById("hotelEn").value,
+                roomCount: parseInt(document.getElementById("roomCount").value),
+                value: parseFloat(document.getElementById("bookingValue").value),
+                checkInDate: new Date(document.getElementById("checkIn").value).toISOString(),
+                checkOutDate: new Date(document.getElementById("checkOut").value).toISOString(),
+                status: document.getElementById("bookingStatus").value,
+                guestRating: document.getElementById("guestRating").value ? parseInt(document.getElementById("guestRating").value) : null
+            };
+
+            try {
+                let res;
+                if (id) {
+                    res = await fetch(`/api/tourism/bookings/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                } else {
+                    res = await fetch("/api/tourism/bookings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                }
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("bookingModal")).hide();
+                    loadBookings();
+                }
+            } catch (err) {
+                console.error("Error saving booking:", err);
+            }
+        }
+
+        async function deleteBooking(id) {
+            if (!confirm("هل أنت متأكد من حذف هذا الحجز؟")) return;
+            try {
+                const res = await fetch(`/api/tourism/bookings/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadBookings();
+                }
+            } catch (err) {
+                console.error("Error deleting booking:", err);
+            }
+        }
+
+        // ================= Tours operations =================
+        async function loadTours() {
+            try {
+                const res = await fetch("/api/tourism/tours");
+                if (res.ok) {
+                    allTours = await res.json();
+                    renderTours(allTours);
+                }
+            } catch (err) {
+                console.error("Error loading tours:", err);
+            }
+        }
+
+        function renderTours(list) {
+            const tbody = document.getElementById("toursList");
+            if (!tbody) return;
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">لا يوجد جولات سياحية حالياً</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(t => `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${t.tourNameAr}</div>
+                        <div class="small text-muted">${t.tourNameEn}</div>
+                    </td>
+                    <td>
+                        <div>${t.guideNameAr}</div>
+                        <div class="small text-muted">${t.guideNameEn}</div>
+                    </td>
+                    <td>${new Date(t.date).toLocaleString("ar-SA")}</td>
+                    <td>${t.passengerCount}</td>
+                    <td>${t.bookingLeadTimeHours} ساعة</td>
+                    <td>
+                        <span class="badge ${t.status === 'Completed' ? 'bg-success-glass text-success' : t.status === 'Scheduled' ? 'bg-info-glass text-info' : 'bg-danger-glass text-danger'} px-2.5 py-1">
+                            ${t.status}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-glass text-warning me-1" onclick="editTour(${t.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-glass text-danger" onclick="deleteTour(${t.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function filterTours() {
+            const query = document.getElementById("tourSearch").value.toLowerCase();
+            const filtered = allTours.filter(t => t.tourNameAr.toLowerCase().includes(query) || t.tourNameEn.toLowerCase().includes(query) || t.guideNameAr.toLowerCase().includes(query) || t.guideNameEn.toLowerCase().includes(query));
+            renderTours(filtered);
+        }
+
+        function openAddTourModal() {
+            document.getElementById("tourModalTitle").innerText = "إضافة جولة سياحية جديدة";
+            document.getElementById("tourId").value = "";
+            document.getElementById("tourForm").reset();
+            new bootstrap.Modal(document.getElementById("tourModal")).show();
+        }
+
+        async function editTour(id) {
+            try {
+                const res = await fetch(`/api/tourism/tours/${id}`);
+                if (res.ok) {
+                    const t = await res.json();
+                    document.getElementById("tourModalTitle").innerText = "تعديل الجولة السياحية";
+                    document.getElementById("tourId").value = t.id;
+                    document.getElementById("tourNameAr").value = t.tourNameAr;
+                    document.getElementById("tourNameEn").value = t.tourNameEn;
+                    document.getElementById("guideAr").value = t.guideNameAr;
+                    document.getElementById("guideEn").value = t.guideNameEn;
+                    document.getElementById("tourDate").value = t.date.substring(0, 16);
+                    document.getElementById("passengerCount").value = t.passengerCount;
+                    document.getElementById("bookingLeadTime").value = t.bookingLeadTimeHours;
+                    document.getElementById("tourStatus").value = t.status;
+                    new bootstrap.Modal(document.getElementById("tourModal")).show();
+                }
+            } catch (err) {
+                console.error("Error editing tour:", err);
+            }
+        }
+
+        async function saveTour(e) {
+            e.preventDefault();
+            const id = document.getElementById("tourId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                tourNameAr: document.getElementById("tourNameAr").value,
+                tourNameEn: document.getElementById("tourNameEn").value,
+                guideNameAr: document.getElementById("guideAr").value,
+                guideNameEn: document.getElementById("guideEn").value,
+                date: new Date(document.getElementById("tourDate").value).toISOString(),
+                passengerCount: parseInt(document.getElementById("passengerCount").value),
+                bookingLeadTimeHours: parseFloat(document.getElementById("bookingLeadTime").value),
+                status: document.getElementById("tourStatus").value
+            };
+
+            try {
+                let res;
+                if (id) {
+                    res = await fetch(`/api/tourism/tours/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                } else {
+                    res = await fetch("/api/tourism/tours", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                }
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("tourModal")).hide();
+                    loadTours();
+                }
+            } catch (err) {
+                console.error("Error saving tour:", err);
+            }
+        }
+
+        async function deleteTour(id) {
+            if (!confirm("هل أنت متأكد من حذف هذه الجولة؟")) return;
+            try {
+                const res = await fetch(`/api/tourism/tours/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadTours();
+                }
+            } catch (err) {
+                console.error("Error deleting tour:", err);
+            }
+        }
+    </script>
+}

@@ -872,6 +872,52 @@ namespace NewFeature.Services.Repositories
                 );
                 context.SaveChanges();
             }
+
+            // Seed Tourism Hotel Bookings
+            if (!context.TourismHotelBookings.Any())
+            {
+                context.TourismHotelBookings.AddRange(
+                    new TourismHotelBooking { ClientNameAr = "شركة حجاج ماليزيا", ClientNameEn = "Malaysia Pilgrims Co", HotelNameAr = "شيراتون مكة", HotelNameEn = "Sheraton Makkah", RoomCount = 120, CheckInDate = DateTime.UtcNow.AddDays(-10), CheckOutDate = DateTime.UtcNow.AddDays(-3), Value = 250000m, Status = "Confirmed", GuestRating = 5 },
+                    new TourismHotelBooking { ClientNameAr = "تحالف العمرة التركي", ClientNameEn = "Turkish Umrah Alliance", HotelNameAr = "هيلتون المدينة", HotelNameEn = "Hilton Madinah", RoomCount = 80, CheckInDate = DateTime.UtcNow.AddDays(-5), CheckOutDate = DateTime.UtcNow.AddDays(2), Value = 180000m, Status = "Confirmed", GuestRating = 4 },
+                    new TourismHotelBooking { ClientNameAr = "مجموعة سياحة إندونيسيا", ClientNameEn = "Indonesia Tourism Group", HotelNameAr = "فيرمونت مكة", HotelNameEn = "Fairmont Makkah", RoomCount = 50, CheckInDate = DateTime.UtcNow.AddDays(1), CheckOutDate = DateTime.UtcNow.AddDays(6), Value = 120000m, Status = "Confirmed", GuestRating = null },
+                    new TourismHotelBooking { ClientNameAr = "وكالة السفر المصرية", ClientNameEn = "Egypt Travel Agency", HotelNameAr = "بولمان زمزم", HotelNameEn = "Pulman Zamzam", RoomCount = 40, CheckInDate = DateTime.UtcNow.AddDays(3), CheckOutDate = DateTime.UtcNow.AddDays(8), Value = 90000m, Status = "Cancelled", GuestRating = null }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Tourism Tours
+            if (!context.TourismTours.Any())
+            {
+                context.TourismTours.AddRange(
+                    new TourismTour { TourNameAr = "جولة مكة التاريخية", TourNameEn = "Makkah Historic Sites", GuideNameAr = "أحمد السعيد", GuideNameEn = "Ahmad Al-Saeed", Date = DateTime.UtcNow.AddDays(-5), PassengerCount = 45, BookingLeadTimeHours = 24.0, Status = "Completed" },
+                    new TourismTour { TourNameAr = "جولة المدينة المنورة التاريخية", TourNameEn = "Madinah Historic Sites", GuideNameAr = "خالد عبد الرحمن", GuideNameEn = "Khaled Abdulrahman", Date = DateTime.UtcNow.AddDays(-3), PassengerCount = 38, BookingLeadTimeHours = 36.0, Status = "Completed" },
+                    new TourismTour { TourNameAr = "جولة اليوم الواحد في الطائف", TourNameEn = "Taif Day Tour", GuideNameAr = "ياسر محمود", GuideNameEn = "Yasir Mahmoud", Date = DateTime.UtcNow, PassengerCount = 25, BookingLeadTimeHours = 12.0, Status = "Scheduled" },
+                    new TourismTour { TourNameAr = "جولة مكة التاريخية الثانية", TourNameEn = "Makkah Historic Sites Tour 2", GuideNameAr = "أحمد السعيد", GuideNameEn = "Ahmad Al-Saeed", Date = DateTime.UtcNow.AddDays(1), PassengerCount = 50, BookingLeadTimeHours = 48.0, Status = "Scheduled" }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Operations Daily Plans
+            if (!context.OperationsDailyPlans.Any())
+            {
+                context.OperationsDailyPlans.AddRange(
+                    new OperationsDailyPlan { Date = DateTime.UtcNow.AddDays(-2), ScheduledTripsCount = 120, CompletedTripsCount = 118, FuelEfficiencyIndex = 94.5, PassengerSatisfactionRate = 92.0, Status = "Completed" },
+                    new OperationsDailyPlan { Date = DateTime.UtcNow.AddDays(-1), ScheduledTripsCount = 115, CompletedTripsCount = 112, FuelEfficiencyIndex = 93.8, PassengerSatisfactionRate = 91.5, Status = "Completed" },
+                    new OperationsDailyPlan { Date = DateTime.UtcNow, ScheduledTripsCount = 125, CompletedTripsCount = 122, FuelEfficiencyIndex = 95.0, PassengerSatisfactionRate = 93.0, Status = "InProgress" }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Operations Incidents
+            if (!context.OperationsIncidents.Any())
+            {
+                context.OperationsIncidents.AddRange(
+                    new OperationsIncident { DescriptionAr = "عطل ميكانيكي في الحافلة رقم 4032", DescriptionEn = "Bus #4032 mechanical breakdown", Severity = "Medium", ResponseTimeMinutes = 42.0, Date = DateTime.UtcNow.AddDays(-5), Status = "Resolved" },
+                    new OperationsIncident { DescriptionAr = "تأخر المسار بسبب الازدحام المروري على طريق الحرمين", DescriptionEn = "Route delay due to traffic at Haramain road", Severity = "Low", ResponseTimeMinutes = 15.0, Date = DateTime.UtcNow.AddDays(-3), Status = "Resolved" },
+                    new OperationsIncident { DescriptionAr = "حادث بسيط للحافلة رقم 1029", DescriptionEn = "Bus #1029 minor accident", Severity = "High", ResponseTimeMinutes = 25.0, Date = DateTime.UtcNow, Status = "Resolved" }
+                );
+                context.SaveChanges();
+            }
         }
     }
 }

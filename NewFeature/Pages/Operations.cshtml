@@ -1,0 +1,517 @@
+@page
+@model OperationsModel
+@{
+    ViewData["Title"] = "Operations Department Management";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">إدارة العمليات</h1>
+            <p class="text-muted fs-6 mb-0">مراقبة وإدارة خطط التفويج والتشغيل اليومية وحوادث وأعطال أسطول الحافلات</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-neon" onclick="openAddPlanModal()">إضافة خطة تشغيلية</button>
+            <button class="btn btn-neon-outline" onclick="openAddIncidentModal()">إضافة بلاغ عن حادث/عطل</button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs nav-tabs-glass mb-4" id="operationsTabs" role="tabpanel">
+        <li class="nav-item">
+            <button class="nav-link active" id="plans-tab" data-bs-toggle="tab" data-bs-target="#plans-tab-content" type="button" role="tab" aria-selected="true">خطط التشغيل اليومية (Daily Plans)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="incidents-tab" data-bs-toggle="tab" data-bs-target="#incidents-tab-content" type="button" role="tab" aria-selected="false">الحوادث والأعطال (Incidents)</button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="operationsTabsContent">
+        
+        <!-- Tab 1: Daily Plans -->
+        <div class="tab-pane fade show active" id="plans-tab-content" role="tabpanel" aria-labelledby="plans-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="planSearch" class="form-control form-control-glass" placeholder="البحث في الخطط اليومية..." onkeyup="filterPlans()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="planStatusFilter" class="form-control form-control-glass" onchange="filterPlans()">
+                            <option value="">كل الحالات</option>
+                            <option value="Completed">Completed (مكتملة)</option>
+                            <option value="InProgress">InProgress (قيد التنفيذ)</option>
+                            <option value="Pending">Pending (معلقة)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="plansTable">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>الرحلات المجدولة</th>
+                                <th>الرحلات المكتملة</th>
+                                <th>الالتزام بالخطة</th>
+                                <th>كفاءة استهلاك الوقود</th>
+                                <th>رضا الركاب</th>
+                                <th>الحالة</th>
+                                <th class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="plansList">
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الخطط...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Incidents -->
+        <div class="tab-pane fade" id="incidents-tab-content" role="tabpanel" aria-labelledby="incidents-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="incidentSearch" class="form-control form-control-glass" placeholder="البحث في البلاغات..." onkeyup="filterIncidents()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="incidentStatusFilter" class="form-control form-control-glass" onchange="filterIncidents()">
+                            <option value="">كل الحالات</option>
+                            <option value="Open">Open (مفتوح)</option>
+                            <option value="Resolved">Resolved (محلول)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle" id="incidentsTable">
+                        <thead>
+                            <tr>
+                                <th>الوصف</th>
+                                <th>تاريخ البلاغ</th>
+                                <th>الخطورة</th>
+                                <th>زمن الاستجابة (دقيقة)</th>
+                                <th>الحالة</th>
+                                <th class="text-end">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidentsList">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل البلاغات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Plan Add/Edit Modal -->
+<div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="planModalTitle">إضافة خطة تشغيلية جديدة</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="planForm" onsubmit="savePlan(event)">
+                <input type="hidden" id="planId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="planDate" class="form-label small">التاريخ</label>
+                        <input type="date" class="form-control form-control-glass" id="planDate" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="scheduledTrips" class="form-label small">الرحلات المجدولة</label>
+                            <input type="number" class="form-control form-control-glass" id="scheduledTrips" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="completedTrips" class="form-label small">الرحلات المكتملة</label>
+                            <input type="number" class="form-control form-control-glass" id="completedTrips" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="fuelEfficiency" class="form-label small">كفاءة الوقود (%)</label>
+                            <input type="number" step="0.1" class="form-control form-control-glass" id="fuelEfficiency" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="passengerSatisfaction" class="form-label small">رضا الركاب (%)</label>
+                            <input type="number" step="0.1" class="form-control form-control-glass" id="passengerSatisfaction" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="planStatus" class="form-label small">الحالة</label>
+                        <select class="form-control form-control-glass" id="planStatus" required>
+                            <option value="Pending">Pending (معلقة)</option>
+                            <option value="InProgress">InProgress (قيد التنفيذ)</option>
+                            <option value="Completed">Completed (مكتملة)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-neon">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Incident Add/Edit Modal -->
+<div class="modal fade" id="incidentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title fw-bold" id="incidentModalTitle">إضافة بلاغ عن حادث/عطل</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="incidentForm" onsubmit="saveIncident(event)">
+                <input type="hidden" id="incidentId">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="descAr" class="form-label small">الوصف (عربي)</label>
+                            <input type="text" class="form-control form-control-glass" id="descAr" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="descEn" class="form-label small">الوصف (إنجليزي)</label>
+                            <input type="text" class="form-control form-control-glass" id="descEn" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="incidentDate" class="form-label small">تاريخ البلاغ</label>
+                            <input type="datetime-local" class="form-control form-control-glass" id="incidentDate" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="responseTime" class="form-label small">زمن الاستجابة (دقيقة)</label>
+                            <input type="number" step="0.1" class="form-control form-control-glass" id="responseTime" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="severity" class="form-label small">الخطورة</label>
+                            <select class="form-control form-control-glass" id="severity" required>
+                                <option value="Low">Low (منخفضة)</option>
+                                <option value="Medium">Medium (متوسطة)</option>
+                                <option value="High">High (عالية)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="incidentStatus" class="form-label small">الحالة</label>
+                            <select class="form-control form-control-glass" id="incidentStatus" required>
+                                <option value="Open">Open (مفتوح)</option>
+                                <option value="Resolved">Resolved (محلول)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-neon">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allPlans = [];
+        let allIncidents = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadPlans();
+            loadIncidents();
+        });
+
+        // ================= Daily Plans operations =================
+        async function loadPlans() {
+            try {
+                const res = await fetch("/api/operations/dailyplans");
+                if (res.ok) {
+                    allPlans = await res.json();
+                    renderPlans(allPlans);
+                }
+            } catch (err) {
+                console.error("Error loading daily plans:", err);
+            }
+        }
+
+        function renderPlans(list) {
+            const tbody = document.getElementById("plansList");
+            if (!tbody) return;
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">لا يوجد خطط تشغيلية حالياً</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(p => {
+                const adherence = p.scheduledTripsCount > 0 ? Math.round((p.completedTripsCount / p.scheduledTripsCount) * 100) : 0;
+                return `
+                    <tr>
+                        <td>${new Date(p.date).toLocaleDateString("ar-SA")}</td>
+                        <td>${p.scheduledTripsCount}</td>
+                        <td>${p.completedTripsCount}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">${adherence}%</span>
+                                <div class="progress progress-glass w-100" style="height: 6px;">
+                                    <div class="progress-bar bg-neon" style="width: ${adherence}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${p.fuelEfficiencyIndex}%</td>
+                        <td>${p.passengerSatisfactionRate}%</td>
+                        <td>
+                            <span class="badge ${p.status === 'Completed' ? 'bg-success-glass text-success' : p.status === 'InProgress' ? 'bg-info-glass text-info' : 'bg-warning-glass text-warning'} px-2.5 py-1">
+                                ${p.status}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-glass text-warning me-1" onclick="editPlan(${p.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-glass text-danger" onclick="deletePlan(${p.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function filterPlans() {
+            const query = document.getElementById("planSearch").value;
+            const status = document.getElementById("planStatusFilter").value;
+            const filtered = allPlans.filter(p => {
+                const matchStatus = status === "" || p.status === status;
+                return matchStatus;
+            });
+            renderPlans(filtered);
+        }
+
+        function openAddPlanModal() {
+            document.getElementById("planModalTitle").innerText = "إضافة خطة تشغيلية جديدة";
+            document.getElementById("planId").value = "";
+            document.getElementById("planForm").reset();
+            new bootstrap.Modal(document.getElementById("planModal")).show();
+        }
+
+        async function editPlan(id) {
+            try {
+                const res = await fetch(`/api/operations/dailyplans/${id}`);
+                if (res.ok) {
+                    const p = await res.json();
+                    document.getElementById("planModalTitle").innerText = "تعديل الخطة التشغيلية";
+                    document.getElementById("planId").value = p.id;
+                    document.getElementById("planDate").value = p.date.substring(0, 10);
+                    document.getElementById("scheduledTrips").value = p.scheduledTripsCount;
+                    document.getElementById("completedTrips").value = p.completedTripsCount;
+                    document.getElementById("fuelEfficiency").value = p.fuelEfficiencyIndex;
+                    document.getElementById("passengerSatisfaction").value = p.passengerSatisfactionRate;
+                    document.getElementById("planStatus").value = p.status;
+                    new bootstrap.Modal(document.getElementById("planModal")).show();
+                }
+            } catch (err) {
+                console.error("Error editing daily plan:", err);
+            }
+        }
+
+        async function savePlan(e) {
+            e.preventDefault();
+            const id = document.getElementById("planId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                date: new Date(document.getElementById("planDate").value).toISOString(),
+                scheduledTripsCount: parseInt(document.getElementById("scheduledTrips").value),
+                completedTripsCount: parseInt(document.getElementById("completedTrips").value),
+                fuelEfficiencyIndex: parseFloat(document.getElementById("fuelEfficiency").value),
+                passengerSatisfactionRate: parseFloat(document.getElementById("passengerSatisfaction").value),
+                status: document.getElementById("planStatus").value
+            };
+
+            try {
+                let res;
+                if (id) {
+                    res = await fetch(`/api/operations/dailyplans/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                } else {
+                    res = await fetch("/api/operations/dailyplans", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                }
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("planModal")).hide();
+                    loadPlans();
+                }
+            } catch (err) {
+                console.error("Error saving daily plan:", err);
+            }
+        }
+
+        async function deletePlan(id) {
+            if (!confirm("هل أنت متأكد من حذف هذه الخطة؟")) return;
+            try {
+                const res = await fetch(`/api/operations/dailyplans/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadPlans();
+                }
+            } catch (err) {
+                console.error("Error deleting daily plan:", err);
+            }
+        }
+
+        // ================= Incidents operations =================
+        async function loadIncidents() {
+            try {
+                const res = await fetch("/api/operations/incidents");
+                if (res.ok) {
+                    allIncidents = await res.json();
+                    renderIncidents(allIncidents);
+                }
+            } catch (err) {
+                console.error("Error loading incidents:", err);
+            }
+        }
+
+        function renderIncidents(list) {
+            const tbody = document.getElementById("incidentsList");
+            if (!tbody) return;
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">لا يوجد بلاغات حالياً</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(i => `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${i.descriptionAr}</div>
+                        <div class="small text-muted">${i.descriptionEn}</div>
+                    </td>
+                    <td>${new Date(i.date).toLocaleString("ar-SA")}</td>
+                    <td>
+                        <span class="badge ${i.severity === 'High' ? 'bg-danger-glass text-danger' : i.severity === 'Medium' ? 'bg-warning-glass text-warning' : 'bg-success-glass text-success'} px-2.5 py-1">
+                            ${i.severity}
+                        </span>
+                    </td>
+                    <td>${i.responseTimeMinutes} دقيقة</td>
+                    <td>
+                        <span class="badge ${i.status === 'Resolved' ? 'bg-success-glass text-success' : 'bg-danger-glass text-danger'} px-2.5 py-1">
+                            ${i.status}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-glass text-warning me-1" onclick="editIncident(${i.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-glass text-danger" onclick="deleteIncident(${i.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function filterIncidents() {
+            const query = document.getElementById("incidentSearch").value.toLowerCase();
+            const status = document.getElementById("incidentStatusFilter").value;
+            const filtered = allIncidents.filter(i => {
+                const matchQuery = i.descriptionAr.toLowerCase().includes(query) || i.descriptionEn.toLowerCase().includes(query);
+                const matchStatus = status === "" || i.status === status;
+                return matchQuery && matchStatus;
+            });
+            renderIncidents(filtered);
+        }
+
+        function openAddIncidentModal() {
+            document.getElementById("incidentModalTitle").innerText = "إضافة بلاغ عن حادث/عطل";
+            document.getElementById("incidentId").value = "";
+            document.getElementById("incidentForm").reset();
+            new bootstrap.Modal(document.getElementById("incidentModal")).show();
+        }
+
+        async function editIncident(id) {
+            try {
+                const res = await fetch(`/api/operations/incidents/${id}`);
+                if (res.ok) {
+                    const i = await res.json();
+                    document.getElementById("incidentModalTitle").innerText = "تعديل بلاغ الحادث/العطل";
+                    document.getElementById("incidentId").value = i.id;
+                    document.getElementById("descAr").value = i.descriptionAr;
+                    document.getElementById("descEn").value = i.descriptionEn;
+                    document.getElementById("incidentDate").value = i.date.substring(0, 16);
+                    document.getElementById("responseTime").value = i.responseTimeMinutes;
+                    document.getElementById("severity").value = i.severity;
+                    document.getElementById("incidentStatus").value = i.status;
+                    new bootstrap.Modal(document.getElementById("incidentModal")).show();
+                }
+            } catch (err) {
+                console.error("Error editing incident:", err);
+            }
+        }
+
+        async function saveIncident(e) {
+            e.preventDefault();
+            const id = document.getElementById("incidentId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                descriptionAr: document.getElementById("descAr").value,
+                descriptionEn: document.getElementById("descEn").value,
+                date: new Date(document.getElementById("incidentDate").value).toISOString(),
+                responseTimeMinutes: parseFloat(document.getElementById("responseTime").value),
+                severity: document.getElementById("severity").value,
+                status: document.getElementById("incidentStatus").value
+            };
+
+            try {
+                let res;
+                if (id) {
+                    res = await fetch(`/api/operations/incidents/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                } else {
+                    res = await fetch("/api/operations/incidents", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+                }
+
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById("incidentModal")).hide();
+                    loadIncidents();
+                }
+            } catch (err) {
+                console.error("Error saving incident:", err);
+            }
+        }
+
+        async function deleteIncident(id) {
+            if (!confirm("هل أنت متأكد من حذف هذا البلاغ؟")) return;
+            try {
+                const res = await fetch(`/api/operations/incidents/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadIncidents();
+                }
+            } catch (err) {
+                console.error("Error deleting incident:", err);
+            }
+        }
+    </script>
+}

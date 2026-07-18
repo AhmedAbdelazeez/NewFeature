@@ -45,6 +45,10 @@ namespace NewFeature.Services.Repositories
         public DbSet<FinanceBudget> FinanceBudgets { get; set; } = null!;
         public DbSet<CommercialContract> CommercialContracts { get; set; } = null!;
         public DbSet<CommercialLead> CommercialLeads { get; set; } = null!;
+        public DbSet<TourismHotelBooking> TourismHotelBookings { get; set; } = null!;
+        public DbSet<TourismTour> TourismTours { get; set; } = null!;
+        public DbSet<OperationsDailyPlan> OperationsDailyPlans { get; set; } = null!;
+        public DbSet<OperationsIncident> OperationsIncidents { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -125,6 +129,10 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<CommercialLead>()
                 .Property(cl => cl.AcquisitionCost)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<TourismHotelBooking>()
+                .Property(thb => thb.Value)
                 .HasPrecision(18, 2);
 
             // Cascade Deletes Mitigation (Preventing cycles in SQL Server)
