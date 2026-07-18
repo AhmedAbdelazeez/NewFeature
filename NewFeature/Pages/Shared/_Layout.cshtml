@@ -39,55 +39,41 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Clients" data-i18n="nav-clients">Clients</a>
+                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Index" data-i18n="nav-home">Home</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Projects" data-i18n="nav-projects">Projects</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Vehicles" data-i18n="nav-vehicles">Vehicles</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Routes" data-i18n="nav-routes">Routes</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Trips" data-i18n="nav-trips">Trips</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Compliance" data-i18n="nav-compliance">Compliance</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/OperationalAudits" data-i18n="nav-operationalaudits">Operational Audits</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Employees" data-i18n="nav-employees">Human Resources</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/It" data-i18n="nav-it">IT Department</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Hse" data-i18n="nav-hse">HSE Department</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Procurement" data-i18n="nav-procurement">Procurement</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Strategy" data-i18n="nav-strategy">Strategy</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Finance" data-i18n="nav-finance">Finance</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Commercial" data-i18n="nav-commercial">Commercial</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Tourism" data-i18n="nav-tourism">Tourism</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link nav-link-custom" asp-area="" asp-page="/Operations" data-i18n="nav-operations">Operations</a>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link nav-link-custom dropdown-toggle" href="#" id="departmentsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-i18n="nav-departments">
+                                    Departments
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-glass border-glass shadow-lg" aria-labelledby="departmentsDropdown">
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Clients" data-i18n="nav-clients">Clients</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Projects" data-i18n="nav-projects">Projects</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Fleet" data-i18n="nav-fleet">Fleet Management</a></li>
+                                    <li><hr class="dropdown-divider border-glass"></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Compliance" data-i18n="nav-compliance">Compliance</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/OperationalAudits" data-i18n="nav-operationalaudits">Operational Audits</a></li>
+                                    <li><hr class="dropdown-divider border-glass"></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Employees" data-i18n="nav-employees">Human Resources</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/It" data-i18n="nav-it">IT Department</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Hse" data-i18n="nav-hse">HSE Department</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Procurement" data-i18n="nav-procurement">Procurement</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Strategy" data-i18n="nav-strategy">Strategy</a></li>
+                                    <li><hr class="dropdown-divider border-glass"></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Finance" data-i18n="nav-finance">Finance</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Commercial" data-i18n="nav-commercial">Commercial</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Tourism" data-i18n="nav-tourism">Tourism</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Operations" data-i18n="nav-operations">Operations</a></li>
+                                </ul>
                             </li>
                         }
                     </ul>
+                    <!-- Settings Button (Visible only to Admin role) -->
+                    @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+                    {
+                        <a href="/Users" class="btn btn-neon-outline btn-sm me-2" style="font-weight:700;">
+                            <i class="bi bi-gear-fill me-1"></i> <span data-i18n="nav-settings">Settings</span>
+                        </a>
+                    }
                     <!-- Language Switcher Button -->
                     <button id="langToggleBtn" onclick="toggleLanguage()" class="btn btn-neon-outline btn-sm me-3" style="font-weight:700;">
                         <i class="bi bi-globe me-1"></i> <span id="langToggleText">العربية (AR)</span>
@@ -121,9 +107,13 @@
                 'nav-brand-sub': 'AL MASHAER CO.',
                 'nav-clients': 'Clients',
                 'nav-projects': 'Projects',
+                'nav-home': 'Home',
+                'nav-departments': 'Departments',
+                'nav-settings': 'Settings (User Directory)',
                 'nav-vehicles': 'Vehicles',
                 'nav-routes': 'Routes',
                 'nav-trips': 'Trips',
+                'nav-fleet': 'Fleet Management',
                 'nav-hello': 'Hello',
                 'btn-logout': 'Logout',
                 'btn-cancel': 'Cancel',
@@ -137,8 +127,14 @@
                 'card-projects-desc': 'Oversee client projects, milestones, tasks, dependencies, and resources',
                 'card-projects-btn': 'Manage Projects →',
                 'card-fleet-title': 'Fleet Management',
-                'card-fleet-desc': 'Manage vehicle assets, check maintenance status, license plates, and capacities',
+                'card-fleet-desc': 'Manage fleet assets including vehicles, routes, and trips scheduling',
                 'card-fleet-btn': 'Manage Fleet →',
+                'fleet-title': 'Fleet Management',
+                'fleet-subtitle': 'Manage vehicle assets, route definitions, and trip dispatch scheduling',
+                'card-vehicles-title': 'Vehicle Management',
+                'card-vehicles-desc': 'Manage vehicle assets, check maintenance status, license plates, and capacities',
+                'card-vehicles-btn': 'Manage Vehicles →',
+                'btn-back-dashboard': 'Back to Dashboard',
                 'card-routes-title': 'Route Operations',
                 'card-routes-desc': 'Define routes, starting locations, ending terminals, and distance tracking',
                 'card-routes-btn': 'Manage Routes →',
@@ -148,6 +144,21 @@
                 'card-users-title': 'User Directory & Settings',
                 'card-users-desc': 'Manage personnel profiles, toggle active status, and assign security roles',
                 'card-users-btn': 'Manage Users →',
+                'card-clients-title': 'Client Management',
+                'card-clients-desc': 'Register client accounts, set identification codes, and update contact info',
+                'card-clients-btn': 'Manage Clients →',
+                'card-finance-title': 'Finance Department',
+                'card-finance-desc': 'Manage financial transactions, cash flows, and monitor department-allocated budgets',
+                'card-finance-btn': 'Manage Finance →',
+                'card-commercial-title': 'Commercial Department',
+                'card-commercial-desc': 'Manage commercial B2B contracts, follow up on leads, and track retention rates',
+                'card-commercial-btn': 'Manage Commercial →',
+                'card-tourism-title': 'Tourism Department',
+                'card-tourism-desc': 'Manage hotel bookings, tourist program tours, and itineraries for pilgrims',
+                'card-tourism-btn': 'Manage Tourism →',
+                'card-operations-title': 'Operations Department',
+                'card-operations-desc': 'Monitor daily dispatching plans, operational schedules, and manage fleet incidents',
+                'card-operations-btn': 'Manage Operations →',
 
                 // Clients Page
                 'clients-title': 'Client Management',
@@ -451,9 +462,13 @@
                 'nav-brand-sub': 'شركة رواحل المشاعر',
                 'nav-clients': 'العملاء',
                 'nav-projects': 'المشاريع',
+                'nav-home': 'الرئيسية',
+                'nav-departments': 'الإدارات',
+                'nav-settings': 'دليل المستخدمين',
                 'nav-vehicles': 'المركبات',
                 'nav-routes': 'المسارات',
                 'nav-trips': 'الرحلات',
+                'nav-fleet': 'إدارة الأسطول',
                 'nav-hello': 'أهلاً بك',
                 'btn-logout': 'تسجيل خروج',
                 'btn-cancel': 'إلغاء',
@@ -467,8 +482,14 @@
                 'card-projects-desc': 'متابعة مشاريع العملاء والمعالم والمهام والتبعيات والموارد',
                 'card-projects-btn': 'إدارة المشاريع ←',
                 'card-fleet-title': 'إدارة الأسطول',
-                'card-fleet-desc': 'إدارة أصول المركبات والتحقق من حالة الصيانة ولوحات الترخيص والسعات',
+                'card-fleet-desc': 'إدارة أصول الأسطول بما في ذلك المركبات والمسارات وجداول الرحلات',
                 'card-fleet-btn': 'إدارة الأسطول ←',
+                'fleet-title': 'إدارة الأسطول',
+                'fleet-subtitle': 'إدارة أصول المركبات وتحديد المسارات وجدولة الرحلات',
+                'card-vehicles-title': 'إدارة المركبات',
+                'card-vehicles-desc': 'إدارة أصول المركبات والتحقق من حالة الصيانة ولوحات الترخيص والسعات',
+                'card-vehicles-btn': 'إدارة المركبات ←',
+                'btn-back-dashboard': 'العودة للرئيسية',
                 'card-routes-title': 'إدارة المسارات',
                 'card-routes-desc': 'تحديد المسارات ومواقع البدء ومحطات النهاية وتتبع المسافات',
                 'card-routes-btn': 'إدارة المسارات ←',
@@ -478,6 +499,21 @@
                 'card-users-title': 'دليل المستخدمين والإعدادات',
                 'card-users-desc': 'إدارة ملفات الموظفين وتبديل حالة النشاط وتعيين الأدوار الأمنية',
                 'card-users-btn': 'إدارة المستخدمين ←',
+                'card-clients-title': 'إدارة العملاء',
+                'card-clients-desc': 'تسجيل حسابات العملاء وتعيين رموز التعريف وتحديث معلومات الاتصال',
+                'card-clients-btn': 'إدارة العملاء ←',
+                'card-finance-title': 'الإدارة المالية',
+                'card-finance-desc': 'إدارة الحركات المالية، التدفق النقدي، ومراقبة الميزانيات المخصصة للأقسام',
+                'card-finance-btn': 'إدارة المالية ←',
+                'card-commercial-title': 'الإدارة التجارية',
+                'card-commercial-desc': 'إدارة العقود التجارية B2B، متابعة العملاء المحتملين، وحساب معدلات الاحتفاظ والتحويل',
+                'card-commercial-btn': 'إدارة التجارية ←',
+                'card-tourism-title': 'إدارة السياحة',
+                'card-tourism-desc': 'إدارة حجوزات الفنادق والبرامج والجولات السياحية لضيوف الرحمن',
+                'card-tourism-btn': 'إدارة السياحة ←',
+                'card-operations-title': 'إدارة العمليات',
+                'card-operations-desc': 'مراقبة وإدارة خطط التفويج والتشغيل اليومية وحوادث وأعطال أسطول الحافلات',
+                'card-operations-btn': 'إدارة العمليات ←',
 
                 // Clients Page
                 'clients-title': 'إدارة العملاء',

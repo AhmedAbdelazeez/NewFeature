@@ -1,0 +1,72 @@
+@page
+@model NewFeature.Pages.FleetModel
+@{
+    ViewData["Title"] = "Fleet Management - Overview";
+}
+
+<div class="py-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-extrabold mb-2 glow-text" style="font-family: var(--font-outfit);">
+            <i class="bi bi-bus-front me-2" style="color: var(--brand-gold);"></i><span data-i18n="fleet-title">Fleet Management</span>
+        </h1>
+        <p data-i18n="fleet-subtitle" class="text-muted fs-5">Manage vehicle assets, route definitions, and trip dispatch scheduling</p>
+        <hr class="border-glass w-25 mx-auto">
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- 1. Vehicle Management Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Vehicles" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--brand-gold);"><i class="bi bi-truck"></i></div>
+                        <h3 data-i18n="card-vehicles-title">Vehicle Management</h3>
+                        <p data-i18n="card-vehicles-desc" class="text-muted mt-2">Manage vehicle assets, check maintenance status, license plates, and capacities</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span data-i18n="card-vehicles-btn" class="btn btn-neon-outline btn-sm">Manage Vehicles →</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 2. Route Operations Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Routes" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--brand-gold);"><i class="bi bi-map"></i></div>
+                        <h3 data-i18n="card-routes-title">Route Operations</h3>
+                        <p data-i18n="card-routes-desc" class="text-muted mt-2">Define routes, starting locations, ending terminals, and distance tracking</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span data-i18n="card-routes-btn" class="btn btn-neon-outline btn-sm">Manage Routes →</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 3. Trips Scheduling Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Trips" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--brand-gold);"><i class="bi bi-calendar-event"></i></div>
+                        <h3 data-i18n="card-trips-title">Trips Scheduling</h3>
+                        <p data-i18n="card-trips-desc" class="text-muted mt-2">Schedule journeys, assign vehicles, coordinate drivers, and monitor dispatch status</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span data-i18n="card-trips-btn" class="btn btn-neon-outline btn-sm">Manage Trips →</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Back to Dashboard -->
+    <div class="text-center mt-5">
+        <a href="/" class="btn btn-neon-outline">
+            <i class="bi bi-arrow-left me-1"></i> <span data-i18n="btn-back-dashboard">Back to Dashboard</span>
+        </a>
+    </div>
+</div>

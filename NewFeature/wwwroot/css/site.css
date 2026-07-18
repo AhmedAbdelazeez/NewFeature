@@ -310,3 +310,26 @@ footer {
 #usersTable tr, #projectsTable tr, #vehiclesTable tr, #routesTable tr, #tripsTable tr, #clientsTable tr {
     color: var(--text-primary) !important;
 }
+
+/* Dropdown Glassmorphism */
+.dropdown-menu-glass {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    padding: 8px 0;
+    min-width: 240px;
+}
+
+.dropdown-item-custom {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+    padding: 10px 20px;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item-custom:hover {
+    background: linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold-dark) 100%) !important;
+    color: #ffffff !important;
+}
