@@ -1,16 +1,12 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 using NewFeature.Models;
 
-using Microsoft.AspNetCore.Authorization;
-
-namespace NewFeature.Pages.Account
+namespace NewFeature.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
     public class LoginModel : PageModel
@@ -47,6 +43,7 @@ namespace NewFeature.Pages.Account
             [DataType(DataType.Password)]
             public string Password { get; set; } = string.Empty;
 
+            [Display(Name = "تذكرني")]
             public bool RememberMe { get; set; }
         }
 
@@ -57,7 +54,7 @@ namespace NewFeature.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
 
-            returnUrl ??= Url.Content("~/Splash");
+            returnUrl ??= Url.Content("~/");
 
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
@@ -67,7 +64,7 @@ namespace NewFeature.Pages.Account
 
         public async System.Threading.Tasks.Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
-            returnUrl ??= Url.Content("~/Splash");
+            returnUrl ??= Url.Content("~/");
             ReturnUrl = returnUrl;
 
             if (ModelState.IsValid)
@@ -88,10 +85,11 @@ namespace NewFeature.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
+                    // Always redirect to Splash screen after successful login
                     return LocalRedirect(Url.Content("~/Splash"));
                 }
                 else
-                 {
+                {
                     ModelState.AddModelError(string.Empty, "البريد الإلكتروني أو كلمة المرور غير صحيحة.");
                     return Page();
                 }
