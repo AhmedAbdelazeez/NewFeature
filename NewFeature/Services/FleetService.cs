@@ -339,5 +339,194 @@ namespace NewFeature.Services
             return true;
         }
         #endregion
+
+        #region Bulk Upload
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadVehiclesAsync(System.IO.Stream excelStream)
+        {
+            var errors = new List<string>();
+            int successCount = 0;
+
+            try
+            {
+                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                {
+                    errors.Add("Excel file is empty.");
+                    return (successCount, errors);
+                }
+
+                var rows = worksheet.RowsUsed().Skip(1); // Skip header
+
+                foreach (var row in rows)
+                {
+                    try
+                    {
+                        var licensePlate = row.Cell(1).GetString().Trim();
+                        var make = row.Cell(2).GetString().Trim();
+                        var model = row.Cell(3).GetString().Trim();
+                        
+                        int.TryParse(row.Cell(4).GetString(), out int year);
+                        decimal.TryParse(row.Cell(5).GetString(), out decimal capacity);
+
+                        if (string.IsNullOrEmpty(licensePlate) || string.IsNullOrEmpty(make) || string.IsNullOrEmpty(model) || year == 0 || capacity == 0)
+                        {
+                            errors.Add($"Row {row.RowNumber()}: Missing or invalid required fields.");
+                            continue;
+                        }
+
+                        // Check uniqueness
+                        var existing = (await _vehicleRepository.GetAllAsync()).FirstOrDefault(v => v.LicensePlate.Equals(licensePlate, System.StringComparison.OrdinalIgnoreCase));
+                        if (existing != null)
+                        {
+                            errors.Add($"Row {row.RowNumber()}: License plate '{licensePlate}' already exists.");
+                            continue;
+                        }
+
+                        var vehicle = new Vehicle
+                        {
+                            LicensePlate = licensePlate,
+                            Make = make,
+                            Model = model,
+                            Year = year,
+                            Capacity = capacity,
+                            Status = VehicleStatus.Available
+                        };
+
+                        await _vehicleRepository.AddAsync(vehicle);
+                        successCount++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
+                    }
+                }
+
+                if (successCount > 0)
+                {
+                    await _vehicleRepository.SaveChangesAsync();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                errors.Add($"Error processing Excel file: {ex.Message}");
+            }
+
+            return (successCount, errors);
+        }
+
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadRoutesAsync(System.IO.Stream excelStream)
+        {
+            var errors = new List<string>();
+            int successCount = 0;
+
+            try
+            {
+                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
+
+                var rows = worksheet.RowsUsed().Skip(1);
+                foreach (var row in rows)
+                {
+                    try
+                    {
+                        var nameEn = row.Cell(1).GetString().Trim();
+                        var nameAr = row.Cell(2).GetString().Trim();
+                        var startEn = row.Cell(3).GetString().Trim();
+                        var startAr = row.Cell(4).GetString().Trim();
+                        var endEn = row.Cell(5).GetString().Trim();
+                        var endAr = row.Cell(6).GetString().Trim();
+                        decimal.TryParse(row.Cell(7).GetString(), out decimal distance);
+
+                        if (string.IsNullOrEmpty(nameEn) || string.IsNullOrEmpty(nameAr))
+                        {
+                            errors.Add($"Row {row.RowNumber()}: Name is required.");
+                            continue;
+                        }
+
+                        var route = new Models.Route
+                        {
+                            NameEn = nameEn,
+                            NameAr = nameAr,
+                            StartLocationEn = startEn,
+                            StartLocationAr = startAr,
+                            EndLocationEn = endEn,
+                            EndLocationAr = endAr,
+                            DistanceKm = distance
+                        };
+
+                        await _routeRepository.AddAsync(route);
+                        successCount++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
+                    }
+                }
+
+                if (successCount > 0) await _routeRepository.SaveChangesAsync();
+            }
+            catch (System.Exception ex) { errors.Add(ex.Message); }
+
+            return (successCount, errors);
+        }
+
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadTripsAsync(System.IO.Stream excelStream)
+        {
+            var errors = new List<string>();
+            int successCount = 0;
+
+            try
+            {
+                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
+
+                var rows = worksheet.RowsUsed().Skip(1);
+                foreach (var row in rows)
+                {
+                    try
+                    {
+                        int.TryParse(row.Cell(1).GetString(), out int vehicleId);
+                        int.TryParse(row.Cell(2).GetString(), out int routeId);
+                        var driverId = row.Cell(3).GetString().Trim();
+                        int.TryParse(row.Cell(4).GetString(), out int projectId);
+                        System.DateTime.TryParse(row.Cell(5).GetString(), out System.DateTime scheduledDeparture);
+                        System.DateTime.TryParse(row.Cell(6).GetString(), out System.DateTime scheduledArrival);
+
+                        if (vehicleId == 0 || routeId == 0 || scheduledDeparture == default)
+                        {
+                            errors.Add($"Row {row.RowNumber()}: Required trip data missing.");
+                            continue;
+                        }
+
+                        var trip = new Trip
+                        {
+                            VehicleId = vehicleId,
+                            RouteId = routeId,
+                            DriverId = driverId,
+                            ProjectId = projectId == 0 ? null : projectId,
+                            ScheduledDeparture = scheduledDeparture,
+                            ScheduledArrival = scheduledArrival,
+                            Status = TripStatus.Scheduled
+                        };
+
+                        await _tripRepository.AddAsync(trip);
+                        successCount++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
+                    }
+                }
+
+                if (successCount > 0) await _tripRepository.SaveChangesAsync();
+            }
+            catch (System.Exception ex) { errors.Add(ex.Message); }
+
+            return (successCount, errors);
+        }
+        #endregion
     }
 }

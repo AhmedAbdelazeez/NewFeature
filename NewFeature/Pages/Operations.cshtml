@@ -12,6 +12,12 @@
             <p class="text-muted fs-6 mb-0">مراقبة وإدارة خطط التفويج والتشغيل اليومية وحوادث وأعطال أسطول الحافلات</p>
         </div>
         <div class="d-flex gap-2">
+            <div>
+                <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/operations/bulk-upload-daily-plans')">
+                <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
+                    <i class="bi bi-file-earmark-excel"></i> استيراد خطط تشغيلية (Excel)
+                </button>
+            </div>
             <button class="btn btn-neon" onclick="openAddPlanModal()">إضافة خطة تشغيلية</button>
             <button class="btn btn-neon-outline" onclick="openAddIncidentModal()">إضافة بلاغ عن حادث/عطل</button>
         </div>
@@ -511,6 +517,43 @@
                 }
             } catch (err) {
                 console.error("Error deleting incident:", err);
+            }
+        }
+
+        async function handleBulkUpload(event, url) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const tbody = document.getElementById("plansList");
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري الاستيراد...</td></tr>`;
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const result = await res.json();
+                    let msg = `تم استيراد ${result.successCount} سجل بنجاح.`;
+                    if (result.errors && result.errors.length > 0) {
+                        msg += "\nالأخطاء:\n" + result.errors.slice(0, 5).join('\n');
+                        if (result.errors.length > 5) msg += `\n...و ${result.errors.length - 5} أخطاء أخرى.`;
+                    }
+                    alert(msg);
+                } else {
+                    const text = await res.text();
+                    alert("فشل الاستيراد: " + text);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ أثناء الاستيراد.");
+            } finally {
+                event.target.value = "";
+                loadPlans();
             }
         }
     </script>

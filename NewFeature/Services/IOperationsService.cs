@@ -22,5 +22,8 @@ namespace NewFeature.Services
 
         // KPIs calculation
         Task<OperationsKpisDto> GetOperationsKpisAsync();
+
+        // Bulk Upload
+        Task<(int SuccessCount, List<string> Errors)> BulkUploadDailyPlansAsync(System.IO.Stream excelStream);
     }
 }

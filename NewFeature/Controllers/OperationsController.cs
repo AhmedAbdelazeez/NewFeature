@@ -59,6 +59,19 @@ namespace NewFeature.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
+
+        [HttpPost("bulk-upload-daily-plans")]
+        public async Task<IActionResult> BulkUploadDailyPlans(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!file.FileName.EndsWith(".xlsx", System.StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Only .xlsx files are supported.");
+
+            using var stream = file.OpenReadStream();
+            var result = await _operationsService.BulkUploadDailyPlansAsync(stream);
+            
+            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        }
         #endregion
 
         #region Incidents

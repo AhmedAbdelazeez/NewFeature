@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace NewFeature.Models
 {
+    [Index(nameof(LicensePlate), IsUnique = true)]
     public class Vehicle
     {
         public int Id { get; set; }

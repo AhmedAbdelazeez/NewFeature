@@ -18,6 +18,103 @@
     <link rel="stylesheet" href="~/NewFeature.styles.css" asp-append-version="true" />
 </head>
 <body>
+    <!-- Global Page Transition Loader -->
+    <div id="page-transition-loader" class="page-loader">
+        <div class="loader-content">
+            <div class="loader-logo-container">
+                <img src="https://www.rawahel.com.sa/wp-content/themes/tl4s-raoaa_rawahel/images/logo.png" alt="Loading..." class="loader-logo" />
+                <div class="loader-ring"></div>
+            </div>
+            <div class="loader-text" data-i18n="nav-loading">جاري التحميل...</div>
+        </div>
+    </div>
+    
+    <style>
+        /* Page Loader Styles */
+        .page-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+            visibility: visible;
+        }
+
+        .page-loader.loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loader-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .loader-logo-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(176, 132, 26, 0.15);
+        }
+
+        .loader-logo {
+            height: 40px;
+            object-fit: contain;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .loader-ring {
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: #b0841a;
+            border-right-color: #e2b34a;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .loader-text {
+            color: #b0841a;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @@keyframes pulse {
+            0%, 100% { opacity: 0.7; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* Dark mode adjustments */
+        @@media (prefers-color-scheme: dark) {
+            .page-loader {
+                background-color: rgba(15, 23, 42, 0.95);
+            }
+            .loader-logo-container {
+                background: #1e293b;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+        }
+    </style>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light navbar-custom mb-3">
             <div class="container">
@@ -118,6 +215,7 @@
                 'btn-logout': 'Logout',
                 'btn-cancel': 'Cancel',
                 'btn-save': 'Save Changes',
+                'nav-loading': 'Loading...',
                 'footer-text': '© 2026 CMC Advisor. All Rights Reserved.',
 
                 // Dashboard Home
@@ -473,6 +571,7 @@
                 'btn-logout': 'تسجيل خروج',
                 'btn-cancel': 'إلغاء',
                 'btn-save': 'حفظ التغييرات',
+                'nav-loading': 'جاري التحميل...',
                 'footer-text': 'جميع الحقوق محفوظة © 2026 لشركة CMC Advisor',
 
                 // Dashboard Home
@@ -868,6 +967,51 @@
                 return originalFetch(input, init);
             };
         })();
+
+        // Page Transition Loader Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hide loader when page is fully loaded
+            window.addEventListener('load', () => {
+                const loader = document.getElementById('page-transition-loader');
+                if (loader) {
+                    loader.classList.add('loader-hidden');
+                }
+            });
+
+            // Show loader when clicking on navigation links
+            document.querySelectorAll('a:not([target="_blank"]):not([href^="#"]):not([href^="javascript:"])').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    // Don't show loader for default prevented events or new tabs
+                    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
+                    
+                    const href = this.getAttribute('href');
+                    if (href && href !== '#' && href !== window.location.pathname) {
+                        const loader = document.getElementById('page-transition-loader');
+                        if (loader) {
+                            loader.classList.remove('loader-hidden');
+                        }
+                    }
+                });
+            });
+
+            // Ensure loader is hidden if page is shown from back/forward cache
+            window.addEventListener('pageshow', (event) => {
+                if (event.persisted) {
+                    const loader = document.getElementById('page-transition-loader');
+                    if (loader) {
+                        loader.classList.add('loader-hidden');
+                    }
+                }
+            });
+            
+            // Fallback: hide loader after 3 seconds just in case 'load' event doesn't fire
+            setTimeout(() => {
+                const loader = document.getElementById('page-transition-loader');
+                if (loader && !loader.classList.contains('loader-hidden')) {
+                    loader.classList.add('loader-hidden');
+                }
+            }, 3000);
+        });
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

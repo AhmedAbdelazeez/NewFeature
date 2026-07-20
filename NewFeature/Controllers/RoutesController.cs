@@ -57,5 +57,18 @@ namespace NewFeature.Controllers
             if (!success) return NotFound();
             return NoContent();
         }
+
+        [HttpPost("bulk-upload")]
+        public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!file.FileName.EndsWith(".xlsx", System.StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Only .xlsx files are supported.");
+
+            using var stream = file.OpenReadStream();
+            var result = await _fleetService.BulkUploadRoutesAsync(stream);
+            
+            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        }
     }
 }

@@ -196,6 +196,63 @@ namespace NewFeature.Services
         }
         #endregion
 
+        #region Bulk Upload
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadDailyPlansAsync(System.IO.Stream excelStream)
+        {
+            var errors = new List<string>();
+            int successCount = 0;
+
+            try
+            {
+                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
+                var worksheet = workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
+
+                var rows = worksheet.RowsUsed().Skip(1);
+                foreach (var row in rows)
+                {
+                    try
+                    {
+                        System.DateTime.TryParse(row.Cell(1).GetString(), out System.DateTime date);
+                        int.TryParse(row.Cell(2).GetString(), out int scheduled);
+                        int.TryParse(row.Cell(3).GetString(), out int completed);
+                        double.TryParse(row.Cell(4).GetString(), out double fuel);
+                        double.TryParse(row.Cell(5).GetString(), out double sat);
+                        var status = row.Cell(6).GetString().Trim();
+
+                        if (date == default)
+                        {
+                            errors.Add($"Row {row.RowNumber()}: Valid date is required.");
+                            continue;
+                        }
+
+                        var plan = new OperationsDailyPlan
+                        {
+                            Date = date,
+                            ScheduledTripsCount = scheduled,
+                            CompletedTripsCount = completed,
+                            FuelEfficiencyIndex = fuel,
+                            PassengerSatisfactionRate = sat,
+                            Status = string.IsNullOrEmpty(status) ? "Pending" : status
+                        };
+
+                        await _context.OperationsDailyPlans.AddAsync(plan);
+                        successCount++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
+                    }
+                }
+
+                if (successCount > 0) await _context.SaveChangesAsync();
+            }
+            catch (System.Exception ex) { errors.Add(ex.Message); }
+
+            return (successCount, errors);
+        }
+        #endregion
+
         #region Mappers
         private static OperationsDailyPlanDto MapToDto(OperationsDailyPlan p) => new()
         {
