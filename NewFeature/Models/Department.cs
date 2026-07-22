@@ -25,5 +25,6 @@ namespace NewFeature.Models
         public ICollection<Violation> Violations { get; set; } = new List<Violation>();
         public ICollection<InternalAudit> Audits { get; set; } = new List<InternalAudit>();
         public ICollection<ImprovementAction> ImprovementActions { get; set; } = new List<ImprovementAction>();
+        public ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
     }
 }

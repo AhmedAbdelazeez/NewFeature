@@ -8,6 +8,9 @@ namespace NewFeature.Models
         public string FullNameAr { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
 
+        public int? DepartmentId { get; set; }
+        public Department? Department { get; set; }
+
         // Navigation properties
         public ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
         public ICollection<Trip> Trips { get; set; } = new List<Trip>();

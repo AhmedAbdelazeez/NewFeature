@@ -112,19 +112,93 @@ namespace NewFeature.Services.Repositories
                 context.SaveChanges();
             }
 
-            // Seed Departments if empty
-            if (!context.Departments.Any())
+            // Seed Departments
+            var departmentsToSeed = new List<Department>
             {
-                var departments = new List<Department>
+                new Department { NameEn = "Human Resources", NameAr = "الموارد البشرية", Code = "HR", IsCompliant = true },
+                new Department { NameEn = "Finance & Accounting", NameAr = "المالية والمحاسبة", Code = "FIN", IsCompliant = true },
+                new Department { NameEn = "Information Technology", NameAr = "تقنية المعلومات", Code = "IT", IsCompliant = true },
+                new Department { NameEn = "Operations & Logistics", NameAr = "العمليات واللوجستيات", Code = "OPS", IsCompliant = false },
+                new Department { NameEn = "Compliance & Legal", NameAr = "الامتثال والشؤون القانونية", Code = "COMP", IsCompliant = true },
+                new Department { NameEn = "Project Management Office", NameAr = "مكتب إدارة المشاريع", Code = "PMO", IsCompliant = true },
+                new Department { NameEn = "Fleet Management", NameAr = "إدارة الأسطول", Code = "FLEET", IsCompliant = true },
+                new Department { NameEn = "Operational Audit", NameAr = "التدقيق التشغيلي", Code = "AUDIT", IsCompliant = true },
+                new Department { NameEn = "Health, Safety & Environment", NameAr = "الصحة والسلامة والبيئة", Code = "HSE", IsCompliant = true },
+                new Department { NameEn = "Procurement", NameAr = "المشتريات", Code = "PROC", IsCompliant = true },
+                new Department { NameEn = "Strategy", NameAr = "الاستراتيجية", Code = "STRAT", IsCompliant = true },
+                new Department { NameEn = "Commercial", NameAr = "القطاع التجاري", Code = "COMM", IsCompliant = true },
+                new Department { NameEn = "Tourism", NameAr = "السياحة", Code = "TOUR", IsCompliant = true },
+                new Department { NameEn = "Client Relations", NameAr = "علاقات العملاء", Code = "CR", IsCompliant = true },
+                new Department { NameEn = "Task Management", NameAr = "إدارة المهام", Code = "TASK", IsCompliant = true }
+            };
+
+            foreach (var dept in departmentsToSeed)
+            {
+                if (!context.Departments.Any(d => d.Code == dept.Code))
                 {
-                    new Department { NameEn = "Human Resources", NameAr = "الموارد البشرية", Code = "HR", IsCompliant = true },
-                    new Department { NameEn = "Finance & Accounting", NameAr = "المالية والمحاسبة", Code = "FIN", IsCompliant = true },
-                    new Department { NameEn = "Information Technology", NameAr = "تقنية المعلومات", Code = "IT", IsCompliant = true },
-                    new Department { NameEn = "Operations & Logistics", NameAr = "العمليات واللوجستيات", Code = "OPS", IsCompliant = false },
-                    new Department { NameEn = "Compliance & Legal", NameAr = "الامتثال والشؤون القانونية", Code = "COMP", IsCompliant = true }
-                };
-                context.Departments.AddRange(departments);
-                context.SaveChanges();
+                    context.Departments.Add(dept);
+                }
+            }
+            context.SaveChanges();
+
+            // Seed Users based on Departments
+            var allDepartments = context.Departments.ToList();
+            foreach (var dept in allDepartments)
+            {
+                var roleName = dept.Code;
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
+
+                var userEmail = $"{roleName.ToLower()}@company.com";
+                if (await userManager.FindByEmailAsync(userEmail) == null)
+                {
+                    var deptUser = new ApplicationUser
+                    {
+                        UserName = userEmail,
+                        Email = userEmail,
+                        FullNameEn = $"{dept.NameEn} User",
+                        FullNameAr = $"مستخدم {dept.NameAr}",
+                        IsActive = true,
+                        EmailConfirmed = true,
+                        DepartmentId = dept.Id
+                    };
+                    var result = await userManager.CreateAsync(deptUser, "Password@123");
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(deptUser, roleName);
+                    }
+                }
+            }
+
+            // Seed CEO and Administrator roles and users
+            string[] extraRoles = { "CEO", "Administrator" };
+            foreach (var roleName in extraRoles)
+            {
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
+
+                var userEmail = $"{roleName.ToLower()}@company.com";
+                if (await userManager.FindByEmailAsync(userEmail) == null)
+                {
+                    var extraUser = new ApplicationUser
+                    {
+                        UserName = userEmail,
+                        Email = userEmail,
+                        FullNameEn = $"{roleName} User",
+                        FullNameAr = $"مستخدم {roleName}",
+                        IsActive = true,
+                        EmailConfirmed = true
+                    };
+                    var result = await userManager.CreateAsync(extraUser, "Password@123");
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(extraUser, roleName);
+                    }
+                }
             }
 
             // Seed classifications if empty
