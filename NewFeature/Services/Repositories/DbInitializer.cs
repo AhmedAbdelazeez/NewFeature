@@ -161,7 +161,7 @@ namespace NewFeature.Services.Repositories
                 new Department { NameEn = "Finance & Accounting", NameAr = "المالية والمحاسبة", Code = "FIN", IsCompliant = true },
                 new Department { NameEn = "Information Technology", NameAr = "تقنية المعلومات", Code = "IT", IsCompliant = true },
                 new Department { NameEn = "Operations & Logistics", NameAr = "العمليات واللوجستيات", Code = "OPS", IsCompliant = false },
-                new Department { NameEn = "Compliance & Legal", NameAr = "الامتثال والشؤون القانونية", Code = "COMP", IsCompliant = true },
+                new Department { NameEn = "Compliance & Legal", NameAr = "الامتثال ", Code = "COMP", IsCompliant = true },
                 new Department { NameEn = "Project Management Office", NameAr = "مكتب إدارة المشاريع", Code = "PMO", IsCompliant = true },
                 new Department { NameEn = "Fleet Management", NameAr = "إدارة الأسطول", Code = "FLEET", IsCompliant = true },
                 new Department { NameEn = "Operational Audit", NameAr = "التدقيق التشغيلي", Code = "AUDIT", IsCompliant = true },
