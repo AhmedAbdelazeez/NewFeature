@@ -112,6 +112,48 @@ namespace NewFeature.Services.Repositories
                 context.SaveChanges();
             }
 
+            // Seed PMO Projects
+            if (!context.Projects.Any())
+            {
+                var client = context.Clients.FirstOrDefault(c => c.Code == "SABIC001");
+                if (client != null)
+                {
+                    var projects = new List<Project>
+                    {
+                        new Project
+                        {
+                            ClientId = client.Id,
+                            NameEn = "Shuttle Transport Project",
+                            NameAr = "مشروع النقل الترددي",
+                            DescriptionEn = "Providing continuous shuttle transportation services.",
+                            DescriptionAr = "تقديم خدمات النقل الترددي المستمر على مدار الساعة.",
+                            StartDate = DateTime.UtcNow.AddMonths(-2),
+                            EndDate = DateTime.UtcNow.AddMonths(10),
+                            Status = ProjectStatus.Active,
+                            ContractValue = 1500000.00m,
+                            RequiredVehiclesCount = 50,
+                            EstimatedTripsCount = 2500
+                        },
+                        new Project
+                        {
+                            ClientId = client.Id,
+                            NameEn = "Makkah Tour Project",
+                            NameAr = "مشروع جوله مكه",
+                            DescriptionEn = "Organized tours and transportation within Makkah.",
+                            DescriptionAr = "تنظيم رحلات وجولات النقل داخل مكة المكرمة.",
+                            StartDate = DateTime.UtcNow.AddMonths(-1),
+                            EndDate = DateTime.UtcNow.AddMonths(11),
+                            Status = ProjectStatus.Active,
+                            ContractValue = 850000.00m,
+                            RequiredVehiclesCount = 30,
+                            EstimatedTripsCount = 1200
+                        }
+                    };
+                    context.Projects.AddRange(projects);
+                    context.SaveChanges();
+                }
+            }
+
             // Seed Departments
             var departmentsToSeed = new List<Department>
             {

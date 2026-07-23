@@ -124,7 +124,7 @@ using (var scope = app.Services.CreateScope())
             var token = userManager.GeneratePasswordResetTokenAsync(user).Result;
             var resetResult = userManager.ResetPasswordAsync(user, token, "Admin@123").Result;
             var roles = userManager.GetRolesAsync(user).Result;
-            File.WriteAllText(logPath, $"User admin@company.com exists! Password reset: {resetResult.Succeeded}. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
+            Console.WriteLine($"User admin@company.com exists! Password reset: {resetResult.Succeeded}. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
         }
         else
         {
@@ -141,17 +141,17 @@ using (var scope = app.Services.CreateScope())
             if (result.Succeeded)
             {
                 userManager.AddToRoleAsync(adminUser, "Admin").Wait();
-                File.WriteAllText(logPath, "Forced seed Succeeded! User admin@company.com created.");
+                Console.WriteLine("Forced seed Succeeded! User admin@company.com created.");
             }
             else
             {
-                File.WriteAllText(logPath, $"User does not exist and forced seeding failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                Console.WriteLine($"User does not exist and forced seeding failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
         }
     }
     catch (Exception ex)
     {
-        File.WriteAllText(logPath, $"Exception occurred during seeding check: {ex.Message}\n{ex.StackTrace}");
+        Console.WriteLine($"Exception occurred during seeding check: {ex.Message}\n{ex.StackTrace}");
     }
 }
 
