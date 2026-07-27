@@ -49,6 +49,11 @@ namespace NewFeature.Services.Repositories
         public DbSet<TourismTour> TourismTours { get; set; } = null!;
         public DbSet<OperationsDailyPlan> OperationsDailyPlans { get; set; } = null!;
         public DbSet<OperationsIncident> OperationsIncidents { get; set; } = null!;
+        public DbSet<MohuStandardKpi> MohuStandardKpis { get; set; } = null!;
+        public DbSet<MohuPilgrimGroup> MohuPilgrimGroups { get; set; } = null!;
+        public DbSet<MohuFeedback> MohuFeedbacks { get; set; } = null!;
+        public DbSet<MohuViolationRecord> MohuViolationRecords { get; set; } = null!;
+        public DbSet<MohuPermitLog> MohuPermitLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,0 +1,114 @@
+@page
+@model MohuViolationsModel
+@{
+    ViewData["Title"] = "الامتثال والرقابة (Compliance)";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold glow-text mb-1" style="color: var(--brand-gold);"><i class="bi bi-shield-check me-2"></i> الامتثال والرقابة (Compliance)</h2>
+            <p class="text-muted fs-6 mb-0">إدارة المخالفات، الغرامات، وتقييمات اللجان الرقابية</p>
+        </div>
+        <div>
+            <a href="/MohuStandards" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-right"></i> عودة للمعايير</a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-neon btn-sm" onclick="openModal('violationModal')">تسجيل مخالفة جديدة</button>
+    </div>
+    <div class="glass-card table-responsive">
+        <table class="table table-glass text-white align-middle">
+            <thead><tr><th>نوع المخالفة</th><th>الغرامة (ريال)</th><th>الحالة</th><th>تقييم اللجنة</th><th>تاريخ الرصد</th><th class="text-end">الإجراءات</th></tr></thead>
+            <tbody id="violationsList"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Violation Modal -->
+<div class="modal fade" id="violationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header">
+                <h5 class="modal-title">تسجيل مخالفة جديدة</h5>
+            </div>
+            <div class="modal-body">
+                <form id="violationForm">
+                    <div class="mb-2"><label>نوع المخالفة</label><input type="text" class="form-control form-control-glass" id="v_type" required></div>
+                    <div class="mb-2"><label>الغرامة (ريال)</label><input type="number" class="form-control form-control-glass" id="v_penalty" required></div>
+                    <div class="mb-2"><label>الحالة</label>
+                        <select class="form-control form-control-glass" id="v_closed"><option value="true">مغلقة</option><option value="false">مفتوحة</option></select>
+                    </div>
+                    <div class="mb-2"><label>تقييم اللجنة (0-100)</label><input type="number" min="0" max="100" class="form-control form-control-glass" id="v_score" required></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> إغلاق</button>
+                <button type="button" class="btn btn-neon" onclick="saveViolation()"><i class="bi bi-check-lg"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const baseUrl = '/api/mohu-business/violations';
+        document.addEventListener('DOMContentLoaded', loadViolations);
+
+        let violationsData = [];
+        let editingId = null;
+
+        async function loadViolations() {
+            const res = await fetch(baseUrl);
+            if (res.ok) {
+                violationsData = await res.json();
+                document.getElementById('violationsList').innerHTML = violationsData.map(d => `<tr><td>${d.violationType}</td><td>${d.penaltyAmount}</td><td>${d.isClosed ? 'مغلقة' : 'مفتوحة'}</td><td>${d.committeeEvaluationScore} %</td><td>${new Date(d.inspectionDate).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+            }
+        }
+        function openModal(modalId) { 
+            editingId = null;
+            document.getElementById('v_type').value = '';
+            document.getElementById('v_penalty').value = '';
+            document.getElementById('v_closed').value = 'false';
+            document.getElementById('v_score').value = '100';
+            new bootstrap.Modal(document.getElementById(modalId)).show(); 
+        }
+        function editRecord(id) { 
+            editingId = id;
+            const record = violationsData.find(v => v.id === id);
+            if (record) {
+                document.getElementById('v_type').value = record.violationType;
+                document.getElementById('v_penalty').value = record.penaltyAmount;
+                document.getElementById('v_closed').value = record.isClosed ? "true" : "false";
+                document.getElementById('v_score').value = record.committeeEvaluationScore;
+                new bootstrap.Modal(document.getElementById('violationModal')).show();
+            }
+        }
+        async function saveViolation() {
+            const payload = {
+                violationType: document.getElementById('v_type').value,
+                penaltyAmount: parseFloat(document.getElementById('v_penalty').value) || 0,
+                isClosed: document.getElementById('v_closed').value === "true",
+                affectedPilgrimsCount: 0,
+                committeeEvaluationScore: parseInt(document.getElementById('v_score').value) || 100,
+                inspectionDate: new Date().toISOString()
+            };
+            const method = editingId ? 'PUT' : 'POST';
+            const url = editingId ? `${baseUrl}/${editingId}` : baseUrl;
+            const res = await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+            if(res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('violationModal')).hide();
+                loadViolations();
+            } else {
+                alert('فشل الحفظ. يرجى التأكد من إعادة تشغيل المشروع لتطبيق آخر تحديثات الـ API.');
+            }
+        }
+        async function deleteRecord(id) {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                await fetch(`${baseUrl}/${id}`, { method: 'DELETE' });
+                loadViolations();
+            }
+        }
+    </script>
+}

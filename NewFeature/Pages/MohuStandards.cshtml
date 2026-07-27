@@ -1,0 +1,151 @@
+@page
+@model MohuStandardsModel
+@{
+    ViewData["Title"] = "العمليات التشغيلية - وزارة الحج والعمرة";
+}
+
+<div class="py-4">
+    <!-- Header Area -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">التطبيق الكلي لنظام المعايير الجديدة للحج والعمرة</h1>
+            <p class="text-muted fs-6 mb-0">إدارة بيانات الأفواج، التقييمات، المخالفات، والتصاريح التي تبنى عليها مؤشرات الأداء</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-warning" onclick="seedData()"><i class="bi bi-database-add"></i> زر توليد بيانات تجريبية (Seed Data)</button>
+        </div>
+    </div>
+
+    <!-- Cards Navigation -->
+    <div class="row g-4 mt-3 justify-content-center">
+        <!-- Card 1: Diversity -->
+        <div class="col-md-6">
+            <a href="/MohuGroups" class="text-decoration-none">
+                <div class="glass-card h-100 text-center pointer-hover p-5">
+                    <div class="mb-4" style="font-size: 3rem; color: var(--brand-gold);"><i class="bi bi-people"></i></div>
+                    <h3 class="fw-bold mb-2 text-dark">تنوع المعتمرين</h3>
+                    <p class="text-muted fs-5">(Diversity)</p>
+                </div>
+            </a>
+        </div>
+        <!-- Card 2: Experience -->
+        <div class="col-md-6">
+            <a href="/MohuFeedbacks" class="text-decoration-none">
+                <div class="glass-card h-100 text-center pointer-hover p-5">
+                    <div class="mb-4" style="font-size: 3rem; color: var(--brand-gold);"><i class="bi bi-star"></i></div>
+                    <h3 class="fw-bold mb-2 text-dark">تجربة المعتمر</h3>
+                    <p class="text-muted fs-5">(Experience)</p>
+                </div>
+            </a>
+        </div>
+        <!-- Card 3: Compliance -->
+        <div class="col-md-6">
+            <a href="/MohuViolations" class="text-decoration-none">
+                <div class="glass-card h-100 text-center pointer-hover p-5">
+                    <div class="mb-4" style="font-size: 3rem; color: var(--brand-gold);"><i class="bi bi-shield-check"></i></div>
+                    <h3 class="fw-bold mb-2 text-dark">الامتثال والرقابة</h3>
+                    <p class="text-muted fs-5">(Compliance)</p>
+                </div>
+            </a>
+        </div>
+        <!-- Card 4: Data Quality -->
+        <div class="col-md-6">
+            <a href="/MohuPermits" class="text-decoration-none">
+                <div class="glass-card h-100 text-center pointer-hover p-5">
+                    <div class="mb-4" style="font-size: 3rem; color: var(--brand-gold);"><i class="bi bi-clipboard-data"></i></div>
+                    <h3 class="fw-bold mb-2 text-dark">جودة البيانات</h3>
+                    <p class="text-muted fs-5">(Data Quality)</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pointer-hover { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .pointer-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2) !important; }
+</style>
+
+@section Scripts {
+    <script>
+        async function seedData() {
+            try {
+                // 1. Clear old data
+                const groupsRes = await fetch('/api/mohu-business/groups');
+                const oldGroups = await groupsRes.json();
+                for (const g of oldGroups) await fetch(`/api/mohu-business/groups/${g.id}`, { method: 'DELETE' });
+
+                const feedRes = await fetch('/api/mohu-business/feedbacks');
+                const oldFeeds = await feedRes.json();
+                for (const f of oldFeeds) await fetch(`/api/mohu-business/feedbacks/${f.id}`, { method: 'DELETE' });
+
+                const violRes = await fetch('/api/mohu-business/violations');
+                const oldViols = await violRes.json();
+                for (const v of oldViols) await fetch(`/api/mohu-business/violations/${v.id}`, { method: 'DELETE' });
+
+                const permRes = await fetch('/api/mohu-business/permits');
+                const oldPerms = await permRes.json();
+                for (const p of oldPerms) await fetch(`/api/mohu-business/permits/${p.id}`, { method: 'DELETE' });
+
+                // 2. Seed 5 Arabic Groups
+                for (let i = 1; i <= 5; i++) {
+                    const group = {
+                        groupNumber: `GRP-2026-${1000 + i}`,
+                        nationality: i % 2 === 0 ? "إندونيسي" : "باكستاني",
+                        ageGroup: i % 2 === 0 ? "بالغين" : "كبار السن",
+                        packageCategory: i % 2 === 0 ? "مميزة (VIP)" : "اقتصادية",
+                        packagePrice: 5000 + (i * 1000),
+                        isNewPilgrim: true,
+                        arrivalDate: new Date().toISOString(),
+                        arrivalPort: "مطار الملك عبدالعزيز",
+                        pilgrimCount: 45
+                    };
+                    const resG = await fetch('/api/mohu-business/groups', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(group) });
+                    const createdGroup = await resG.json();
+
+                    // Seed Feedback for each group
+                    const feedback = {
+                        mohuPilgrimGroupId: createdGroup.id,
+                        rating: i,
+                        serviceType: i % 2 === 0 ? "سكن" : "نقل",
+                        hasComplaint: i < 3,
+                        complaintDetails: i < 3 ? "تأخير في استلام الغرف" : "",
+                        waitingTimeMinutes: 15 * i,
+                        feedbackDate: new Date().toISOString()
+                    };
+                    await fetch('/api/mohu-business/feedbacks', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(feedback) });
+                }
+
+                // Seed 5 Violations
+                for (let i = 1; i <= 5; i++) {
+                    const violation = {
+                        violationType: i % 2 === 0 ? "تأخير التفويج" : "غياب المرشد",
+                        penaltyAmount: 1000 * i,
+                        isClosed: i % 2 === 0,
+                        affectedPilgrimsCount: 45,
+                        committeeEvaluationScore: 80 + i,
+                        inspectionDate: new Date().toISOString()
+                    };
+                    await fetch('/api/mohu-business/violations', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(violation) });
+                }
+
+                // Seed 5 Permits
+                for (let i = 1; i <= 5; i++) {
+                    const permit = {
+                        permitNumber: `PRM-MOHU-${9000 + i}`,
+                        isEntryPortMatched: true,
+                        isEntryDateMatched: i % 2 !== 0,
+                        isHousingMatched: true,
+                        verificationDate: new Date().toISOString()
+                    };
+                    await fetch('/api/mohu-business/permits', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(permit) });
+                }
+
+                alert('تم توليد البيانات العربية بنجاح! يرجى تحديث الصفحة.');
+            } catch (err) {
+                console.error(err);
+                alert('فشل توليد البيانات.');
+            }
+        }
+    </script>
+}

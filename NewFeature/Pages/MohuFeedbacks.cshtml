@@ -1,0 +1,122 @@
+@page
+@model MohuFeedbacksModel
+@{
+    ViewData["Title"] = "تجربة المعتمر (Experience)";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold glow-text mb-1" style="color: var(--brand-gold);"><i class="bi bi-star me-2"></i> تجربة المعتمر (Experience)</h2>
+            <p class="text-muted fs-6 mb-0">إدارة تقييمات المعتمرين ومستوى رضاهم عن الخدمات</p>
+        </div>
+        <div>
+            <a href="/MohuStandards" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-right"></i> عودة للمعايير</a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-neon btn-sm" onclick="openModal('feedbackModal')">تسجيل تقييم/شكوى</button>
+    </div>
+    <div class="glass-card table-responsive">
+        <table class="table table-glass text-white align-middle">
+            <thead><tr><th>معرف الفوج</th><th>التقييم (من 5)</th><th>نوع الخدمة</th><th>هل توجد شكوى؟</th><th>تاريخ التقييم</th><th class="text-end">الإجراءات</th></tr></thead>
+            <tbody id="feedbackList"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header">
+                <h5 class="modal-title">تسجيل تقييم/شكوى</h5>
+            </div>
+            <div class="modal-body">
+                <form id="feedbackForm">
+                    <div class="mb-2"><label>معرف الفوج</label><input type="number" class="form-control form-control-glass" id="f_groupId" required></div>
+                    <div class="mb-2"><label>التقييم (من 5)</label><input type="number" min="1" max="5" class="form-control form-control-glass" id="f_rating" required></div>
+                    <div class="mb-2"><label>نوع الخدمة</label>
+                        <select class="form-control form-control-glass" id="f_service"><option>Housing</option><option>Transport</option><option>Catering</option></select>
+                    </div>
+                    <div class="mb-2"><label>هل توجد شكوى؟</label>
+                        <select class="form-control form-control-glass" id="f_hasComplaint"><option value="true">نعم</option><option value="false">لا</option></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> إغلاق</button>
+                <button type="button" class="btn btn-neon" onclick="saveFeedback()"><i class="bi bi-check-lg"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const baseUrl = '/api/mohu-business/feedbacks';
+        document.addEventListener('DOMContentLoaded', loadFeedbacks);
+
+        let feedbacksData = [];
+        let editingId = null;
+
+        async function loadFeedbacks() {
+            const res = await fetch(baseUrl);
+            if (res.ok) {
+                feedbacksData = await res.json();
+                document.getElementById('feedbackList').innerHTML = feedbacksData.map(d => `<tr><td>${d.mohuPilgrimGroupId}</td><td>${d.rating} / 5</td><td>${d.serviceType}</td><td>${d.hasComplaint ? 'نعم' : 'لا'}</td><td>${new Date(d.feedbackDate).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+            }
+        }
+        function openModal(modalId) { 
+            editingId = null;
+            document.getElementById('f_groupId').value = '';
+            document.getElementById('f_rating').value = '5';
+            document.getElementById('f_service').value = 'Housing';
+            document.getElementById('f_hasComplaint').value = 'false';
+            new bootstrap.Modal(document.getElementById(modalId)).show(); 
+        }
+        function editRecord(id) { 
+            editingId = id;
+            const record = feedbacksData.find(f => f.id === id);
+            if (record) {
+                document.getElementById('f_groupId').value = record.mohuPilgrimGroupId;
+                document.getElementById('f_rating').value = record.rating;
+                // Add the option if missing (e.g. Arabic values vs English)
+                const srv = document.getElementById('f_service');
+                if(!Array.from(srv.options).some(o => o.value === record.serviceType)) {
+                    srv.add(new Option(record.serviceType, record.serviceType));
+                }
+                srv.value = record.serviceType;
+                document.getElementById('f_hasComplaint').value = record.hasComplaint ? "true" : "false";
+                new bootstrap.Modal(document.getElementById('feedbackModal')).show();
+            }
+        }
+        async function saveFeedback() {
+            const payload = {
+                mohuPilgrimGroupId: parseInt(document.getElementById('f_groupId').value) || 1,
+                rating: parseInt(document.getElementById('f_rating').value) || 5,
+                serviceType: document.getElementById('f_service').value,
+                hasComplaint: document.getElementById('f_hasComplaint').value === "true",
+                complaintDetails: "",
+                waitingTimeMinutes: 15,
+                feedbackDate: new Date().toISOString()
+            };
+            const method = editingId ? 'PUT' : 'POST';
+            const url = editingId ? `${baseUrl}/${editingId}` : baseUrl;
+            const res = await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+            if(res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+                loadFeedbacks();
+            } else {
+                alert('فشل الحفظ. يرجى التأكد من إعادة تشغيل المشروع لتطبيق آخر تحديثات الـ API.');
+            }
+        }
+        async function deleteRecord(id) {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                await fetch(`${baseUrl}/${id}`, { method: 'DELETE' });
+                loadFeedbacks();
+            }
+        }
+    </script>
+}

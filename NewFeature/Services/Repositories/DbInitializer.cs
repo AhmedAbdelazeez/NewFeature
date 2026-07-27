@@ -1034,6 +1034,61 @@ namespace NewFeature.Services.Repositories
                 );
                 context.SaveChanges();
             }
+
+            // Seed MOHU Standards KPIs
+            if (!context.MohuStandardKpis.Any())
+            {
+                context.MohuStandardKpis.AddRange(
+                    // Diversity - تنوع المعتمرين
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-1", NameAr = "نسبة تنوع الجنسيات", NameEn = "Nationalities Diversity Rate", ActualValue = 85, TargetValue = 80 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-2", NameAr = "عدد الدول المخدومة", NameEn = "Served Countries Count", ActualValue = 45, TargetValue = 40 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-3", NameAr = "التوافق السعري للفئة الفاخرة", NameEn = "VIP Price Compatibility", ActualValue = 92, TargetValue = 90 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-4", NameAr = "التوافق السعري للفئة المتوسطة", NameEn = "Mid-range Price Compatibility", ActualValue = 88, TargetValue = 85 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-5", NameAr = "معدل نمو المعتمرين الجدد", NameEn = "New Pilgrims Growth Rate", ActualValue = 18, TargetValue = 15 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-6", NameAr = "نسبة استهداف أسواق جديدة", NameEn = "New Markets Targeting Rate", ActualValue = 22, TargetValue = 20 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-7", NameAr = "تنوع الفئات العمرية", NameEn = "Age Groups Diversity", ActualValue = 55, TargetValue = 50 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-8", NameAr = "التزام حصص الدول", NameEn = "Country Quotas Compliance", ActualValue = 96, TargetValue = 95 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-9", NameAr = "معدل الوصول حسب الخطة", NameEn = "Arrival Plan Rate", ActualValue = 99, TargetValue = 98 },
+                    new MohuStandardKpi { CategoryCode = "Diversity", KpiCode = "mohu-div-10", NameAr = "نسبة المعتمرين الفرديين", NameEn = "Individual Pilgrims Rate", ActualValue = 12, TargetValue = 10 },
+                    
+                    // Experience - تجربة المعتمر وجودة الخدمة
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-1", NameAr = "رضا المعتمرين", NameEn = "Pilgrims Satisfaction", ActualValue = 92, TargetValue = 90 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-2", NameAr = "جودة أداء الخدمة", NameEn = "Service Quality Performance", ActualValue = 96, TargetValue = 95 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-3", NameAr = "الالتزام بمعالجة البلاغات", NameEn = "Reports Handling Compliance", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-4", NameAr = "الخدمات الإثرائية", NameEn = "Enrichment Services", ActualValue = 88, TargetValue = 85 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-5", NameAr = "وقت الانتظار في المنافذ", NameEn = "Ports Waiting Time (Mins)", ActualValue = 12, TargetValue = 15 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-6", NameAr = "جودة خدمات الإعاشة", NameEn = "Catering Quality", ActualValue = 93, TargetValue = 90 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-7", NameAr = "جودة السكن والفنادق", NameEn = "Housing & Hotels Quality", ActualValue = 95, TargetValue = 92 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-8", NameAr = "كفاءة النقل والتفويج", NameEn = "Transport & Grouping Efficiency", ActualValue = 99, TargetValue = 98 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-9", NameAr = "معدل الشكاوى لكل ألف معتمر", NameEn = "Complaints per 1K Pilgrims", ActualValue = 0.5, TargetValue = 0 },
+                    new MohuStandardKpi { CategoryCode = "Experience", KpiCode = "mohu-exp-10", NameAr = "الاستجابة للحالات الطارئة", NameEn = "Emergency Response Time", ActualValue = 4, TargetValue = 5 },
+
+                    // Compliance - الامتثال
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-1", NameAr = "المعتمرين المتأثرين من المخالفات", NameEn = "Pilgrims Affected by Violations", ActualValue = 0, TargetValue = 0 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-2", NameAr = "نسبة الملاحظات المغلقة", NameEn = "Closed Remarks Rate", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-3", NameAr = "الالتزام بتعليمات الوزارة", NameEn = "Ministry Instructions Compliance", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-4", NameAr = "الامتثال للأنظمة الصحية", NameEn = "Health Regulations Compliance", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-5", NameAr = "سلامة أسطول النقل", NameEn = "Transport Fleet Safety", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-6", NameAr = "توافر التراخيص اللازمة", NameEn = "Licenses Availability", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-7", NameAr = "الامتثال لأنظمة الإسكان", NameEn = "Housing Regulations Compliance", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-8", NameAr = "نسبة الغرامات المالية", NameEn = "Financial Fines Value", ActualValue = 0, TargetValue = 0 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-9", NameAr = "الالتزام بنظام المسار الإلكتروني", NameEn = "E-Track System Compliance", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "Compliance", KpiCode = "mohu-comp-10", NameAr = "تقييم لجان المراقبة", NameEn = "Monitoring Committees Eval", ActualValue = 96, TargetValue = 95 },
+
+                    // DataQuality - جودة البيانات
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-1", NameAr = "منفذ الدخول", NameEn = "Entry Port Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-2", NameAr = "تاريخ الدخول", NameEn = "Entry Date Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-3", NameAr = "تصريح أداء العمرة", NameEn = "Umrah Permit Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-4", NameAr = "تفويج الوصول", NameEn = "Arrival Grouping Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-5", NameAr = "تفويج بين المدن", NameEn = "Intercity Grouping Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-6", NameAr = "تفويج المغادرة", NameEn = "Departure Grouping Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-7", NameAr = "منفذ الخروج", NameEn = "Exit Port Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-8", NameAr = "تاريخ الخروج", NameEn = "Exit Date Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-9", NameAr = "بيانات تكاليف الباقات", NameEn = "Package Costs Data", ActualValue = 100, TargetValue = 100 },
+                    new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-10", NameAr = "تطابق بيانات السكن", NameEn = "Housing Data Match", ActualValue = 100, TargetValue = 100 }
+                );
+                context.SaveChanges();
+            }
         }
     }
 }

@@ -1,0 +1,117 @@
+@page
+@model MohuPermitsModel
+@{
+    ViewData["Title"] = "جودة البيانات (Data Quality)";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold glow-text mb-1" style="color: var(--brand-gold);"><i class="bi bi-clipboard-data me-2"></i> جودة البيانات والتصاريح (Data Quality)</h2>
+            <p class="text-muted fs-6 mb-0">إدارة التصاريح وسجلات المطابقة لمنافذ الدخول والسكن</p>
+        </div>
+        <div>
+            <a href="/MohuStandards" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-right"></i> عودة للمعايير</a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-neon btn-sm" onclick="openModal('permitModal')">تسجيل تصريح</button>
+    </div>
+    <div class="glass-card table-responsive">
+        <table class="table table-glass text-white align-middle">
+            <thead><tr><th>رقم التصريح</th><th>تطابق المنفذ</th><th>تطابق التاريخ</th><th>تطابق السكن</th><th>تاريخ التحقق</th><th class="text-end">الإجراءات</th></tr></thead>
+            <tbody id="permitsList"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Permit Modal -->
+<div class="modal fade" id="permitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header">
+                <h5 class="modal-title">تسجيل تصريح</h5>
+            </div>
+            <div class="modal-body">
+                <form id="permitForm">
+                    <div class="mb-2"><label>رقم التصريح</label><input type="text" class="form-control form-control-glass" id="p_number" required></div>
+                    <div class="mb-2"><label>تطابق المنفذ</label>
+                        <select class="form-control form-control-glass" id="p_port"><option value="true">نعم</option><option value="false">لا</option></select>
+                    </div>
+                    <div class="mb-2"><label>تطابق التاريخ</label>
+                        <select class="form-control form-control-glass" id="p_date"><option value="true">نعم</option><option value="false">لا</option></select>
+                    </div>
+                    <div class="mb-2"><label>تطابق السكن</label>
+                        <select class="form-control form-control-glass" id="p_housing"><option value="true">نعم</option><option value="false">لا</option></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> إغلاق</button>
+                <button type="button" class="btn btn-neon" onclick="savePermit()"><i class="bi bi-check-lg"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const baseUrl = '/api/mohu-business/permits';
+        document.addEventListener('DOMContentLoaded', loadPermits);
+
+        let permitsData = [];
+        let editingId = null;
+
+        async function loadPermits() {
+            const res = await fetch(baseUrl);
+            if (res.ok) {
+                permitsData = await res.json();
+                document.getElementById('permitsList').innerHTML = permitsData.map(d => `<tr><td>${d.permitNumber}</td><td>${d.isEntryPortMatched ? '✅' : '❌'}</td><td>${d.isEntryDateMatched ? '✅' : '❌'}</td><td>${d.isHousingMatched ? '✅' : '❌'}</td><td>${new Date(d.verificationDate).toLocaleDateString()}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+            }
+        }
+        function openModal(modalId) { 
+            editingId = null;
+            document.getElementById('p_number').value = '';
+            document.getElementById('p_port').value = 'true';
+            document.getElementById('p_date').value = 'true';
+            document.getElementById('p_housing').value = 'true';
+            new bootstrap.Modal(document.getElementById(modalId)).show(); 
+        }
+        function editRecord(id) { 
+            editingId = id;
+            const record = permitsData.find(p => p.id === id);
+            if (record) {
+                document.getElementById('p_number').value = record.permitNumber;
+                document.getElementById('p_port').value = record.isEntryPortMatched ? "true" : "false";
+                document.getElementById('p_date').value = record.isEntryDateMatched ? "true" : "false";
+                document.getElementById('p_housing').value = record.isHousingMatched ? "true" : "false";
+                new bootstrap.Modal(document.getElementById('permitModal')).show();
+            }
+        }
+        async function savePermit() {
+            const payload = {
+                permitNumber: document.getElementById('p_number').value,
+                isEntryPortMatched: document.getElementById('p_port').value === "true",
+                isEntryDateMatched: document.getElementById('p_date').value === "true",
+                isHousingMatched: document.getElementById('p_housing').value === "true",
+                verificationDate: new Date().toISOString()
+            };
+            const method = editingId ? 'PUT' : 'POST';
+            const url = editingId ? `${baseUrl}/${editingId}` : baseUrl;
+            const res = await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+            if(res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('permitModal')).hide();
+                loadPermits();
+            } else {
+                alert('فشل الحفظ. يرجى التأكد من إعادة تشغيل المشروع لتطبيق آخر تحديثات الـ API.');
+            }
+        }
+        async function deleteRecord(id) {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                await fetch(`${baseUrl}/${id}`, { method: 'DELETE' });
+                loadPermits();
+            }
+        }
+    </script>
+}

@@ -1,0 +1,130 @@
+@page
+@model MohuGroupsModel
+@{
+    ViewData["Title"] = "تنوع المعتمرين (Diversity)";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold glow-text mb-1" style="color: var(--brand-gold);"><i class="bi bi-people me-2"></i> تنوع المعتمرين (Diversity)</h2>
+            <p class="text-muted fs-6 mb-0">إدارة سجلات الأفواج والجنسيات والفئات العمرية</p>
+        </div>
+        <div>
+            <a href="/MohuStandards" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-right"></i> عودة للمعايير</a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-neon btn-sm" onclick="openModal('groupModal')">إضافة فوج جديد</button>
+    </div>
+    <div class="glass-card table-responsive">
+        <table class="table table-glass text-white align-middle">
+            <thead><tr><th>رقم الفوج</th><th>الجنسية</th><th>الفئة العمرية</th><th>الباقة</th><th>العدد</th><th class="text-end">الإجراءات</th></tr></thead>
+            <tbody id="groupsList"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header">
+                <h5 class="modal-title">إضافة فوج معتمرين</h5>
+            </div>
+            <div class="modal-body">
+                <form id="groupForm">
+                    <div class="mb-2"><label>رقم الفوج</label><input type="text" class="form-control form-control-glass" id="g_groupNum" required></div>
+                    <div class="mb-2"><label>الجنسية</label><input type="text" class="form-control form-control-glass" id="g_nat" required></div>
+                    <div class="mb-2"><label>الفئة العمرية</label>
+                        <select class="form-control form-control-glass" id="g_age"><option>Adults</option><option>Seniors</option><option>Children</option></select>
+                    </div>
+                    <div class="mb-2"><label>نوع الباقة</label>
+                        <select class="form-control form-control-glass" id="g_pkg"><option>VIP</option><option>Mid-range</option><option>Economy</option></select>
+                    </div>
+                    <div class="mb-2"><label>سعر الباقة</label><input type="number" class="form-control form-control-glass" id="g_price" value="5000"></div>
+                    <div class="mb-2"><label>عدد المعتمرين</label><input type="number" class="form-control form-control-glass" id="g_count" required></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> إغلاق</button>
+                <button type="button" class="btn btn-neon" onclick="saveGroup()"><i class="bi bi-check-lg"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const baseUrl = '/api/mohu-business/groups';
+        document.addEventListener('DOMContentLoaded', loadGroups);
+
+        let groupsData = [];
+        let editingId = null;
+
+        async function loadGroups() {
+            const res = await fetch(baseUrl);
+            if (res.ok) {
+                groupsData = await res.json();
+                document.getElementById('groupsList').innerHTML = groupsData.map(d => `<tr><td>${d.groupNumber}</td><td>${d.nationality}</td><td>${d.ageGroup}</td><td>${d.packageCategory}</td><td>${d.pilgrimCount}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+            }
+        }
+        function openModal(modalId) { 
+            editingId = null;
+            document.getElementById('g_groupNum').value = '';
+            document.getElementById('g_nat').value = '';
+            document.getElementById('g_age').value = 'Adults';
+            document.getElementById('g_pkg').value = 'VIP';
+            document.getElementById('g_price').value = '';
+            document.getElementById('g_count').value = '';
+            new bootstrap.Modal(document.getElementById(modalId)).show(); 
+        }
+        function editRecord(id) { 
+            editingId = id;
+            const record = groupsData.find(g => g.id === id);
+            if (record) {
+                document.getElementById('g_groupNum').value = record.groupNumber;
+                document.getElementById('g_nat').value = record.nationality;
+                document.getElementById('g_age').value = record.ageGroup;
+                document.getElementById('g_pkg').value = record.packageCategory;
+                document.getElementById('g_price').value = record.packagePrice;
+                document.getElementById('g_count').value = record.pilgrimCount;
+                new bootstrap.Modal(document.getElementById('groupModal')).show();
+            }
+        }
+        async function saveGroup() {
+            const payload = {
+                groupNumber: document.getElementById('g_groupNum').value,
+                nationality: document.getElementById('g_nat').value,
+                ageGroup: document.getElementById('g_age').value,
+                packageCategory: document.getElementById('g_pkg').value,
+                packagePrice: parseFloat(document.getElementById('g_price').value) || 0,
+                isNewPilgrim: true,
+                arrivalDate: new Date().toISOString(),
+                arrivalPort: "مطار الملك عبدالعزيز",
+                pilgrimCount: parseInt(document.getElementById('g_count').value) || 0
+            };
+            const method = editingId ? 'PUT' : 'POST';
+            const url = editingId ? `${baseUrl}/${editingId}` : baseUrl;
+            const res = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('groupModal'));
+                modal.hide();
+                loadGroups();
+            } else {
+                alert('فشل الحفظ. تأكد من إعادة تشغيل المشروع لتطبيق آخر تحديثات الـ API (C#).');
+            }
+        }
+        async function deleteRecord(id) {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                await fetch(`${baseUrl}/${id}`, { method: 'DELETE' });
+                loadGroups();
+            }
+        }
+    </script>
+}
