@@ -64,10 +64,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("DashboardPortal", policy =>
     {
-        policy.WithOrigins("http://localhost:5118", "https://localhost:7290")
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
