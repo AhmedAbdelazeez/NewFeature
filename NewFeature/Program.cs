@@ -57,6 +57,7 @@ builder.Services.AddScoped<ICommercialService, CommercialService>();
 builder.Services.AddScoped<ITourismService, TourismService>();
 builder.Services.AddScoped<IOperationsService, OperationsService>();
 builder.Services.AddScoped<IMohuStandardsService, MohuStandardsService>();
+builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 

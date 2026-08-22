@@ -54,6 +54,8 @@ namespace NewFeature.Services.Repositories
         public DbSet<MohuFeedback> MohuFeedbacks { get; set; } = null!;
         public DbSet<MohuViolationRecord> MohuViolationRecords { get; set; } = null!;
         public DbSet<MohuPermitLog> MohuPermitLogs { get; set; } = null!;
+        public DbSet<MaintenanceWorkOrder> MaintenanceWorkOrders { get; set; } = null!;
+        public DbSet<SparePartConsumption> SparePartConsumptions { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -138,6 +140,10 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<TourismHotelBooking>()
                 .Property(thb => thb.Value)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<SparePartConsumption>()
+                .Property(spc => spc.UnitPrice)
                 .HasPrecision(18, 2);
 
             // Cascade Deletes Mitigation (Preventing cycles in SQL Server)
@@ -310,6 +316,27 @@ namespace NewFeature.Services.Repositories
                 .WithMany(e => e.Evaluations)
                 .HasForeignKey(ee => ee.EmployeeId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Vehicle -> MaintenanceWorkOrders (Restrict delete)
+            modelBuilder.Entity<MaintenanceWorkOrder>()
+                .HasOne(m => m.Vehicle)
+                .WithMany()
+                .HasForeignKey(m => m.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // MaintenanceWorkOrder -> SparePartConsumptions (Cascade delete)
+            modelBuilder.Entity<SparePartConsumption>()
+                .HasOne(s => s.MaintenanceWorkOrder)
+                .WithMany(m => m.ConsumedParts)
+                .HasForeignKey(s => s.MaintenanceWorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // SparePartConsumption -> InventoryItem (Restrict delete)
+            modelBuilder.Entity<SparePartConsumption>()
+                .HasOne(s => s.InventoryItem)
+                .WithMany()
+                .HasForeignKey(s => s.InventoryItemId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

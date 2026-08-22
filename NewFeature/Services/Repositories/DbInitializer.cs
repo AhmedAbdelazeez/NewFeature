@@ -1089,6 +1089,90 @@ namespace NewFeature.Services.Repositories
                 );
                 context.SaveChanges();
             }
+
+            // Seed Vehicles if none exist
+            if (!context.Vehicles.Any())
+            {
+                context.Vehicles.AddRange(
+                    new Vehicle { LicensePlate = "أ د ي 4254", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
+                    new Vehicle { LicensePlate = "أ د ي 4255", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
+                    new Vehicle { LicensePlate = "أ د ي 4256", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
+                    new Vehicle { LicensePlate = "ب ر ق 9988", Make = "King Long", Model = "Coach 2027", Year = 2027, Capacity = 49, Status = VehicleStatus.Available },
+                    new Vehicle { LicensePlate = "س ت ر 7766", Make = "GMC", Model = "Coaster 2026", Year = 2026, Capacity = 26, Status = VehicleStatus.Available }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Maintenance Work Orders and Spare Parts
+            if (!context.MaintenanceWorkOrders.Any())
+            {
+                var vehicles = context.Vehicles.ToList();
+                if (vehicles.Any())
+                {
+                    var v1 = vehicles[0];
+                    var v2 = vehicles.Count > 1 ? vehicles[1] : vehicles[0];
+
+                    var order1 = new MaintenanceWorkOrder
+                    {
+                        VehicleId = v1.Id,
+                        Date = DateTime.UtcNow.AddDays(-10),
+                        Odometer = 189038,
+                        BreakdownDescription = "تشييك حرارة وعفشة وحادث مراية يسار",
+                        TimeIn = DateTime.UtcNow.AddDays(-10).AddHours(-5),
+                        TimeOut = DateTime.UtcNow.AddDays(-10).AddHours(-2),
+                        BranchLocation = "مكة المكرمة",
+                        SupervisorName = "ممدوح عبد الباري",
+                        TechnicianName = "محمدين محمد",
+                        Status = WorkOrderStatus.Completed,
+                        Remarks = "تم تغيير كف المراية بنجاح وتصفية القطع مع المستودع"
+                    };
+
+                    var order2 = new MaintenanceWorkOrder
+                    {
+                        VehicleId = v2.Id,
+                        Date = DateTime.UtcNow.AddDays(-5),
+                        Odometer = 657670,
+                        BreakdownDescription = "عطل موتور حمام الحافلة وتسريب هواء",
+                        TimeIn = DateTime.UtcNow.AddDays(-5).AddHours(-8),
+                        TimeOut = DateTime.UtcNow.AddDays(-5).AddHours(-4),
+                        BranchLocation = "المدينة المنورة",
+                        SupervisorName = "محمود حسن",
+                        TechnicianName = "جمعة جلال",
+                        Status = WorkOrderStatus.Completed,
+                        Remarks = "تم تركيب موتور حمام جديد وإصلاح قربة الهواء"
+                    };
+
+                    context.MaintenanceWorkOrders.AddRange(order1, order2);
+                    context.SaveChanges();
+
+                    var part1 = new SparePartConsumption
+                    {
+                        MaintenanceWorkOrderId = order1.Id,
+                        PartName = "كف مرايه يسار",
+                        Quantity = 1,
+                        UnitPrice = 150
+                    };
+
+                    var part2 = new SparePartConsumption
+                    {
+                        MaintenanceWorkOrderId = order2.Id,
+                        PartName = "موتور حمام جديد",
+                        Quantity = 1,
+                        UnitPrice = 450
+                    };
+
+                    var part3 = new SparePartConsumption
+                    {
+                        MaintenanceWorkOrderId = order2.Id,
+                        PartName = "قربه هواء خلفي",
+                        Quantity = 1,
+                        UnitPrice = 300
+                    };
+
+                    context.SparePartConsumptions.AddRange(part1, part2, part3);
+                    context.SaveChanges();
+                }
+            }
         }
     }
 }

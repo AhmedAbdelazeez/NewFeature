@@ -356,32 +356,74 @@ namespace NewFeature.Services
                     return (successCount, errors);
                 }
 
+                var firstRow = worksheet.Row(1);
+                var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 1; i <= firstRow.LastCellUsed().Address.ColumnNumber; i++)
+                {
+                    var val = firstRow.Cell(i).GetString().Trim();
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        headers[val] = i;
+                    }
+                }
+
+                int plateCol = FindColumn(headers, "licnse", "اللوحة", "id no");
+                int makeCol = FindColumn(headers, "صانع", "make", "brand");
+                int modelCol = FindColumn(headers, "bus type", "نوع الحافلة", "name");
+                int yearCol = FindColumn(headers, "year", "سنة الصنع", "model");
+                int capacityCol = FindColumn(headers, "pass", "سعة", "capacity");
+
+                // Default fallbacks if column not found
+                if (plateCol == -1) plateCol = 1;
+                if (makeCol == -1) makeCol = 2;
+                if (modelCol == -1) modelCol = 3;
+                if (yearCol == -1) yearCol = 4;
+                if (capacityCol == -1) capacityCol = 5;
+
                 var rows = worksheet.RowsUsed().Skip(1); // Skip header
 
                 foreach (var row in rows)
                 {
                     try
                     {
-                        var licensePlate = row.Cell(1).GetString().Trim();
-                        var make = row.Cell(2).GetString().Trim();
-                        var model = row.Cell(3).GetString().Trim();
+                        var licensePlate = row.Cell(plateCol).GetString().Trim();
+                        var make = makeCol != -1 ? row.Cell(makeCol).GetString().Trim() : "Yutong";
+                        var model = modelCol != -1 ? row.Cell(modelCol).GetString().Trim() : "City Bus";
                         
-                        int.TryParse(row.Cell(4).GetString(), out int year);
-                        decimal.TryParse(row.Cell(5).GetString(), out decimal capacity);
-
-                        if (string.IsNullOrEmpty(licensePlate) || string.IsNullOrEmpty(make) || string.IsNullOrEmpty(model) || year == 0 || capacity == 0)
+                        // Parse year and capacity safely
+                        int year = 2026;
+                        if (yearCol != -1)
                         {
-                            errors.Add($"Row {row.RowNumber()}: Missing or invalid required fields.");
+                            var yearStr = row.Cell(yearCol).GetString();
+                            int.TryParse(yearStr, out year);
+                        }
+                        if (year == 0) year = 2026;
+
+                        decimal capacity = 49;
+                        if (capacityCol != -1)
+                        {
+                            var capStr = row.Cell(capacityCol).GetString();
+                            decimal.TryParse(capStr, out capacity);
+                        }
+                        if (capacity == 0) capacity = 49;
+
+                        if (string.IsNullOrEmpty(licensePlate))
+                        {
+                            errors.Add($"Row {row.RowNumber()}: License plate is required.");
                             continue;
                         }
 
                         // Check uniqueness
-                        var existing = (await _vehicleRepository.GetAllAsync()).FirstOrDefault(v => v.LicensePlate.Equals(licensePlate, System.StringComparison.OrdinalIgnoreCase));
+                        var existing = (await _vehicleRepository.GetAllAsync())
+                            .FirstOrDefault(v => v.LicensePlate.Replace(" ", "").Equals(licensePlate.Replace(" ", ""), System.StringComparison.OrdinalIgnoreCase));
                         if (existing != null)
                         {
-                            errors.Add($"Row {row.RowNumber()}: License plate '{licensePlate}' already exists.");
+                            // Vehicle already exists, skip or update
                             continue;
                         }
+
+                        if (string.IsNullOrEmpty(make)) make = "Yutong";
+                        if (string.IsNullOrEmpty(model)) model = "City Bus";
 
                         var vehicle = new Vehicle
                         {
@@ -394,17 +436,13 @@ namespace NewFeature.Services
                         };
 
                         await _vehicleRepository.AddAsync(vehicle);
+                        await _vehicleRepository.SaveChangesAsync();
                         successCount++;
                     }
                     catch (System.Exception ex)
                     {
                         errors.Add($"Row {row.RowNumber()}: {ex.Message}");
                     }
-                }
-
-                if (successCount > 0)
-                {
-                    await _vehicleRepository.SaveChangesAsync();
                 }
             }
             catch (System.Exception ex)
@@ -413,6 +451,16 @@ namespace NewFeature.Services
             }
 
             return (successCount, errors);
+        }
+
+        private int FindColumn(Dictionary<string, int> headers, params string[] searchTerms)
+        {
+            foreach (var term in searchTerms)
+            {
+                var match = headers.Keys.FirstOrDefault(k => k.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (match != null) return headers[match];
+            }
+            return -1;
         }
 
         public async Task<(int SuccessCount, List<string> Errors)> BulkUploadRoutesAsync(System.IO.Stream excelStream)

@@ -60,5 +60,13 @@ namespace NewFeature.Models
         Implemented,
         Cancelled
     }
+
+    public enum WorkOrderStatus
+    {
+        Pending,
+        InAnalysis,
+        WaitingParts,
+        Completed
+    }
 }
 
