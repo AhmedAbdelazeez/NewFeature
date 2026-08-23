@@ -46,5 +46,21 @@ namespace NewFeature.Models
 
         public double FuelEfficiencyActual { get; set; }
         public double FuelEfficiencyTarget { get; set; }
+
+        // On-Time Performance Rate (%) - based on real Trip records (ActualArrival vs ScheduledArrival)
+        public double OnTimePerformanceActual { get; set; }
+        public double OnTimePerformanceTarget { get; set; }
+
+        // Total Trips Executed - count of real Trip records that departed/completed
+        public int TotalTripsExecutedActual { get; set; }
+        public int TotalTripsExecutedTarget { get; set; }
+
+        // Active Drivers Count - distinct drivers with at least one trip
+        public int ActiveDriversCountActual { get; set; }
+        public int ActiveDriversCountTarget { get; set; }
+
+        // Fuel/Odometer Efficiency - Km driven per Liter consumed, from Trip odometer + fuel data
+        public double FuelOdometerEfficiencyActual { get; set; }
+        public double FuelOdometerEfficiencyTarget { get; set; }
     }
 }

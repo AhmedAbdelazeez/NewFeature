@@ -29,6 +29,19 @@ namespace NewFeature.Models
 
         public int? ProjectId { get; set; }
 
+        // Operational metrics captured from daily operations logs (optional - populated via bulk upload)
+        public int? PassengerCount { get; set; }
+        public double? OdometerKm { get; set; }
+        public double? FuelConsumedLiters { get; set; }
+
+        // Captured from the daily dispatch sheets ("العميل" / "امر الايجار") so trips can be traced
+        // back to the Sales client and rental order without requiring a full Client FK resolution.
+        [StringLength(200)]
+        public string? ClientName { get; set; }
+
+        [StringLength(50)]
+        public string? BookingReference { get; set; }
+
         // Navigation properties
         public Vehicle? Vehicle { get; set; }
         public Route? Route { get; set; }

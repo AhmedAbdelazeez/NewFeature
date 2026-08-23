@@ -48,6 +48,7 @@ namespace NewFeature.Services
                 TimeIn = o.TimeIn,
                 TimeOut = o.TimeOut,
                 BranchLocation = o.BranchLocation,
+                BreakdownLocation = o.BreakdownLocation,
                 SupervisorName = o.SupervisorName,
                 TechnicianName = o.TechnicianName,
                 Status = o.Status,
@@ -62,6 +63,67 @@ namespace NewFeature.Services
                     InventoryItemId = p.InventoryItemId
                 }).ToList()
             }).ToList();
+        }
+
+        public async Task<PagedResultDto<MaintenanceWorkOrderDto>> GetWorkOrdersPagedAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 200) pageSize = 200;
+
+            var allOrders = (await _workOrderRepository.GetAllAsync()).AsEnumerable();
+
+            if (fromDate.HasValue)
+                allOrders = allOrders.Where(o => o.Date >= fromDate.Value.Date);
+            if (toDate.HasValue)
+                allOrders = allOrders.Where(o => o.Date < toDate.Value.Date.AddDays(1));
+
+            var filteredOrders = allOrders.OrderByDescending(o => o.Date).ToList();
+            var totalCount = filteredOrders.Count;
+
+            var pagedOrders = filteredOrders
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var vehicles = await _vehicleRepository.GetAllAsync();
+            var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v.LicensePlate);
+            var parts = await _partRepository.GetAllAsync();
+
+            var items = pagedOrders.Select(o => new MaintenanceWorkOrderDto
+            {
+                Id = o.Id,
+                VehicleId = o.VehicleId,
+                VehiclePlate = vehicleMap.TryGetValue(o.VehicleId, out var plate) ? plate : "Unknown",
+                Date = o.Date,
+                Odometer = o.Odometer,
+                BreakdownDescription = o.BreakdownDescription,
+                TimeIn = o.TimeIn,
+                TimeOut = o.TimeOut,
+                BranchLocation = o.BranchLocation,
+                BreakdownLocation = o.BreakdownLocation,
+                SupervisorName = o.SupervisorName,
+                TechnicianName = o.TechnicianName,
+                Status = o.Status,
+                Remarks = o.Remarks,
+                ConsumedParts = parts.Where(p => p.MaintenanceWorkOrderId == o.Id).Select(p => new SparePartConsumptionDto
+                {
+                    Id = p.Id,
+                    MaintenanceWorkOrderId = p.MaintenanceWorkOrderId,
+                    PartName = p.PartName,
+                    Quantity = p.Quantity,
+                    UnitPrice = p.UnitPrice,
+                    InventoryItemId = p.InventoryItemId
+                }).ToList()
+            }).ToList();
+
+            return new PagedResultDto<MaintenanceWorkOrderDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<MaintenanceWorkOrderDto?> GetWorkOrderByIdAsync(int id)
@@ -83,6 +145,7 @@ namespace NewFeature.Services
                 TimeIn = o.TimeIn,
                 TimeOut = o.TimeOut,
                 BranchLocation = o.BranchLocation,
+                BreakdownLocation = o.BreakdownLocation,
                 SupervisorName = o.SupervisorName,
                 TechnicianName = o.TechnicianName,
                 Status = o.Status,
@@ -110,6 +173,7 @@ namespace NewFeature.Services
                 TimeIn = dto.TimeIn,
                 TimeOut = dto.TimeOut,
                 BranchLocation = dto.BranchLocation,
+                BreakdownLocation = dto.BreakdownLocation,
                 SupervisorName = dto.SupervisorName,
                 TechnicianName = dto.TechnicianName,
                 Status = dto.Status,
@@ -153,6 +217,7 @@ namespace NewFeature.Services
             o.TimeIn = dto.TimeIn;
             o.TimeOut = dto.TimeOut;
             o.BranchLocation = dto.BranchLocation;
+            o.BreakdownLocation = dto.BreakdownLocation;
             o.SupervisorName = dto.SupervisorName;
             o.TechnicianName = dto.TechnicianName;
             o.Status = dto.Status;
@@ -205,11 +270,16 @@ namespace NewFeature.Services
 
             var completedOrders = orders.Where(o => o.Status == WorkOrderStatus.Completed && o.TimeOut.HasValue).ToList();
             
+            // Guard against bad data (e.g. a bulk-uploaded row with a missing/garbled Time Out that
+            // parses to a wildly wrong date) skewing the average — cap at 30 days per repair.
             double mttr = 0;
-            if (completedOrders.Any())
+            var validDurations = completedOrders
+                .Select(o => (o.TimeOut!.Value - o.TimeIn).TotalHours)
+                .Where(h => h >= 0 && h <= 720)
+                .ToList();
+            if (validDurations.Any())
             {
-                var durations = completedOrders.Select(o => (o.TimeOut!.Value - o.TimeIn).TotalHours);
-                mttr = durations.Average();
+                mttr = validDurations.Average();
             }
 
             int totalBreakdowns = orders.Count();
@@ -244,6 +314,23 @@ namespace NewFeature.Services
                 .Take(5)
                 .ToList();
 
+            // Repairs by breakdown location ("موقع العطل" from the on-site branch reports).
+            // Only work orders that actually have a location recorded are counted, since the
+            // central-workshop sheet doesn't have this column at all.
+            var locatedOrders = orders.Where(o => !string.IsNullOrWhiteSpace(o.BreakdownLocation)).ToList();
+            var totalLocated = locatedOrders.Count;
+            var topLocations = locatedOrders
+                .GroupBy(o => o.BreakdownLocation!.Trim())
+                .Select(g => new BreakdownLocationFrequencyDto
+                {
+                    Location = g.Key,
+                    BreakdownCount = g.Count(),
+                    SharePercentage = totalLocated > 0 ? Math.Round((double)g.Count() / totalLocated * 100.0, 1) : 0
+                })
+                .OrderByDescending(f => f.BreakdownCount)
+                .Take(10)
+                .ToList();
+
             return new MaintenanceKpisDto
             {
                 MeanTimeToRepairHours = Math.Round(mttr, 2),
@@ -252,7 +339,8 @@ namespace NewFeature.Services
                 TotalSparePartsCost = totalPartsCost,
                 ActiveBusesRate = Math.Round(100.0 - fleetAvailability, 2), // % in maintenance or active
                 MaintenanceBacklogRate = Math.Round(backlogRate, 2),
-                TopFrequentBreakdowns = freqBreakdowns
+                TopFrequentBreakdowns = freqBreakdowns,
+                TopBreakdownLocations = topLocations
             };
         }
 
@@ -289,9 +377,17 @@ namespace NewFeature.Services
                 int supervisorCol = FindColumn(headers, "المشرف", "supervisor");
                 int remarksCol = FindColumn(headers, "ملاحظات", "ملاحظة", "remarks");
                 int partsCol = FindColumn(headers, "القطع", "parts");
+                int locationCol = FindColumn(headers, "موقع العطل", "موقع", "location");
 
-                // Default fallbacks if column not found
-                if (busCol == -1) busCol = 1;
+                // The bus/plate column is what identifies this as a maintenance workshop log at
+                // all - if it can't be found by header keyword, refuse the file instead of
+                // silently reading whatever happens to be in column 1 (which produces garbage
+                // work orders if the wrong sheet gets uploaded here by mistake).
+                if (busCol == -1)
+                {
+                    errors.Add("This file doesn't look like a Maintenance/Workshop sheet - no column matching \"Bus\" / \"الحافلة\" was found in the header row. Please check you uploaded the right file.");
+                    return (0, errors);
+                }
                 if (dateCol == -1) dateCol = 2;
                 if (odometerCol == -1) odometerCol = 3;
                 if (descCol == -1) descCol = 4;
@@ -383,6 +479,8 @@ namespace NewFeature.Services
                         }
 
                         var remarks = remarksCol != -1 ? row.Cell(remarksCol).GetString().Trim() : string.Empty;
+                        var breakdownLocation = locationCol != -1 ? row.Cell(locationCol).GetString().Trim() : null;
+                        if (string.IsNullOrWhiteSpace(breakdownLocation)) breakdownLocation = null;
 
                         var order = new MaintenanceWorkOrder
                         {
@@ -393,6 +491,7 @@ namespace NewFeature.Services
                             TimeIn = timeIn,
                             TimeOut = timeOut,
                             BranchLocation = branchName,
+                            BreakdownLocation = breakdownLocation,
                             SupervisorName = supervisorName,
                             TechnicianName = technicianName,
                             Status = status,

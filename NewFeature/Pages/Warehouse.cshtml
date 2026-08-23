@@ -1,0 +1,389 @@
+@page
+@model NewFeature.Pages.WarehouseModel
+@{
+    ViewData["Title"] = "Fleet Management - Warehouse";
+}
+
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="glow-text"><i class="bi bi-boxes me-2"></i> <span data-i18n="warehouse-title">Storage / Warehouse</span></h1>
+            <p class="text-muted mb-0" data-i18n="warehouse-subtitle">Spare parts and supplies inventory, reorder levels, and stock audits</p>
+        </div>
+        <div>
+            <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/warehouse/bulk-upload')">
+            <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
+                <i class="bi bi-file-earmark-excel"></i> <span data-i18n="warehouse-btn-bulk">Bulk Upload</span>
+            </button>
+            <button class="btn btn-neon" onclick="openAddModal()">
+                <i class="bi bi-plus-circle me-1"></i> <span data-i18n="warehouse-btn-add">Add Item</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4" id="warehouseKpis">
+        <div class="col-md-3 col-6">
+            <div class="glass-card p-3 text-center">
+                <div class="text-muted small" data-i18n="warehouse-kpi-total">Total Items</div>
+                <div class="fs-3 fw-bold" id="kpiTotalItems">--</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-card p-3 text-center">
+                <div class="text-muted small" data-i18n="warehouse-kpi-value">Stock Value</div>
+                <div class="fs-3 fw-bold" id="kpiStockValue">--</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-card p-3 text-center">
+                <div class="text-muted small" data-i18n="warehouse-kpi-low">Low Stock</div>
+                <div class="fs-3 fw-bold" id="kpiLowStock">--</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-card p-3 text-center">
+                <div class="text-muted small" data-i18n="warehouse-kpi-accuracy">Inventory Accuracy</div>
+                <div class="fs-3 fw-bold" id="kpiAccuracy">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar: search + date filter -->
+    <div class="glass-card mb-4 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="itemSearch" class="form-control form-control-glass" placeholder="Search items..." onkeyup="filterItems()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1" data-i18n="warehouse-lbl-from">Audit From</label>
+                <input type="date" id="filterFrom" class="form-control form-control-glass">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1" data-i18n="warehouse-lbl-to">Audit To</label>
+                <input type="date" id="filterTo" class="form-control form-control-glass">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyFilter()"><span data-i18n="warehouse-btn-filter">Apply</span></button>
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="resetFilter()"><span data-i18n="warehouse-btn-reset">Reset</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items List -->
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-glass text-white align-middle" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th data-i18n="warehouse-th-name">Item Name</th>
+                        <th data-i18n="warehouse-th-category">Category</th>
+                        <th data-i18n="warehouse-th-qty">Quantity</th>
+                        <th data-i18n="warehouse-th-reorder">Reorder Level</th>
+                        <th data-i18n="warehouse-th-price">Unit Price</th>
+                        <th data-i18n="warehouse-th-audit">Last Audit</th>
+                        <th data-i18n="warehouse-th-actions" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsList">
+                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading inventory...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3">
+            <span class="text-muted small" id="pageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="prevPage()" data-i18n="warehouse-btn-prev">Previous</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="nextPage()" data-i18n="warehouse-btn-next">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back to Fleet -->
+    <div class="text-center mt-5">
+        <a href="/Fleet" class="btn btn-neon-outline">
+            <i class="bi bi-arrow-left me-1"></i> <span data-i18n="btn-back-fleet">Back to Fleet</span>
+        </a>
+    </div>
+</div>
+
+<!-- Add/Edit Item Modal -->
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-glass">
+            <div class="modal-header modal-header-glass">
+                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="warehouse-btn-add">Add Item</h5>
+                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="itemForm" onsubmit="saveItem(event)">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="itemId">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-lbl-name-ar">Item Name (Arabic)</label>
+                            <input type="text" id="itemNameAr" class="form-control form-control-glass" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-lbl-name-en">Item Name (English)</label>
+                            <input type="text" id="itemNameEn" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="warehouse-lbl-category">Category</label>
+                        <input type="text" id="category" class="form-control form-control-glass" value="Spare Parts" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-th-qty">Quantity</label>
+                            <input type="number" id="quantity" class="form-control form-control-glass" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-th-reorder">Reorder Level</label>
+                            <input type="number" id="reorderLevel" class="form-control form-control-glass" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-th-price">Unit Price</label>
+                            <input type="number" step="0.01" id="unitPrice" class="form-control form-control-glass" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" data-i18n="warehouse-th-audit">Last Audit Date</label>
+                            <input type="date" id="lastAuditDate" class="form-control form-control-glass" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="warehouse-lbl-discrepancy">Discrepancy Count</label>
+                        <input type="number" id="discrepancyCount" class="form-control form-control-glass" min="0" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-glass">
+                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const currentLang = localStorage.getItem('lang') || 'en';
+        let currentPage = 1;
+        const pageSize = 10;
+        let fromDate = '';
+        let toDate = '';
+
+        document.addEventListener("DOMContentLoaded", function () {
+            loadKpis();
+            loadItems();
+        });
+
+        async function loadKpis() {
+            try {
+                const res = await fetch('/api/warehouse/kpis');
+                if (res.ok) {
+                    const k = await res.json();
+                    document.getElementById('kpiTotalItems').innerText = k.totalItemsActual ?? 0;
+                    document.getElementById('kpiStockValue').innerText = (k.totalStockValueActual ?? 0).toLocaleString();
+                    document.getElementById('kpiLowStock').innerText = k.lowStockItemsActual ?? 0;
+                    document.getElementById('kpiAccuracy').innerText = (k.inventoryAccuracyRateActual ?? 0).toFixed(1) + '%';
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadItems() {
+            const tbody = document.getElementById("itemsList");
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading...</td></tr>`;
+
+            let url = `/api/warehouse/items?page=${currentPage}&pageSize=${pageSize}`;
+            if (fromDate) url += `&fromDate=${fromDate}`;
+            if (toDate) url += `&toDate=${toDate}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                renderItems(data.items || []);
+                document.getElementById('pageInfo').innerText =
+                    `Page ${data.page} of ${data.totalPages || 1} (${data.totalCount} items)`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderItems(items) {
+            const tbody = document.getElementById("itemsList");
+            tbody.innerHTML = "";
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No items found.</td></tr>`;
+                return;
+            }
+
+            items.forEach(i => {
+                const lowStock = (i.quantity ?? 0) <= (i.reorderLevel ?? 0);
+                const name = currentLang === 'en' ? i.itemNameEn : i.itemNameAr;
+                const tr = document.createElement("tr");
+                if (lowStock) tr.classList.add('table-warning');
+                tr.innerHTML = `
+                    <td><strong>${name}</strong></td>
+                    <td>${i.category}</td>
+                    <td>${i.quantity}</td>
+                    <td>${i.reorderLevel}</td>
+                    <td>${i.unitPrice}</td>
+                    <td>${new Date(i.lastAuditDate).toLocaleDateString()}</td>
+                    <td class="text-end">
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editItem(${i.id})"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-neon-danger btn-sm" onclick="deleteItem(${i.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterItems() {
+            const query = document.getElementById("itemSearch").value.toLowerCase();
+            document.querySelectorAll("#itemsList tr").forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+            });
+        }
+
+        function applyFilter() {
+            fromDate = document.getElementById('filterFrom').value;
+            toDate = document.getElementById('filterTo').value;
+            currentPage = 1;
+            loadItems();
+        }
+
+        function resetFilter() {
+            document.getElementById('filterFrom').value = '';
+            document.getElementById('filterTo').value = '';
+            fromDate = ''; toDate = '';
+            currentPage = 1;
+            loadItems();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) { currentPage--; loadItems(); }
+        }
+
+        function nextPage() {
+            currentPage++; loadItems();
+        }
+
+        function openAddModal() {
+            document.getElementById("itemForm").reset();
+            document.getElementById("itemId").value = "";
+            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Item" : "إضافة صنف";
+            new bootstrap.Modal(document.getElementById('itemModal')).show();
+        }
+
+        async function editItem(id) {
+            try {
+                const res = await fetch(`/api/warehouse/items/${id}`);
+                if (res.ok) {
+                    const i = await res.json();
+                    document.getElementById("itemId").value = i.id;
+                    document.getElementById("itemNameAr").value = i.itemNameAr;
+                    document.getElementById("itemNameEn").value = i.itemNameEn;
+                    document.getElementById("category").value = i.category;
+                    document.getElementById("quantity").value = i.quantity;
+                    document.getElementById("reorderLevel").value = i.reorderLevel;
+                    document.getElementById("unitPrice").value = i.unitPrice;
+                    document.getElementById("lastAuditDate").value = i.lastAuditDate.substring(0, 10);
+                    document.getElementById("discrepancyCount").value = i.discrepancyCount;
+                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Item" : "تعديل الصنف";
+                    new bootstrap.Modal(document.getElementById('itemModal')).show();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function saveItem(e) {
+            e.preventDefault();
+            const id = document.getElementById("itemId").value;
+            const dto = {
+                id: id ? parseInt(id) : 0,
+                itemNameAr: document.getElementById("itemNameAr").value,
+                itemNameEn: document.getElementById("itemNameEn").value,
+                category: document.getElementById("category").value,
+                quantity: parseInt(document.getElementById("quantity").value),
+                reorderLevel: parseInt(document.getElementById("reorderLevel").value),
+                unitPrice: parseFloat(document.getElementById("unitPrice").value),
+                lastAuditDate: document.getElementById("lastAuditDate").value,
+                discrepancyCount: parseInt(document.getElementById("discrepancyCount").value || 0)
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/warehouse/items/${id}` : '/api/warehouse/items';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide();
+                    loadItems();
+                    loadKpis();
+                } else {
+                    alert("Error saving item.");
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteItem(id) {
+            const confirmMsg = currentLang === 'en' ? "Delete this item?" : "هل أنت متأكد من حذف هذا الصنف؟";
+            if (!confirm(confirmMsg)) return;
+            try {
+                const res = await fetch(`/api/warehouse/items/${id}`, { method: 'DELETE' });
+                if (res.ok) { loadItems(); loadKpis(); }
+                else { alert("Failed to delete item."); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function handleBulkUpload(event, url) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const tbody = document.getElementById("itemsList");
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Uploading...</td></tr>`;
+
+                const res = await fetch(url, { method: 'POST', body: formData });
+                if (res.ok) {
+                    const result = await res.json();
+                    let msg = currentLang === 'en' ? `Successfully imported ${result.successCount} records.` : `تم استيراد ${result.successCount} سجل بنجاح.`;
+                    if (result.errors && result.errors.length > 0) {
+                        msg += "\nErrors:\n" + result.errors.slice(0, 5).join('\n');
+                        if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more errors.`;
+                    }
+                    alert(msg);
+                } else {
+                    const text = await res.text();
+                    alert("Bulk upload failed: " + text);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An error occurred during bulk upload.");
+            } finally {
+                event.target.value = "";
+                loadItems();
+                loadKpis();
+            }
+        }
+    </script>
+}

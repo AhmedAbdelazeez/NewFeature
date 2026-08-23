@@ -64,12 +64,30 @@ namespace NewFeature.Controllers
         public async Task<IActionResult> BulkUploadDailyPlans(Microsoft.AspNetCore.Http.IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!file.FileName.EndsWith(".xlsx", System.StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Only .xlsx files are supported.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
 
-            using var stream = file.OpenReadStream();
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
             var result = await _operationsService.BulkUploadDailyPlansAsync(stream);
-            
+
+            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        }
+
+        // Uploads the real monthly operations sheet (e.g. "تشغيل شهر مايو 2026.xlsx") which contains
+        // one row per executed trip. Dynamically resolves/creates Vehicles, Routes and Drivers, and
+        // creates Trip records used to compute the real OTP / Total Trips / Active Drivers / Fuel-Odometer KPIs.
+        [HttpPost("bulk-upload-trips")]
+        public async Task<IActionResult> BulkUploadOperationsTrips(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
+
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
+            var result = await _operationsService.BulkUploadOperationsTripsAsync(stream);
+
             return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
         }
         #endregion

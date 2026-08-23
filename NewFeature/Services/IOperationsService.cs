@@ -25,5 +25,9 @@ namespace NewFeature.Services
 
         // Bulk Upload
         Task<(int SuccessCount, List<string> Errors)> BulkUploadDailyPlansAsync(System.IO.Stream excelStream);
+
+        // Bulk Upload of real daily operations/trip logs (e.g. "تشغيل شهر ..." monthly sheets).
+        // Dynamically maps columns and creates/links Vehicles, Routes, Drivers and Trip records.
+        Task<(int SuccessCount, List<string> Errors)> BulkUploadOperationsTripsAsync(System.IO.Stream excelStream);
     }
 }

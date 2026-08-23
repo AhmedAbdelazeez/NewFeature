@@ -168,6 +168,12 @@ namespace NewFeature.Models
 
         public int? ProjectId { get; set; }
         public string ProjectName { get; set; } = string.Empty;
+
+        public int? PassengerCount { get; set; }
+        public double? OdometerKm { get; set; }
+        public double? FuelConsumedLiters { get; set; }
+        public string? ClientName { get; set; }
+        public string? BookingReference { get; set; }
     }
 
     public class TaskDto

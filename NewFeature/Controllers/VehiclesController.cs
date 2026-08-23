@@ -58,16 +58,24 @@ namespace NewFeature.Controllers
             return NoContent();
         }
 
+        [HttpGet("kpis")]
+        public async Task<ActionResult<FleetKpisDto>> GetFleetKpis()
+        {
+            var kpis = await _fleetService.GetFleetKpisAsync();
+            return Ok(kpis);
+        }
+
         [HttpPost("bulk-upload")]
         public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!file.FileName.EndsWith(".xlsx", System.StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Only .xlsx files are supported.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
 
-            using var stream = file.OpenReadStream();
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
             var result = await _fleetService.BulkUploadVehiclesAsync(stream);
-            
+
             return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
         }
     }

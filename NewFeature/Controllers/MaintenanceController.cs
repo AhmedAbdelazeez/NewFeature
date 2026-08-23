@@ -26,6 +26,17 @@ namespace NewFeature.Controllers
             return Ok(orders);
         }
 
+        [HttpGet("workorders/paged")]
+        public async Task<ActionResult<PagedResultDto<MaintenanceWorkOrderDto>>> GetWorkOrdersPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] System.DateTime? fromDate = null,
+            [FromQuery] System.DateTime? toDate = null)
+        {
+            var result = await _maintenanceService.GetWorkOrdersPagedAsync(page, pageSize, fromDate, toDate);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<MaintenanceWorkOrderDto>> GetWorkOrder(int id)
         {
@@ -69,12 +80,13 @@ namespace NewFeature.Controllers
         public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file, [FromQuery] string branchName = "الورشة المركزية")
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!file.FileName.EndsWith(".xlsx", System.StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Only .xlsx files are supported.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
 
-            using var stream = file.OpenReadStream();
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
             var result = await _maintenanceService.BulkUploadWorkshopLogsAsync(stream, branchName);
-            
+
             return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
         }
     }

@@ -13,6 +13,7 @@ namespace NewFeature.Services
         Task<bool> UpdateVehicleAsync(VehicleDto dto);
         Task<bool> DeleteVehicleAsync(int id);
         Task<(int SuccessCount, List<string> Errors)> BulkUploadVehiclesAsync(System.IO.Stream excelStream);
+        Task<FleetKpisDto> GetFleetKpisAsync();
 
         // Routes
         Task<IEnumerable<RouteDto>> GetAllRoutesAsync();

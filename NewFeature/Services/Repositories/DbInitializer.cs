@@ -164,6 +164,11 @@ namespace NewFeature.Services.Repositories
                 new Department { NameEn = "Compliance & Legal", NameAr = "الامتثال ", Code = "COMP", IsCompliant = true },
                 new Department { NameEn = "Project Management Office", NameAr = "مكتب إدارة المشاريع", Code = "PMO", IsCompliant = true },
                 new Department { NameEn = "Fleet Management", NameAr = "إدارة الأسطول", Code = "FLEET", IsCompliant = true },
+                new Department { NameEn = "Maintenance", NameAr = "إدارة الصيانة", Code = "MAINT", IsCompliant = true },
+                new Department { NameEn = "Storage / Warehouse", NameAr = "إدارة التخزين", Code = "STORE", IsCompliant = true },
+                new Department { NameEn = "Vehicle Management", NameAr = "إدارة المركبات", Code = "VEHICLES", IsCompliant = true },
+                new Department { NameEn = "Route Operations", NameAr = "إدارة المسارات", Code = "ROUTES", IsCompliant = true },
+                new Department { NameEn = "Trips Scheduling", NameAr = "جدولة الرحلات", Code = "TRIPS", IsCompliant = true },
                 new Department { NameEn = "Operational Audit", NameAr = "التدقيق التشغيلي", Code = "AUDIT", IsCompliant = true },
                 new Department { NameEn = "Health, Safety & Environment", NameAr = "الصحة والسلامة والبيئة", Code = "HSE", IsCompliant = true },
                 new Department { NameEn = "Procurement", NameAr = "المشتريات", Code = "PROC", IsCompliant = true },
@@ -1170,6 +1175,109 @@ namespace NewFeature.Services.Repositories
                     };
 
                     context.SparePartConsumptions.AddRange(part1, part2, part3);
+                    context.SaveChanges();
+                }
+            }
+
+            // Seed Driver users (linked to the "Driver" role) if none exist
+            var driverSeedData = new[]
+            {
+                new { Email = "driver1@company.com", Ar = "أحمد يوسف عبدالله", En = "Ahmed Yousef Abdullah" },
+                new { Email = "driver2@company.com", Ar = "محمود إبراهيم دوسو", En = "Mahmoud Ibrahim Dosso" },
+                new { Email = "driver3@company.com", Ar = "سالم عبدالعزيز القحطاني", En = "Salem Abdulaziz Al-Qahtani" }
+            };
+            var seedDrivers = new List<ApplicationUser>();
+            foreach (var d in driverSeedData)
+            {
+                var existingDriver = await userManager.FindByEmailAsync(d.Email);
+                if (existingDriver == null)
+                {
+                    var driverUser = new ApplicationUser
+                    {
+                        UserName = d.Email,
+                        Email = d.Email,
+                        FullNameEn = d.En,
+                        FullNameAr = d.Ar,
+                        IsActive = true,
+                        EmailConfirmed = true
+                    };
+                    var result = await userManager.CreateAsync(driverUser, "Driver@123");
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(driverUser, "Driver");
+                        seedDrivers.Add(driverUser);
+                    }
+                }
+                else
+                {
+                    seedDrivers.Add(existingDriver);
+                }
+            }
+
+            // Seed Routes if none exist (real service lines observed in the operations dispatch sheets)
+            if (!context.Routes.Any())
+            {
+                context.Routes.AddRange(
+                    new Models.Route { NameAr = "جولة بمكهـ", NameEn = "Makkah City Tour", StartLocationAr = "الفندق", StartLocationEn = "Hotel", EndLocationAr = "المشاعر المقدسة", EndLocationEn = "Holy Sites", DistanceKm = 25 },
+                    new Models.Route { NameAr = "مكهـ - مطار جدهـ", NameEn = "Makkah - Jeddah Airport", StartLocationAr = "مكة المكرمة", StartLocationEn = "Makkah", EndLocationAr = "مطار الملك عبدالعزيز", EndLocationEn = "King Abdulaziz Airport", DistanceKm = 95 },
+                    new Models.Route { NameAr = "مطار جدهـ - مكهـ", NameEn = "Jeddah Airport - Makkah", StartLocationAr = "مطار الملك عبدالعزيز", StartLocationEn = "King Abdulaziz Airport", EndLocationAr = "مكة المكرمة", EndLocationEn = "Makkah", DistanceKm = 95 },
+                    new Models.Route { NameAr = "مزارات الحديبية", NameEn = "Al-Hudaybiyah Sites Tour", StartLocationAr = "مكة المكرمة", StartLocationEn = "Makkah", EndLocationAr = "الحديبية", EndLocationEn = "Al-Hudaybiyah", DistanceKm = 30 },
+                    new Models.Route { NameAr = "مزارات مكهـ", NameEn = "Makkah Historic Sites Tour", StartLocationAr = "الفندق", StartLocationEn = "Hotel", EndLocationAr = "المزارات التاريخية", EndLocationEn = "Historic Sites", DistanceKm = 20 }
+                );
+                context.SaveChanges();
+            }
+
+            // Seed Trips (last 4 days, mix of on-time/late/cancelled) so the real Operations KPIs
+            // (OTP Rate, Total Trips Executed, Active Drivers, Fuel/Odometer Efficiency) show live
+            // numbers out of the box, without requiring a bulk Excel upload first.
+            if (!context.Trips.Any())
+            {
+                var seedVehicles = context.Vehicles.ToList();
+                var seedRoutes = context.Routes.ToList();
+                var availableDrivers = seedDrivers.Any() ? seedDrivers : context.Users.Take(3).ToList();
+
+                if (seedVehicles.Any() && seedRoutes.Any() && availableDrivers.Any())
+                {
+                    var clients = new[] { "الهيئة الملكية", "رواحل العمرة", "حملة النمارق", "وكالة اجنحة حايك للسفر" };
+                    var rnd = new Random(42);
+                    var trips = new List<Trip>();
+
+                    for (int day = 3; day >= 0; day--)
+                    {
+                        var date = DateTime.UtcNow.Date.AddDays(-day);
+                        for (int i = 0; i < 8; i++)
+                        {
+                            var vehicle = seedVehicles[i % seedVehicles.Count];
+                            var route = seedRoutes[i % seedRoutes.Count];
+                            var driver = availableDrivers[i % availableDrivers.Count];
+                            var depHour = 6 + (i % 10);
+                            var scheduledDeparture = date.AddHours(depHour);
+                            var scheduledArrival = scheduledDeparture.AddHours(1);
+
+                            // Introduce a cancellation and a few delays for realistic KPI variance
+                            var isCancelled = day == 1 && i == 7;
+                            var delayMinutes = isCancelled ? 0 : (i % 5 == 0 ? 22 : rnd.Next(0, 10));
+
+                            trips.Add(new Trip
+                            {
+                                VehicleId = vehicle.Id,
+                                RouteId = route.Id,
+                                DriverId = driver.Id,
+                                ScheduledDeparture = scheduledDeparture,
+                                ScheduledArrival = scheduledArrival,
+                                ActualDeparture = isCancelled ? null : scheduledDeparture.AddMinutes(delayMinutes),
+                                ActualArrival = isCancelled ? null : scheduledArrival.AddMinutes(delayMinutes),
+                                Status = isCancelled ? TripStatus.Cancelled : TripStatus.Completed,
+                                PassengerCount = 20 + (i % 25),
+                                OdometerKm = (double)route.DistanceKm,
+                                FuelConsumedLiters = (double)route.DistanceKm / 3.2,
+                                ClientName = clients[i % clients.Length],
+                                BookingReference = $"REF-{60000 + (day * 100) + i}"
+                            });
+                        }
+                    }
+
+                    context.Trips.AddRange(trips);
                     context.SaveChanges();
                 }
             }

@@ -253,7 +253,12 @@ namespace NewFeature.Services
                 ScheduledArrival = t.ScheduledArrival,
                 ActualDeparture = t.ActualDeparture,
                 ActualArrival = t.ActualArrival,
-                Status = t.Status
+                Status = t.Status,
+                PassengerCount = t.PassengerCount,
+                OdometerKm = t.OdometerKm,
+                FuelConsumedLiters = t.FuelConsumedLiters,
+                ClientName = t.ClientName,
+                BookingReference = t.BookingReference
             }).ToList();
         }
 
@@ -283,7 +288,12 @@ namespace NewFeature.Services
                 ScheduledArrival = t.ScheduledArrival,
                 ActualDeparture = t.ActualDeparture,
                 ActualArrival = t.ActualArrival,
-                Status = t.Status
+                Status = t.Status,
+                PassengerCount = t.PassengerCount,
+                OdometerKm = t.OdometerKm,
+                FuelConsumedLiters = t.FuelConsumedLiters,
+                ClientName = t.ClientName,
+                BookingReference = t.BookingReference
             };
         }
 
@@ -299,7 +309,12 @@ namespace NewFeature.Services
                 ScheduledArrival = dto.ScheduledArrival,
                 ActualDeparture = dto.ActualDeparture,
                 ActualArrival = dto.ActualArrival,
-                Status = dto.Status
+                Status = dto.Status,
+                PassengerCount = dto.PassengerCount,
+                OdometerKm = dto.OdometerKm,
+                FuelConsumedLiters = dto.FuelConsumedLiters,
+                ClientName = dto.ClientName,
+                BookingReference = dto.BookingReference
             };
 
             await _tripRepository.AddAsync(trip);
@@ -323,6 +338,11 @@ namespace NewFeature.Services
             trip.ActualDeparture = dto.ActualDeparture;
             trip.ActualArrival = dto.ActualArrival;
             trip.Status = dto.Status;
+            trip.PassengerCount = dto.PassengerCount;
+            trip.OdometerKm = dto.OdometerKm;
+            trip.FuelConsumedLiters = dto.FuelConsumedLiters;
+            trip.ClientName = dto.ClientName;
+            trip.BookingReference = dto.BookingReference;
 
             await _tripRepository.UpdateAsync(trip);
             await _tripRepository.SaveChangesAsync();
@@ -337,6 +357,46 @@ namespace NewFeature.Services
             await _tripRepository.DeleteAsync(trip);
             await _tripRepository.SaveChangesAsync();
             return true;
+        }
+        #endregion
+
+        #region Fleet KPIs
+        // 5 new indicators computed from the Vehicle table, populated via the Fleet Details bulk
+        // upload (plate/make/model/year/capacity). Displayed under "إدارة الأسطول".
+        public async Task<FleetKpisDto> GetFleetKpisAsync()
+        {
+            var vehicles = (await _vehicleRepository.GetAllAsync()).ToList();
+            var totalVehicles = vehicles.Count;
+
+            var totalCapacity = vehicles.Sum(v => v.Capacity);
+
+            var currentYear = System.DateTime.UtcNow.Year;
+            double avgAge = totalVehicles > 0 ? vehicles.Average(v => (double)(currentYear - v.Year)) : 0;
+
+            int modernCount = vehicles.Count(v => (currentYear - v.Year) <= 5);
+            double modernizationRate = totalVehicles > 0 ? ((double)modernCount / totalVehicles) * 100.0 : 0;
+
+            int busTypeVariety = vehicles.Select(v => v.Model).Distinct(System.StringComparer.OrdinalIgnoreCase).Count();
+
+            double avgCapacityPerBus = totalVehicles > 0 ? (double)(totalCapacity / totalVehicles) : 0;
+
+            return new FleetKpisDto
+            {
+                TotalSeatingCapacityActual = totalCapacity,
+                TotalSeatingCapacityTarget = totalCapacity,
+
+                AverageBusAgeActual = System.Math.Round(avgAge, 1),
+                AverageBusAgeTarget = 5.0,
+
+                FleetModernizationRateActual = System.Math.Round(modernizationRate, 1),
+                FleetModernizationRateTarget = 80.0,
+
+                BusTypeVarietyCountActual = busTypeVariety,
+                BusTypeVarietyCountTarget = busTypeVariety,
+
+                AverageCapacityPerBusActual = System.Math.Round(avgCapacityPerBus, 1),
+                AverageCapacityPerBusTarget = 49.0
+            };
         }
         #endregion
 
@@ -367,18 +427,21 @@ namespace NewFeature.Services
                     }
                 }
 
-                int plateCol = FindColumn(headers, "licnse", "اللوحة", "id no");
+                int plateCol = FindColumn(headers, "licnse", "license", "اللوحة", "id no", "plate");
                 int makeCol = FindColumn(headers, "صانع", "make", "brand");
                 int modelCol = FindColumn(headers, "bus type", "نوع الحافلة", "name");
                 int yearCol = FindColumn(headers, "year", "سنة الصنع", "model");
                 int capacityCol = FindColumn(headers, "pass", "سعة", "capacity");
 
-                // Default fallbacks if column not found
-                if (plateCol == -1) plateCol = 1;
-                if (makeCol == -1) makeCol = 2;
-                if (modelCol == -1) modelCol = 3;
-                if (yearCol == -1) yearCol = 4;
-                if (capacityCol == -1) capacityCol = 5;
+                // The plate column identifies this as a Vehicles sheet at all - if it can't be
+                // found by header keyword, refuse the file instead of silently reading whatever
+                // happens to be in column 1 (which produces garbage rows if the wrong sheet, e.g.
+                // a Routes or Storage export, gets uploaded here by mistake).
+                if (plateCol == -1)
+                {
+                    errors.Add("This file doesn't look like a Vehicles sheet - no column matching \"License Plate\" / \"رقم اللوحة\" was found in the header row. Please check you uploaded the right file.");
+                    return (successCount, errors);
+                }
 
                 var rows = worksheet.RowsUsed().Skip(1); // Skip header
 
@@ -463,6 +526,40 @@ namespace NewFeature.Services
             return -1;
         }
 
+        // Cheap sanity check: does row 1 contain at least one keyword we'd expect for a Routes
+        // sheet? Used to refuse obviously-mismatched files (e.g. a Storage/Inventory export
+        // uploaded to the Routes endpoint) before any positional column reading happens.
+        private static bool HeaderLooksLikeRoutesSheet(ClosedXML.Excel.IXLWorksheet worksheet)
+        {
+            string[] keywords = { "route", "مسار", "خط", "distance", "مسافة", "start", "بداية", "end", "نهاية", "destination", "وجهة" };
+            return HeaderContainsAny(worksheet, keywords);
+        }
+
+        private static bool HeaderLooksLikeTripsSheet(ClosedXML.Excel.IXLWorksheet worksheet)
+        {
+            string[] keywords = { "vehicle", "مركبة", "حافلة", "route", "مسار", "driver", "سائق", "departure", "مغادرة", "arrival", "وصول" };
+            return HeaderContainsAny(worksheet, keywords);
+        }
+
+        private static bool HeaderContainsAny(ClosedXML.Excel.IXLWorksheet worksheet, string[] keywords)
+        {
+            var firstRow = worksheet.Row(1);
+            var lastCell = firstRow.LastCellUsed();
+            if (lastCell == null) return false;
+
+            for (int i = 1; i <= lastCell.Address.ColumnNumber; i++)
+            {
+                var val = firstRow.Cell(i).GetString();
+                if (string.IsNullOrWhiteSpace(val)) continue;
+
+                foreach (var kw in keywords)
+                {
+                    if (val.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                }
+            }
+            return false;
+        }
+
         public async Task<(int SuccessCount, List<string> Errors)> BulkUploadRoutesAsync(System.IO.Stream excelStream)
         {
             var errors = new List<string>();
@@ -473,6 +570,16 @@ namespace NewFeature.Services
                 using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
                 var worksheet = workbook.Worksheets.FirstOrDefault();
                 if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
+
+                // Sanity-check the header row before touching any data. Without this, uploading
+                // an unrelated sheet (e.g. a Storage/Inventory export) here would silently create
+                // garbage Route rows, since this importer reads fixed columns 1-7 with no awareness
+                // of what's actually in them.
+                if (!HeaderLooksLikeRoutesSheet(worksheet))
+                {
+                    errors.Add("This file doesn't look like a Routes sheet - expected columns like \"Route Name\" / \"اسم المسار\", \"Start\" / \"بداية\", \"End\" / \"نهاية\", or \"Distance\" / \"المسافة\" were not found. Please check you uploaded the right file.");
+                    return (0, errors);
+                }
 
                 var rows = worksheet.RowsUsed().Skip(1);
                 foreach (var row in rows)
@@ -530,6 +637,12 @@ namespace NewFeature.Services
                 using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
                 var worksheet = workbook.Worksheets.FirstOrDefault();
                 if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
+
+                if (!HeaderLooksLikeTripsSheet(worksheet))
+                {
+                    errors.Add("This file doesn't look like a Trips sheet - expected columns like \"Vehicle\" / \"مركبة\", \"Route\" / \"مسار\", \"Driver\" / \"سائق\", or \"Departure\" / \"مغادرة\" were not found. Please check you uploaded the right file.");
+                    return (0, errors);
+                }
 
                 var rows = worksheet.RowsUsed().Skip(1);
                 foreach (var row in rows)

@@ -29,6 +29,12 @@ namespace NewFeature.Models
         [StringLength(100)]
         public string BranchLocation { get; set; } = string.Empty;
 
+        // Where the breakdown itself happened (e.g. "باب علي", "طريق الرياض") - only present in
+        // the branch on-site technician reports ("موقع العطل" column), distinct from BranchLocation
+        // which is just the branch/city name. Used to build a "repairs by location" KPI.
+        [StringLength(150)]
+        public string? BreakdownLocation { get; set; }
+
         [StringLength(150)]
         public string SupervisorName { get; set; } = string.Empty;
 
