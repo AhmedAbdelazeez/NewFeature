@@ -1675,6 +1675,217 @@ namespace NewFeature.Migrations
                     b.ToTable("Routes");
                 });
 
+            modelBuilder.Entity("NewFeature.Models.SalesCustomerRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("CustomerCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CustomerGroup")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SalesImportBatchId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalYear", "CustomerCode");
+
+                    b.HasIndex("SalesImportBatchId");
+
+                    b.ToTable("SalesCustomerRecords");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesDailyOperation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BusTypeCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConfirmationNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Direction")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("ExecutionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExecutionPoint")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<TimeSpan?>("ExecutionTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("OperationalCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RentalOrderNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RequestType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SalesImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScheduledBuses")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionDate");
+
+                    b.HasIndex("SalesImportBatchId");
+
+                    b.ToTable("SalesDailyOperations");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesFleetCapacity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BusCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("BusType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ModelYear")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumberOfBuses")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SalesImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SeatsPerBus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TotalSeats")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesImportBatchId");
+
+                    b.ToTable("SalesFleetCapacities");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesImportBatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ErrorDetails")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("FileType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportedRowCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RejectedRowCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReportingPeriod")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SourceSheet")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SalesImportBatches");
+                });
+
             modelBuilder.Entity("NewFeature.Models.SparePartConsumption", b =>
                 {
                     b.Property<int>("Id")
@@ -2048,9 +2259,27 @@ namespace NewFeature.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("Capacity")
+                    b.Property<string>("BusNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("BusTypeCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal?>("Capacity")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ChassisNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("HasAirConditioning")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsInStorage")
+                        .HasColumnType("bit");
 
                     b.Property<string>("LicensePlate")
                         .IsRequired()
@@ -2062,10 +2291,26 @@ namespace NewFeature.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<decimal?>("MaxKilometers")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Mileage")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ResponsibilityCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ResponsibleEmployeeName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -2373,6 +2618,39 @@ namespace NewFeature.Migrations
                         .IsRequired();
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesCustomerRecord", b =>
+                {
+                    b.HasOne("NewFeature.Models.SalesImportBatch", "ImportBatch")
+                        .WithMany()
+                        .HasForeignKey("SalesImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportBatch");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesDailyOperation", b =>
+                {
+                    b.HasOne("NewFeature.Models.SalesImportBatch", "ImportBatch")
+                        .WithMany()
+                        .HasForeignKey("SalesImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportBatch");
+                });
+
+            modelBuilder.Entity("NewFeature.Models.SalesFleetCapacity", b =>
+                {
+                    b.HasOne("NewFeature.Models.SalesImportBatch", "ImportBatch")
+                        .WithMany()
+                        .HasForeignKey("SalesImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportBatch");
                 });
 
             modelBuilder.Entity("NewFeature.Models.SparePartConsumption", b =>

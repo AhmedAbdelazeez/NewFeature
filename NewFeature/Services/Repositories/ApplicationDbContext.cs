@@ -57,6 +57,12 @@ namespace NewFeature.Services.Repositories
         public DbSet<MaintenanceWorkOrder> MaintenanceWorkOrders { get; set; } = null!;
         public DbSet<SparePartConsumption> SparePartConsumptions { get; set; } = null!;
 
+        // Sales Department
+        public DbSet<SalesImportBatch> SalesImportBatches { get; set; } = null!;
+        public DbSet<SalesCustomerRecord> SalesCustomerRecords { get; set; } = null!;
+        public DbSet<SalesFleetCapacity> SalesFleetCapacities { get; set; } = null!;
+        public DbSet<SalesDailyOperation> SalesDailyOperations { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -84,6 +90,14 @@ namespace NewFeature.Services.Repositories
 
             modelBuilder.Entity<Vehicle>()
                 .Property(v => v.Capacity)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Vehicle>()
+                .Property(v => v.Mileage)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Vehicle>()
+                .Property(v => v.MaxKilometers)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<Project>()
@@ -337,6 +351,27 @@ namespace NewFeature.Services.Repositories
                 .WithMany()
                 .HasForeignKey(s => s.InventoryItemId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Sales Department: import batches own their child rows (customer roster /
+            // fleet capacity / daily operations), so a batch delete cascades to its rows,
+            // mirroring the MaintenanceWorkOrder -> SparePartConsumption cascade above.
+            modelBuilder.Entity<SalesCustomerRecord>()
+                .HasOne(r => r.ImportBatch)
+                .WithMany()
+                .HasForeignKey(r => r.SalesImportBatchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SalesFleetCapacity>()
+                .HasOne(r => r.ImportBatch)
+                .WithMany()
+                .HasForeignKey(r => r.SalesImportBatchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SalesDailyOperation>()
+                .HasOne(r => r.ImportBatch)
+                .WithMany()
+                .HasForeignKey(r => r.SalesImportBatchId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

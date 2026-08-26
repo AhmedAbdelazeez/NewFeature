@@ -11,6 +11,9 @@
             <p class="text-muted mb-0" data-i18n="vehicles-subtitle">Manage vehicle assets, capacity, and current operational states</p>
         </div>
         <div>
+            <a class="btn btn-outline-secondary me-2" href="/templates/Vehicle_Management_Template.xlsx" download>
+                <i class="bi bi-download"></i> Download Template
+            </a>
             <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/vehicles/bulk-upload')">
             <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
                 <i class="bi bi-file-earmark-excel"></i> <span data-i18n="vehicles-btn-bulk">Bulk Upload</span>
@@ -24,11 +27,22 @@
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-12">
+            <div class="col-md-8">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="vehicleSearch" class="form-control form-control-glass" placeholder="Search vehicles by plate, make, model or status..." onkeyup="filterVehicles()">
+                    <input type="text" id="vehicleSearch" class="form-control form-control-glass" placeholder="Search by plate, bus number, chassis, make, model or status..." onkeyup="handleSearchKeyup(event)">
                 </div>
+            </div>
+            <div class="col-md-2">
+                <select id="pageSizeSelect" class="form-control form-control-glass" onchange="changePageSize()">
+                    <option value="10">10 / page</option>
+                    <option value="20" selected>20 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applySearch()"><span data-i18n="vehicles-btn-search">Search</span></button>
             </div>
         </div>
     </div>
@@ -40,19 +54,30 @@
                 <thead>
                     <tr>
                         <th data-i18n="vehicles-th-plate">License Plate</th>
-                        <th data-i18n="vehicles-th-make">Make & Model</th>
+                        <th data-i18n="vehicles-th-busno">Bus No.</th>
+                        <th data-i18n="vehicles-th-make">Make &amp; Model</th>
                         <th data-i18n="vehicles-th-year">Year</th>
                         <th data-i18n="vehicles-th-capacity">Capacity</th>
                         <th data-i18n="vehicles-th-status">Status</th>
+                        <th data-i18n="vehicles-th-assignment">Assignment</th>
                         <th data-i18n="vehicles-th-actions" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="vehiclesList">
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading fleet vehicles...</td>
+                        <td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading fleet vehicles...</td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+            <span class="text-muted small" id="pageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="firstPage()" data-i18n="vehicles-btn-first">&laquo; First</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="prevPage()" data-i18n="vehicles-btn-prev">Previous</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="nextPage()" data-i18n="vehicles-btn-next">Next</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="lastPage()" data-i18n="vehicles-btn-last">Last &raquo;</button>
+            </div>
         </div>
     </div>
 </div>
@@ -68,7 +93,18 @@
             <form id="vehicleForm" onsubmit="saveVehicle(event)">
                 <div class="modal-body p-4">
                     <input type="hidden" id="vehicleId">
-                    
+                    <!-- Fields the register-seeded rows carry but this form doesn't expose for
+                         editing yet; preserved as-is on Save so editing e.g. Status through this
+                         form doesn't blank them out. -->
+                    <input type="hidden" id="busNumber">
+                    <input type="hidden" id="chassisNumber">
+                    <input type="hidden" id="busTypeCode">
+                    <input type="hidden" id="hasAirConditioning" value="false">
+                    <input type="hidden" id="maxKilometers">
+                    <input type="hidden" id="isInStorage" value="false">
+                    <input type="hidden" id="responsibilityCode">
+                    <input type="hidden" id="responsibleEmployeeName">
+
                     <div class="mb-3">
                         <label for="licensePlate" class="form-label" data-i18n="vehicles-lbl-plate">License Plate</label>
                         <input type="text" id="licensePlate" class="form-control form-control-glass" required>
@@ -92,7 +128,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="capacity" class="form-label" data-i18n="vehicles-lbl-capacity">Capacity</label>
-                            <input type="number" step="0.01" id="capacity" class="form-control form-control-glass" required>
+                            <input type="number" step="0.01" id="capacity" class="form-control form-control-glass" placeholder="Unknown">
                         </div>
                     </div>
 
@@ -119,7 +155,10 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         const currentLang = localStorage.getItem('lang') || 'en';
-        let vehicles = [];
+        let currentPage = 1;
+        let pageSize = 20;
+        let searchTerm = '';
+        let totalPages = 1;
 
         const statusMeta = {
             0: { text: "Available", class: "badge-glow-success" },
@@ -140,37 +179,59 @@
         });
 
         async function loadVehicles() {
+            const tbody = document.getElementById("vehiclesList");
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading fleet vehicles...</td></tr>`;
+
+            let url = `/api/vehicles/paged?page=${currentPage}&pageSize=${pageSize}`;
+            if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+
             try {
-                const res = await fetch('/api/vehicles');
-                if (res.ok) {
-                    vehicles = await res.json();
-                    renderVehicles();
-                }
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                totalPages = data.totalPages || 1;
+                renderVehicles(data.items || []);
+                document.getElementById('pageInfo').innerText =
+                    (currentLang === 'en'
+                        ? `Page ${data.page} of ${totalPages} (${data.totalCount} vehicles)`
+                        : `صفحة ${data.page} من ${totalPages} (${data.totalCount} مركبة)`);
             } catch (err) {
                 console.error(err);
             }
         }
 
-        function renderVehicles() {
+        function renderVehicles(vehicles) {
             const tbody = document.getElementById("vehiclesList");
             tbody.innerHTML = "";
 
             if (vehicles.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No vehicles found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No vehicles found.</td></tr>`;
                 return;
             }
 
             vehicles.forEach(v => {
                 const status = currentLang === 'en' ? statusMeta[v.status] : statusMetaAr[v.status];
                 const badge = `<span class="${status.class}">${status.text}</span>`;
+                const capacityText = (v.capacity === null || v.capacity === undefined) ? '—' : v.capacity;
+
+                let assignment;
+                if (v.isInStorage) {
+                    assignment = currentLang === 'en' ? '<span class="text-muted">In storage</span>' : '<span class="text-muted">في المستودع</span>';
+                } else if (v.responsibleEmployeeName) {
+                    assignment = `${v.responsibleEmployeeName}${v.responsibilityCode ? ' (' + v.responsibilityCode + ')' : ''}`;
+                } else {
+                    assignment = '—';
+                }
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td><strong>${v.licensePlate}</strong></td>
+                    <td>${v.busNumber || '—'}</td>
                     <td>${v.make} ${v.model}</td>
                     <td>${v.year}</td>
-                    <td>${v.capacity}</td>
+                    <td>${capacityText}</td>
                     <td>${badge}</td>
+                    <td>${assignment}</td>
                     <td class="text-end">
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="viewVehicleDetails(${v.id})"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="editVehicle(${v.id})"><i class="bi bi-pencil-square"></i></button>
@@ -181,18 +242,36 @@
             });
         }
 
-        function filterVehicles() {
-            const query = document.getElementById("vehicleSearch").value.toLowerCase();
-            const rows = document.querySelectorAll("#vehiclesList tr");
+        function handleSearchKeyup(event) {
+            if (event.key === 'Enter') applySearch();
+        }
 
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if (text.includes(query)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
-            });
+        function applySearch() {
+            searchTerm = document.getElementById("vehicleSearch").value.trim();
+            currentPage = 1;
+            loadVehicles();
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById("pageSizeSelect").value, 10);
+            currentPage = 1;
+            loadVehicles();
+        }
+
+        function firstPage() {
+            if (currentPage !== 1) { currentPage = 1; loadVehicles(); }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) { currentPage--; loadVehicles(); }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) { currentPage++; loadVehicles(); }
+        }
+
+        function lastPage() {
+            if (currentPage !== totalPages) { currentPage = totalPages; loadVehicles(); }
         }
 
         function resetModalReadOnly(formId) {
@@ -202,12 +281,24 @@
             if (saveBtn) saveBtn.style.display = "";
         }
 
+        function setExtendedFields(v) {
+            document.getElementById("busNumber").value = v?.busNumber || "";
+            document.getElementById("chassisNumber").value = v?.chassisNumber || "";
+            document.getElementById("busTypeCode").value = v?.busTypeCode || "";
+            document.getElementById("hasAirConditioning").value = v?.hasAirConditioning ? "true" : "false";
+            document.getElementById("maxKilometers").value = (v?.maxKilometers ?? "");
+            document.getElementById("isInStorage").value = v?.isInStorage ? "true" : "false";
+            document.getElementById("responsibilityCode").value = v?.responsibilityCode || "";
+            document.getElementById("responsibleEmployeeName").value = v?.responsibleEmployeeName || "";
+        }
+
         function openAddModal() {
             resetModalReadOnly("vehicleForm");
             document.getElementById("vehicleForm").reset();
             document.getElementById("vehicleId").value = "";
+            setExtendedFields(null);
             document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Vehicle" : "إضافة مركبة";
-            
+
             const modal = new bootstrap.Modal(document.getElementById('vehicleModal'));
             modal.show();
         }
@@ -223,8 +314,9 @@
                     document.getElementById("make").value = v.make;
                     document.getElementById("model").value = v.model;
                     document.getElementById("year").value = v.year;
-                    document.getElementById("capacity").value = v.capacity;
+                    document.getElementById("capacity").value = (v.capacity === null || v.capacity === undefined) ? "" : v.capacity;
                     document.getElementById("status").value = v.status;
+                    setExtendedFields(v);
 
                     document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Vehicle Info" : "تعديل معلومات المركبة";
 
@@ -249,14 +341,25 @@
             e.preventDefault();
 
             const id = document.getElementById("vehicleId").value;
+            const capacityRaw = document.getElementById("capacity").value;
+            const maxKmRaw = document.getElementById("maxKilometers").value;
+
             const dto = {
                 id: id ? parseInt(id) : 0,
+                busNumber: document.getElementById("busNumber").value || null,
                 licensePlate: document.getElementById("licensePlate").value,
                 make: document.getElementById("make").value,
                 model: document.getElementById("model").value,
                 year: parseInt(document.getElementById("year").value),
-                capacity: parseFloat(document.getElementById("capacity").value),
-                status: parseInt(document.getElementById("status").value)
+                capacity: capacityRaw === "" ? null : parseFloat(capacityRaw),
+                status: parseInt(document.getElementById("status").value),
+                chassisNumber: document.getElementById("chassisNumber").value || null,
+                busTypeCode: document.getElementById("busTypeCode").value || null,
+                hasAirConditioning: document.getElementById("hasAirConditioning").value === "true",
+                maxKilometers: maxKmRaw === "" ? null : parseFloat(maxKmRaw),
+                isInStorage: document.getElementById("isInStorage").value === "true",
+                responsibilityCode: document.getElementById("responsibilityCode").value || null,
+                responsibleEmployeeName: document.getElementById("responsibleEmployeeName").value || null
             };
 
             const method = id ? 'PUT' : 'POST';
@@ -307,7 +410,7 @@
 
             try {
                 const tbody = document.getElementById("vehiclesList");
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Uploading...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Uploading...</td></tr>`;
 
                 const res = await fetch(url, {
                     method: 'POST',
@@ -316,10 +419,18 @@
 
                 if (res.ok) {
                     const result = await res.json();
-                    let msg = currentLang === 'en' ? `Successfully imported ${result.successCount} records.` : `تم استيراد ${result.successCount} سجل بنجاح.`;
+                    let msg;
+                    if (result.insertedRows !== undefined) {
+                        msg = currentLang === 'en'
+                            ? `Inserted ${result.insertedRows}, updated ${result.updatedRows}, skipped ${result.skippedRows}.`
+                            : `تمت إضافة ${result.insertedRows}، وتحديث ${result.updatedRows}، وتخطي ${result.skippedRows}.`;
+                    } else {
+                        msg = currentLang === 'en' ? `Successfully imported ${result.successCount ?? 0} records.` : `تم استيراد ${result.successCount ?? 0} سجل بنجاح.`;
+                    }
                     if (result.errors && result.errors.length > 0) {
-                        msg += "\nErrors:\n" + result.errors.slice(0, 5).join('\n');
-                        if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more errors.`;
+                        const errText = result.errors.map(e => typeof e === 'string' ? e : `Row ${e.rowNumber}: ${e.message}`);
+                        msg += "\nErrors:\n" + errText.slice(0, 5).join('\n');
+                        if (errText.length > 5) msg += `\n...and ${errText.length - 5} more errors.`;
                     }
                     alert(msg);
                 } else {
@@ -331,6 +442,7 @@
                 alert("An error occurred during bulk upload.");
             } finally {
                 event.target.value = "";
+                currentPage = 1;
                 loadVehicles();
             }
         }

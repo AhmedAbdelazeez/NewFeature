@@ -21,6 +21,7 @@ namespace NewFeature.Pages
                 if (User.IsInRole("ROUTES")) return RedirectToPage("/Routes");
                 if (User.IsInRole("TRIPS")) return RedirectToPage("/Trips");
                 if (User.IsInRole("FLEET")) return RedirectToPage("/Fleet");
+                if (User.IsInRole("SALES")) return RedirectToPage("/Sales");
             }
 
             return Page();

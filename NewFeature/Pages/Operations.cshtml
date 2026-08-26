@@ -13,6 +13,15 @@
         </div>
         <div class="d-flex gap-2">
             <div>
+                <a class="btn btn-outline-secondary btn-sm me-2" href="/templates/Operations_Trips_Template.xlsx" download title="Download the real trip/dispatch upload template">
+                    <i class="bi bi-download"></i> Template
+                </a>
+                <input type="file" id="bulkUploadTripsFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/operations/bulk-upload-trips')">
+                <button class="btn btn-neon me-2" onclick="document.getElementById('bulkUploadTripsFile').click()">
+                    <i class="bi bi-file-earmark-excel"></i> استيراد بيانات التشغيل (رحلات فعلية)
+                </button>
+            </div>
+            <div>
                 <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/operations/bulk-upload-daily-plans')">
                 <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
                     <i class="bi bi-file-earmark-excel"></i> استيراد خطط تشغيلية (Excel)

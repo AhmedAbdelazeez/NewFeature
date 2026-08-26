@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NewFeature.Models;
 using NewFeature.Services.Repositories;
 using ClosedXML.Excel;
@@ -16,17 +17,23 @@ namespace NewFeature.Services
         private readonly IRepository<SparePartConsumption> _partRepository;
         private readonly IRepository<Vehicle> _vehicleRepository;
         private readonly IRepository<InventoryItem> _inventoryRepository;
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<MaintenanceService> _logger;
 
         public MaintenanceService(
             IRepository<MaintenanceWorkOrder> workOrderRepository,
             IRepository<SparePartConsumption> partRepository,
             IRepository<Vehicle> vehicleRepository,
-            IRepository<InventoryItem> inventoryRepository)
+            IRepository<InventoryItem> inventoryRepository,
+            ApplicationDbContext context,
+            ILogger<MaintenanceService> logger)
         {
             _workOrderRepository = workOrderRepository;
             _partRepository = partRepository;
             _vehicleRepository = vehicleRepository;
             _inventoryRepository = inventoryRepository;
+            _context = context;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<MaintenanceWorkOrderDto>> GetAllWorkOrdersAsync()
@@ -408,9 +415,13 @@ namespace NewFeature.Services
                         var vehicleVal = row.Cell(busCol).GetString().Trim(); // رقم الحافلة
                         if (string.IsNullOrEmpty(vehicleVal)) continue;
 
-                        // Try to find vehicle
-                        var vehicle = dbVehicles.FirstOrDefault(v => v.LicensePlate.Contains(vehicleVal) || 
-                                                                     v.LicensePlate.Replace(" ", "").Contains(vehicleVal));
+                        // Try to find vehicle. This column is the short internal bus number (e.g.
+                        // "547"), not the license plate, so match against Vehicle.BusNumber first -
+                        // falling back to a plate substring match only for older data that has no
+                        // BusNumber on file.
+                        var vehicle = dbVehicles.FirstOrDefault(v => v.BusNumber == vehicleVal)
+                                      ?? dbVehicles.FirstOrDefault(v => v.LicensePlate.Contains(vehicleVal) ||
+                                                                        v.LicensePlate.Replace(" ", "").Contains(vehicleVal));
                         if (vehicle == null)
                         {
                             // Create temporary vehicle placeholder so the work order seeds successfully
@@ -532,6 +543,9 @@ namespace NewFeature.Services
             {
                 errors.Add($"Error reading file: {ex.Message}");
             }
+
+            if (successCount > 0)
+                await Repositories.DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "MaintenanceWorkOrders", "SparePartConsumptions");
 
             return (successCount, errors);
         }

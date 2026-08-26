@@ -48,6 +48,12 @@ namespace NewFeature.Services.Repositories
 
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
+            // Vehicles are no longer force-seeded here from the hardcoded VehicleSeedData.cs snapshot.
+            // The real Vehicle Management register is now loaded through the actual bulk-upload
+            // feature (Vehicles page / POST api/vehicles/bulk-upload), which is the code path that
+            // needs to be proven correct end-to-end - re-seeding on every startup would silently
+            // overwrite whatever was uploaded there.
+
             // Seed Client, Contract, and ContractItems if none exist
             if (!context.Clients.Any())
             {
@@ -176,7 +182,8 @@ namespace NewFeature.Services.Repositories
                 new Department { NameEn = "Commercial", NameAr = "القطاع التجاري", Code = "COMM", IsCompliant = true },
                 new Department { NameEn = "Tourism", NameAr = "السياحة", Code = "TOUR", IsCompliant = true },
                 new Department { NameEn = "Client Relations", NameAr = "علاقات العملاء", Code = "CR", IsCompliant = true },
-                new Department { NameEn = "Task Management", NameAr = "إدارة المهام", Code = "TASK", IsCompliant = true }
+                new Department { NameEn = "Task Management", NameAr = "إدارة المهام", Code = "TASK", IsCompliant = true },
+                new Department { NameEn = "Sales", NameAr = "إدارة المبيعات", Code = "SALES", IsCompliant = true }
             };
 
             foreach (var dept in departmentsToSeed)
@@ -1091,19 +1098,6 @@ namespace NewFeature.Services.Repositories
                     new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-8", NameAr = "تاريخ الخروج", NameEn = "Exit Date Data", ActualValue = 100, TargetValue = 100 },
                     new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-9", NameAr = "بيانات تكاليف الباقات", NameEn = "Package Costs Data", ActualValue = 100, TargetValue = 100 },
                     new MohuStandardKpi { CategoryCode = "DataQuality", KpiCode = "mohu-data-10", NameAr = "تطابق بيانات السكن", NameEn = "Housing Data Match", ActualValue = 100, TargetValue = 100 }
-                );
-                context.SaveChanges();
-            }
-
-            // Seed Vehicles if none exist
-            if (!context.Vehicles.Any())
-            {
-                context.Vehicles.AddRange(
-                    new Vehicle { LicensePlate = "أ د ي 4254", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
-                    new Vehicle { LicensePlate = "أ د ي 4255", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
-                    new Vehicle { LicensePlate = "أ د ي 4256", Make = "Yutong", Model = "City YT 2018", Year = 2018, Capacity = 49, Status = VehicleStatus.Available },
-                    new Vehicle { LicensePlate = "ب ر ق 9988", Make = "King Long", Model = "Coach 2027", Year = 2027, Capacity = 49, Status = VehicleStatus.Available },
-                    new Vehicle { LicensePlate = "س ت ر 7766", Make = "GMC", Model = "Coaster 2026", Year = 2026, Capacity = 26, Status = VehicleStatus.Available }
                 );
                 context.SaveChanges();
             }

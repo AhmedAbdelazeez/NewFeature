@@ -24,43 +24,19 @@ namespace NewFeature.Models
         public string Status { get; set; } = "Open";
     }
 
+    // Deliberately minimal: every field here is a plain, directly-observable count/rate computed
+    // from real Trip records (which come straight from the monthly dispatch sheets, one row per bus
+    // assignment). No illustrative targets, no metric that the source data can't actually support -
+    // e.g. On-Time Performance and Fuel Efficiency were removed because the real dispatch sheets have
+    // no actual-arrival or fuel/odometer reading, so those could only ever be fake numbers.
     public class OperationsKpisDto
     {
-        public double PlanAdherenceActual { get; set; }
-        public double PlanAdherenceTarget { get; set; }
-
-        public double FleetUtilizationActual { get; set; }
-        public double FleetUtilizationTarget { get; set; }
-
-        public double AvgBreakdownResponseActual { get; set; }
-        public double AvgBreakdownResponseTarget { get; set; }
-
-        public int ViolationsCountActual { get; set; }
-        public int ViolationsCountTarget { get; set; }
-
-        public double PassengerSatisfactionActual { get; set; }
-        public double PassengerSatisfactionTarget { get; set; }
-
-        public int ScheduledTripsActual { get; set; }
-        public int ScheduledTripsTarget { get; set; }
-
-        public double FuelEfficiencyActual { get; set; }
-        public double FuelEfficiencyTarget { get; set; }
-
-        // On-Time Performance Rate (%) - based on real Trip records (ActualArrival vs ScheduledArrival)
-        public double OnTimePerformanceActual { get; set; }
-        public double OnTimePerformanceTarget { get; set; }
-
-        // Total Trips Executed - count of real Trip records that departed/completed
-        public int TotalTripsExecutedActual { get; set; }
-        public int TotalTripsExecutedTarget { get; set; }
-
-        // Active Drivers Count - distinct drivers with at least one trip
-        public int ActiveDriversCountActual { get; set; }
-        public int ActiveDriversCountTarget { get; set; }
-
-        // Fuel/Odometer Efficiency - Km driven per Liter consumed, from Trip odometer + fuel data
-        public double FuelOdometerEfficiencyActual { get; set; }
-        public double FuelOdometerEfficiencyTarget { get; set; }
+        public int TotalTrips { get; set; }
+        public int CancelledTrips { get; set; }
+        public double CancellationRatePercent { get; set; }
+        public int ActiveDriversCount { get; set; }
+        public int VehiclesDeployedCount { get; set; }
+        public int ClientsServedCount { get; set; }
+        public double AverageTripsPerDay { get; set; }
     }
 }

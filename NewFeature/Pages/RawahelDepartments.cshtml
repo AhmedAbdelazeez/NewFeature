@@ -238,7 +238,23 @@
             </a>
         </div>
 
-        <!-- 15. User Directory & Settings Card (Admins Only) -->
+        <!-- 15. Sales Department Card -->
+        <div class="col-md-6 col-lg-4">
+            <a href="/Sales" class="text-decoration-none">
+                <div class="glass-card h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="fs-1 mb-3" style="color: var(--brand-gold);"><i class="bi bi-graph-up-arrow"></i></div>
+                        <h3 data-i18n="card-sales-title">Sales Department</h3>
+                        <p data-i18n="card-sales-desc" class="text-muted mt-2">Upload customer, fleet-capacity, and daily-operations reports, and track Sales KPIs</p>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <span data-i18n="card-sales-btn" class="btn btn-neon-outline btn-sm">Manage Sales →</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 16. User Directory & Settings Card (Admins Only) -->
         @if (User.IsInRole("Admin"))
         {
             <div class="col-md-6 col-lg-4">

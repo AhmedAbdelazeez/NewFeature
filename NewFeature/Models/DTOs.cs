@@ -77,6 +77,9 @@ namespace NewFeature.Models
     {
         public int Id { get; set; }
 
+        [StringLength(30)]
+        public string? BusNumber { get; set; }
+
         [Required(ErrorMessage = "License Plate is required")]
         [StringLength(20)]
         public string LicensePlate { get; set; } = string.Empty;
@@ -93,12 +96,33 @@ namespace NewFeature.Models
         [Range(1900, 2100)]
         public int Year { get; set; }
 
-        [Required(ErrorMessage = "Capacity is required")]
         [Range(0.1, 1000.0)]
-        public decimal Capacity { get; set; }
+        public decimal? Capacity { get; set; }
 
         [Required]
         public VehicleStatus Status { get; set; }
+
+        [Range(0, 5000000)]
+        public decimal? Mileage { get; set; }
+
+        [StringLength(30)]
+        public string? ChassisNumber { get; set; }
+
+        [StringLength(30)]
+        public string? BusTypeCode { get; set; }
+
+        public bool HasAirConditioning { get; set; }
+
+        [Range(0, 5000000)]
+        public decimal? MaxKilometers { get; set; }
+
+        public bool IsInStorage { get; set; }
+
+        [StringLength(30)]
+        public string? ResponsibilityCode { get; set; }
+
+        [StringLength(150)]
+        public string? ResponsibleEmployeeName { get; set; }
     }
 
     public class RouteDto

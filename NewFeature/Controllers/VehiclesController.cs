@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -17,6 +18,10 @@ namespace NewFeature.Controllers
             _fleetService = fleetService;
         }
 
+        // Reads stay anonymous: this is how the CEO Dashboard project's unauthenticated
+        // server-to-server client reaches KPI/listing data, matching every other department's
+        // read endpoints in this codebase (Warehouse, Maintenance, Sales).
+        [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VehicleDto>>> GetVehicles()
         {
@@ -24,6 +29,23 @@ namespace NewFeature.Controllers
             return Ok(vehicles);
         }
 
+        // Paginated + searchable listing used by the Vehicles management page's table (the fleet
+        // register this table is seeded from has 700+ vehicles - too many for the old single
+        // unpaginated GetVehicles() call above to render reasonably). GetVehicles() above is left
+        // untouched: Trips and Maintenance both call it directly to populate a vehicle dropdown and
+        // expect a plain array back.
+        [AllowAnonymous]
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<VehicleDto>>> GetVehiclesPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _fleetService.GetVehiclesPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<ActionResult<VehicleDto>> GetVehicle(int id)
         {
@@ -32,6 +54,11 @@ namespace NewFeature.Controllers
             return Ok(vehicle);
         }
 
+        // Vehicle Management is a protected write - only the VEHICLES department user or an
+        // Admin may create/edit/delete vehicles or run a bulk upload. Previously these actions
+        // carried no role restriction at all (any authenticated user, from any department, could
+        // mutate the fleet), relying only on this app's global "must be logged in" fallback policy.
+        [Authorize(Roles = "VEHICLES,Admin")]
         [HttpPost]
         public async Task<ActionResult<VehicleDto>> CreateVehicle([FromBody] VehicleDto dto)
         {
@@ -40,6 +67,7 @@ namespace NewFeature.Controllers
             return CreatedAtAction(nameof(GetVehicle), new { id = created.Id }, created);
         }
 
+        [Authorize(Roles = "VEHICLES,Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVehicle(int id, [FromBody] VehicleDto dto)
         {
@@ -50,6 +78,7 @@ namespace NewFeature.Controllers
             return NoContent();
         }
 
+        [Authorize(Roles = "VEHICLES,Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVehicle(int id)
         {
@@ -58,6 +87,7 @@ namespace NewFeature.Controllers
             return NoContent();
         }
 
+        [AllowAnonymous]
         [HttpGet("kpis")]
         public async Task<ActionResult<FleetKpisDto>> GetFleetKpis()
         {
@@ -65,6 +95,7 @@ namespace NewFeature.Controllers
             return Ok(kpis);
         }
 
+        [Authorize(Roles = "VEHICLES,Admin")]
         [HttpPost("bulk-upload")]
         public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file)
         {
@@ -76,7 +107,7 @@ namespace NewFeature.Controllers
             using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
             var result = await _fleetService.BulkUploadVehiclesAsync(stream);
 
-            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+            return Ok(result);
         }
     }
 }

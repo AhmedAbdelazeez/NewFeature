@@ -11,6 +11,9 @@
             <p class="text-muted mb-0" data-i18n="warehouse-subtitle">Spare parts and supplies inventory, reorder levels, and stock audits</p>
         </div>
         <div>
+            <a class="btn btn-outline-secondary me-2" href="/templates/Warehouse_Storage_Template.xlsx" download>
+                <i class="bi bi-download"></i> Download Template
+            </a>
             <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/warehouse/bulk-upload')">
             <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
                 <i class="bi bi-file-earmark-excel"></i> <span data-i18n="warehouse-btn-bulk">Bulk Upload</span>

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ClosedXML.Excel;
 using NewFeature.Models;
 using NewFeature.Services.Repositories;
@@ -13,10 +14,12 @@ namespace NewFeature.Services
     public class OperationsService : IOperationsService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<OperationsService> _logger;
 
-        public OperationsService(ApplicationDbContext context)
+        public OperationsService(ApplicationDbContext context, ILogger<OperationsService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         #region Daily Plans CRUD
@@ -138,106 +141,38 @@ namespace NewFeature.Services
         #endregion
 
         #region KPIs Calculation
+        // Six basic counts/rates, all computed directly from real Trip records (one row per real bus
+        // assignment from the monthly dispatch sheets). Deliberately does not touch
+        // OperationsDailyPlans/OperationsIncidents - those tables hold synthetic seed data with no
+        // real source file, and mixing them in here would present fake numbers as if they were real.
         public async Task<OperationsKpisDto> GetOperationsKpisAsync()
         {
-            var plans = await _context.OperationsDailyPlans.ToListAsync();
-            var incidents = await _context.OperationsIncidents.ToListAsync();
-            var vehicles = await _context.Vehicles.ToListAsync();
-
-            // 1. Operational Plan Adherence (%)
-            var totalScheduled = plans.Sum(p => p.ScheduledTripsCount);
-            var totalCompleted = plans.Sum(p => p.CompletedTripsCount);
-            var planAdherence = totalScheduled > 0 ? ((double)totalCompleted / totalScheduled) * 100.0 : 92.5;
-
-            // 2. Fleet Utilization Rate (%)
-            var totalVehicles = vehicles.Count;
-            var activeVehicles = vehicles.Count(v => v.Status == VehicleStatus.Active);
-            var fleetUtil = totalVehicles > 0 ? ((double)activeVehicles / totalVehicles) * 100.0 : 80.0;
-
-            // 3. Average Breakdown Response Time (Minutes)
-            var resolvedIncidents = incidents.Where(i => i.Status == "Resolved").ToList();
-            var avgResponse = resolvedIncidents.Any() ? resolvedIncidents.Average(i => i.ResponseTimeMinutes) : 27.5;
-
-            // 4. Operational Violations Count (Incidents)
-            var violationsCount = incidents.Count;
-
-            // 5. Passenger Satisfaction Rate (%)
-            var satPlans = plans.Where(p => p.PassengerSatisfactionRate > 0).ToList();
-            var avgSatisfaction = satPlans.Any() ? satPlans.Average(p => p.PassengerSatisfactionRate) : 92.0;
-
-            // 6. Scheduled Daily Trips (latest daily plan scheduled trips)
-            var scheduledTrips = plans.OrderByDescending(p => p.Date).FirstOrDefault()?.ScheduledTripsCount ?? 120;
-
-            // 7. Fuel Efficiency Index (%)
-            var fuelPlans = plans.Where(p => p.FuelEfficiencyIndex > 0).ToList();
-            var avgFuelIndex = fuelPlans.Any() ? fuelPlans.Average(p => p.FuelEfficiencyIndex) : 94.5;
-
-            // ── Real Trip-based KPIs (from bulk-uploaded operations/trip logs) ──
             var trips = await _context.Trips.AsNoTracking().ToListAsync();
-            var allDrivers = await _context.Users.ToListAsync();
 
-            // 8. On-Time Performance (OTP) Rate (%): completed trips arriving within 15 min of schedule
-            var completedTripsWithArrival = trips.Where(t => t.Status == TripStatus.Completed && t.ActualArrival.HasValue).ToList();
-            double otpRate = 0;
-            if (completedTripsWithArrival.Any())
-            {
-                var onTimeCount = completedTripsWithArrival.Count(t =>
-                    Math.Abs((t.ActualArrival!.Value - t.ScheduledArrival).TotalMinutes) <= 15);
-                otpRate = ((double)onTimeCount / completedTripsWithArrival.Count) * 100.0;
-            }
+            var totalTrips = trips.Count;
+            var cancelledTrips = trips.Count(t => t.Status == TripStatus.Cancelled);
+            var cancellationRate = totalTrips > 0 ? (double)cancelledTrips / totalTrips * 100.0 : 0;
 
-            // 9. Total Trips Executed: trips that actually departed (Completed or InProgress)
-            var totalTripsExecuted = trips.Count(t => t.Status == TripStatus.Completed || t.Status == TripStatus.InProgress);
-
-            // 10. Active Drivers Count: distinct drivers who have at least one trip on record
             var activeDriversCount = trips.Where(t => !string.IsNullOrEmpty(t.DriverId))
                 .Select(t => t.DriverId).Distinct().Count();
-            var totalDriversCount = allDrivers.Count(d => d.IsActive);
 
-            // 11. Fuel/Odometer Efficiency (Km per Liter), from trips carrying both odometer and fuel readings
-            var efficiencyTrips = trips.Where(t => t.OdometerKm.HasValue && t.OdometerKm > 0 && t.FuelConsumedLiters.HasValue && t.FuelConsumedLiters > 0).ToList();
-            double fuelOdometerEfficiency = 0;
-            if (efficiencyTrips.Any())
-            {
-                var totalKm = efficiencyTrips.Sum(t => t.OdometerKm!.Value);
-                var totalLiters = efficiencyTrips.Sum(t => t.FuelConsumedLiters!.Value);
-                fuelOdometerEfficiency = totalLiters > 0 ? totalKm / totalLiters : 0;
-            }
+            var vehiclesDeployedCount = trips.Select(t => t.VehicleId).Distinct().Count();
+
+            var clientsServedCount = trips.Where(t => !string.IsNullOrWhiteSpace(t.ClientName))
+                .Select(t => t.ClientName!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+            var distinctDays = trips.Select(t => t.ScheduledDeparture.Date).Distinct().Count();
+            var averageTripsPerDay = distinctDays > 0 ? (double)totalTrips / distinctDays : 0;
 
             return new OperationsKpisDto
             {
-                PlanAdherenceActual = Math.Round(planAdherence, 1),
-                PlanAdherenceTarget = 95.0,
-
-                FleetUtilizationActual = Math.Round(fleetUtil, 1),
-                FleetUtilizationTarget = 85.0,
-
-                AvgBreakdownResponseActual = Math.Round(avgResponse, 1),
-                AvgBreakdownResponseTarget = 30.0,
-
-                ViolationsCountActual = violationsCount,
-                ViolationsCountTarget = 0,
-
-                PassengerSatisfactionActual = Math.Round(avgSatisfaction, 1),
-                PassengerSatisfactionTarget = 90.0,
-
-                ScheduledTripsActual = scheduledTrips,
-                ScheduledTripsTarget = 100,
-
-                FuelEfficiencyActual = Math.Round(avgFuelIndex, 1),
-                FuelEfficiencyTarget = 95.0,
-
-                OnTimePerformanceActual = Math.Round(otpRate, 1),
-                OnTimePerformanceTarget = 95.0,
-
-                TotalTripsExecutedActual = totalTripsExecuted,
-                TotalTripsExecutedTarget = Math.Max(totalTripsExecuted, 100),
-
-                ActiveDriversCountActual = activeDriversCount,
-                ActiveDriversCountTarget = totalDriversCount,
-
-                FuelOdometerEfficiencyActual = Math.Round(fuelOdometerEfficiency, 2),
-                FuelOdometerEfficiencyTarget = 3.0
+                TotalTrips = totalTrips,
+                CancelledTrips = cancelledTrips,
+                CancellationRatePercent = Math.Round(cancellationRate, 1),
+                ActiveDriversCount = activeDriversCount,
+                VehiclesDeployedCount = vehiclesDeployedCount,
+                ClientsServedCount = clientsServedCount,
+                AverageTripsPerDay = Math.Round(averageTripsPerDay, 1)
             };
         }
         #endregion
@@ -291,7 +226,11 @@ namespace NewFeature.Services
                     }
                 }
 
-                if (successCount > 0) await _context.SaveChangesAsync();
+                if (successCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "OperationsDailyPlans");
+                }
             }
             catch (System.Exception ex) { errors.Add(ex.Message); }
 
@@ -505,7 +444,13 @@ namespace NewFeature.Services
                     }
                 }
 
-                if (successCount > 0) await _context.SaveChangesAsync();
+                if (successCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    // This importer also opportunistically creates Vehicle/Route/driver rows inline
+                    // (see the row loop above), so all four tables need fresh statistics, not just Trips.
+                    await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "Trips", "Vehicles", "Routes", "AspNetUsers");
+                }
             }
             catch (Exception ex)
             {

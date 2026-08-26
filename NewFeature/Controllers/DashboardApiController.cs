@@ -29,16 +29,20 @@ namespace NewFeature.Controllers
             {
                 var now = DateTime.UtcNow;
 
-                // Fetch raw data in parallel or sequentially depending on EF core limitation (sequential is safer for single context)
-                var projects = await _context.Projects.Include(p => p.Client).ToListAsync();
-                var vehicles = await _context.Vehicles.ToListAsync();
-                var trips = await _context.Trips.Include(t => t.Route).Include(t => t.Driver).ToListAsync();
-                var tasks = await _context.Tasks.ToListAsync();
-                var milestones = await _context.ProjectMilestones.ToListAsync();
-                var clients = await _context.Clients.ToListAsync();
-                var contracts = await _context.Contracts.ToListAsync();
-                var routes = await _context.Routes.ToListAsync();
-                var users = await _context.Users.ToListAsync();
+                // Read-only reporting queries: AsNoTracking skips EF's change-tracking overhead, and
+                // the Driver navigation is dropped - every driver name below is already resolved
+                // through the separately-fetched userMap dictionary, so joining AspNetUsers here was
+                // dead weight that made this query far more expensive (and, on this SQL Server
+                // instance, prone to a bad cached plan) than it needed to be for zero benefit.
+                var projects = await _context.Projects.AsNoTracking().Include(p => p.Client).ToListAsync();
+                var vehicles = await _context.Vehicles.AsNoTracking().ToListAsync();
+                var trips = await _context.Trips.AsNoTracking().Include(t => t.Route).ToListAsync();
+                var tasks = await _context.Tasks.AsNoTracking().ToListAsync();
+                var milestones = await _context.ProjectMilestones.AsNoTracking().ToListAsync();
+                var clients = await _context.Clients.AsNoTracking().ToListAsync();
+                var contracts = await _context.Contracts.AsNoTracking().ToListAsync();
+                var routes = await _context.Routes.AsNoTracking().ToListAsync();
+                var users = await _context.Users.AsNoTracking().ToListAsync();
 
                 var userMap = users.ToDictionary(u => u.Id, u => u.FullNameAr ?? u.FullNameEn ?? u.UserName ?? "Unknown");
 
@@ -137,6 +141,12 @@ namespace NewFeature.Controllers
                 projSummary.AverageCompletion = projectDetailsList.Count > 0 ? projectDetailsList.Average(pd => pd.CompletionPercentage) : 0;
 
                 // 2. Fleet Summary
+                // Capacity is optional on Vehicle now (the real Vehicle Management register most
+                // vehicles are seeded from has no seat-count column), so TotalCapacity/AverageCapacity
+                // below are computed only over vehicles that actually have a Capacity value, same as
+                // FleetService.GetFleetKpisAsync does - otherwise these two figures would collapse
+                // toward zero once the ~700 capacity-less real vehicles are seeded.
+                var vehiclesWithCapacity = vehicles.Where(v => v.Capacity.HasValue).ToList();
                 var fleetSummary = new FleetSummaryDto
                 {
                     Total = vehicles.Count,
@@ -144,9 +154,9 @@ namespace NewFeature.Controllers
                     Active = vehicles.Count(v => v.Status == VehicleStatus.Active),
                     InMaintenance = vehicles.Count(v => v.Status == VehicleStatus.InMaintenance),
                     OutOfService = vehicles.Count(v => v.Status == VehicleStatus.OutOfService),
-                    TotalCapacity = vehicles.Sum(v => v.Capacity)
+                    TotalCapacity = vehiclesWithCapacity.Sum(v => v.Capacity!.Value)
                 };
-                fleetSummary.AverageCapacity = fleetSummary.Total > 0 ? fleetSummary.TotalCapacity / fleetSummary.Total : 0;
+                fleetSummary.AverageCapacity = vehiclesWithCapacity.Count > 0 ? fleetSummary.TotalCapacity / vehiclesWithCapacity.Count : 0;
                 fleetSummary.UtilizationRate = fleetSummary.Total > fleetSummary.OutOfService ? 
                     (double)fleetSummary.Active / (fleetSummary.Total - fleetSummary.OutOfService) * 100 : 0;
                 fleetSummary.MaintenanceRate = fleetSummary.Total > 0 ? (double)fleetSummary.InMaintenance / fleetSummary.Total * 100 : 0;
@@ -170,7 +180,7 @@ namespace NewFeature.Controllers
                 fleetSummary.OuterRouteBreakdownResponseTime = Math.Round(45.0 + (fleetSummary.InMaintenance * 3.0), 1);
                 
                 fleetSummary.ContractStandardComplianceRate = trips.Count(t => t.Status == TripStatus.Cancelled) == 0 ? 100.0 : 99.0;
-                fleetSummary.CapacityComplianceRate = vehicles.Any() && vehicles.Average(v => v.Capacity) > 40 ? 99.5 : 98.8;
+                fleetSummary.CapacityComplianceRate = vehiclesWithCapacity.Count > 0 && vehiclesWithCapacity.Average(v => v.Capacity!.Value) > 40 ? 99.5 : 98.8;
                 
                 fleetSummary.BusCountComplianceRate = fleetSummary.Total > 0 
                     ? Math.Round((double)(fleetSummary.Total - fleetSummary.OutOfService) / fleetSummary.Total * 100, 1) 
@@ -326,11 +336,11 @@ namespace NewFeature.Controllers
             {
                 var now = DateTime.UtcNow;
 
-                var projects = await _context.Projects.ToListAsync();
-                var tasks = await _context.Tasks.Include(t => t.TimeLogs).ToListAsync();
-                var milestones = await _context.ProjectMilestones.ToListAsync();
-                var vehicles = await _context.Vehicles.ToListAsync();
-                var trips = await _context.Trips.Include(t => t.Route).ToListAsync();
+                var projects = await _context.Projects.AsNoTracking().ToListAsync();
+                var tasks = await _context.Tasks.AsNoTracking().Include(t => t.TimeLogs).ToListAsync();
+                var milestones = await _context.ProjectMilestones.AsNoTracking().ToListAsync();
+                var vehicles = await _context.Vehicles.AsNoTracking().ToListAsync();
+                var trips = await _context.Trips.AsNoTracking().Include(t => t.Route).ToListAsync();
 
                 var kpis = new ProjectKpiDto();
 

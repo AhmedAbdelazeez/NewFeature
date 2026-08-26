@@ -12,6 +12,9 @@
         </div>
         <div>
             <input type="text" id="branchName" class="form-control form-control-glass d-inline-block me-2" style="width: 220px;" placeholder="Branch / Workshop name" value="الورشة المركزية">
+            <a class="btn btn-outline-secondary me-2" href="/templates/Maintenance_Template.xlsx" download>
+                <i class="bi bi-download"></i> Download Template
+            </a>
             <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event)">
             <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
                 <i class="bi bi-file-earmark-excel"></i> <span data-i18n="maint-btn-bulk">Bulk Upload</span>

@@ -44,6 +44,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IFleetService, FleetService>();
+builder.Services.AddScoped<IRouteOperationsService, RouteOperationsService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IComplianceService, ComplianceService>();
 builder.Services.AddScoped<IOperationalAuditService, OperationalAuditService>();
@@ -59,6 +60,7 @@ builder.Services.AddScoped<IOperationsService, OperationsService>();
 builder.Services.AddScoped<IMohuStandardsService, MohuStandardsService>();
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
@@ -107,6 +109,16 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ApplicationDbContext>();
         context.Database.Migrate();
         DbInitializer.SeedAsync(services).Wait();
+
+        // The dashboard's summary query joins Trips against Routes/AspNetUsers, and on this dev SQL
+        // Server instance that specific join has repeatedly picked a catastrophically bad execution
+        // plan (a few hundred ms should-be query timing out at 30s+) whenever statistics drift even
+        // slightly out of date - independent of whether new data was actually bulk-imported. Refresh
+        // on every startup so this can't silently resurface after a restart.
+        var startupLogger = services.GetRequiredService<ILogger<Program>>();
+        NewFeature.Services.Repositories.DbMaintenanceHelper
+            .RefreshStatisticsAsync(context, startupLogger, "Trips", "Vehicles", "MaintenanceWorkOrders", "AspNetUsers", "Routes", "SparePartConsumptions")
+            .Wait();
 
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var user = userManager.FindByEmailAsync("admin@company.com").Result;

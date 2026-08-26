@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NewFeature.Models;
+using NewFeature.Services.ExcelImport;
 using NewFeature.Services.Repositories;
 
 namespace NewFeature.Services
@@ -17,6 +19,8 @@ namespace NewFeature.Services
         private readonly IRepository<Project> _projectRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<FleetService> _logger;
+        private readonly ApplicationDbContext _context;
 
         public FleetService(
             IRepository<Vehicle> vehicleRepository,
@@ -24,7 +28,9 @@ namespace NewFeature.Services
             IRepository<Trip> tripRepository,
             IRepository<Project> projectRepository,
             UserManager<ApplicationUser> userManager,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<FleetService> logger,
+            ApplicationDbContext context)
         {
             _vehicleRepository = vehicleRepository;
             _routeRepository = routeRepository;
@@ -32,6 +38,8 @@ namespace NewFeature.Services
             _projectRepository = projectRepository;
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
+            _context = context;
         }
 
         private bool IsArabic()
@@ -52,48 +60,108 @@ namespace NewFeature.Services
         }
 
         #region Vehicles CRUD
+        private static VehicleDto MapVehicleToDto(Vehicle v) => new()
+        {
+            Id = v.Id,
+            BusNumber = v.BusNumber,
+            LicensePlate = v.LicensePlate,
+            Make = v.Make,
+            Model = v.Model,
+            Year = v.Year,
+            Capacity = v.Capacity,
+            Status = v.Status,
+            Mileage = v.Mileage,
+            ChassisNumber = v.ChassisNumber,
+            BusTypeCode = v.BusTypeCode,
+            HasAirConditioning = v.HasAirConditioning,
+            MaxKilometers = v.MaxKilometers,
+            IsInStorage = v.IsInStorage,
+            ResponsibilityCode = v.ResponsibilityCode,
+            ResponsibleEmployeeName = v.ResponsibleEmployeeName
+        };
+
         public async Task<IEnumerable<VehicleDto>> GetAllVehiclesAsync()
         {
             var vehicles = await _vehicleRepository.GetAllAsync();
-            return vehicles.OrderByDescending(v => v.Id).Select(v => new VehicleDto
-            {
-                Id = v.Id,
-                LicensePlate = v.LicensePlate,
-                Make = v.Make,
-                Model = v.Model,
-                Year = v.Year,
-                Capacity = v.Capacity,
-                Status = v.Status
-            }).ToList();
+            return vehicles.OrderByDescending(v => v.Id).Select(MapVehicleToDto).ToList();
         }
+
+        // Backs the Vehicles management page's table. The underlying IRepository<Vehicle> only
+        // exposes GetAllAsync() (no IQueryable), so - matching how this method's caller was going
+        // to use it anyway - we materialize once and page/search in memory; at ~700 rows that's
+        // trivial and keeps this change scoped to FleetService instead of touching the shared
+        // repository abstraction other departments also depend on.
+        public async Task<PagedResultDto<VehicleDto>> GetVehiclesPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var vehicles = (await _vehicleRepository.GetAllAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                vehicles = vehicles.Where(v =>
+                    Contains(v.LicensePlate, term) ||
+                    Contains(v.BusNumber, term) ||
+                    Contains(v.Make, term) ||
+                    Contains(v.Model, term) ||
+                    Contains(v.ChassisNumber, term) ||
+                    Contains(v.BusTypeCode, term) ||
+                    Contains(v.ResponsibilityCode, term) ||
+                    Contains(v.ResponsibleEmployeeName, term) ||
+                    Contains(v.Status.ToString(), term));
+            }
+
+            var ordered = vehicles.OrderByDescending(v => v.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapVehicleToDto)
+                .ToList();
+
+            return new PagedResultDto<VehicleDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
 
         public async Task<VehicleDto?> GetVehicleByIdAsync(int id)
         {
             var v = await _vehicleRepository.GetByIdAsync(id);
             if (v == null) return null;
 
-            return new VehicleDto
-            {
-                Id = v.Id,
-                LicensePlate = v.LicensePlate,
-                Make = v.Make,
-                Model = v.Model,
-                Year = v.Year,
-                Capacity = v.Capacity,
-                Status = v.Status
-            };
+            return MapVehicleToDto(v);
         }
 
         public async Task<VehicleDto> CreateVehicleAsync(VehicleDto dto)
         {
             var vehicle = new Vehicle
             {
+                BusNumber = dto.BusNumber,
                 LicensePlate = dto.LicensePlate,
                 Make = dto.Make,
                 Model = dto.Model,
                 Year = dto.Year,
                 Capacity = dto.Capacity,
-                Status = dto.Status
+                Status = dto.Status,
+                Mileage = dto.Mileage,
+                ChassisNumber = dto.ChassisNumber,
+                BusTypeCode = dto.BusTypeCode,
+                HasAirConditioning = dto.HasAirConditioning,
+                MaxKilometers = dto.MaxKilometers,
+                IsInStorage = dto.IsInStorage,
+                ResponsibilityCode = dto.ResponsibilityCode,
+                ResponsibleEmployeeName = dto.ResponsibleEmployeeName
             };
 
             await _vehicleRepository.AddAsync(vehicle);
@@ -108,12 +176,21 @@ namespace NewFeature.Services
             var vehicle = await _vehicleRepository.GetByIdAsync(dto.Id);
             if (vehicle == null) return false;
 
+            vehicle.BusNumber = dto.BusNumber;
             vehicle.LicensePlate = dto.LicensePlate;
             vehicle.Make = dto.Make;
             vehicle.Model = dto.Model;
             vehicle.Year = dto.Year;
             vehicle.Capacity = dto.Capacity;
             vehicle.Status = dto.Status;
+            vehicle.Mileage = dto.Mileage;
+            vehicle.ChassisNumber = dto.ChassisNumber;
+            vehicle.BusTypeCode = dto.BusTypeCode;
+            vehicle.HasAirConditioning = dto.HasAirConditioning;
+            vehicle.MaxKilometers = dto.MaxKilometers;
+            vehicle.IsInStorage = dto.IsInStorage;
+            vehicle.ResponsibilityCode = dto.ResponsibilityCode;
+            vehicle.ResponsibleEmployeeName = dto.ResponsibleEmployeeName;
 
             await _vehicleRepository.UpdateAsync(vehicle);
             await _vehicleRepository.SaveChangesAsync();
@@ -368,7 +445,14 @@ namespace NewFeature.Services
             var vehicles = (await _vehicleRepository.GetAllAsync()).ToList();
             var totalVehicles = vehicles.Count;
 
-            var totalCapacity = vehicles.Sum(v => v.Capacity);
+            // Capacity is optional now (the Vehicle Management register this table is seeded from
+            // has no seat-count column, so ~700 seeded vehicles have no Capacity value at all).
+            // Treating an unknown capacity as 0 would make these two KPIs collapse toward zero the
+            // moment the real register is seeded, which reads as a bug rather than "no data yet".
+            // Instead both figures are computed only over vehicles that actually have a Capacity,
+            // same as a person skimming the spreadsheet would do by eye.
+            var vehiclesWithCapacity = vehicles.Where(v => v.Capacity.HasValue).ToList();
+            var totalCapacity = vehiclesWithCapacity.Sum(v => v.Capacity!.Value);
 
             var currentYear = System.DateTime.UtcNow.Year;
             double avgAge = totalVehicles > 0 ? vehicles.Average(v => (double)(currentYear - v.Year)) : 0;
@@ -378,7 +462,7 @@ namespace NewFeature.Services
 
             int busTypeVariety = vehicles.Select(v => v.Model).Distinct(System.StringComparer.OrdinalIgnoreCase).Count();
 
-            double avgCapacityPerBus = totalVehicles > 0 ? (double)(totalCapacity / totalVehicles) : 0;
+            double avgCapacityPerBus = vehiclesWithCapacity.Count > 0 ? (double)(totalCapacity / vehiclesWithCapacity.Count) : 0;
 
             return new FleetKpisDto
             {
@@ -400,121 +484,189 @@ namespace NewFeature.Services
         }
         #endregion
 
-        #region Bulk Upload
-        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadVehiclesAsync(System.IO.Stream excelStream)
+        #region Vehicle Management Excel Template
+
+        // The approved Vehicle Management template. This is the single source of truth for what
+        // columns are accepted, which are required, and what header text/keywords (English +
+        // Arabic) identify each one. Column semantics follow the existing Make/Model split already
+        // used throughout this codebase: Make = manufacturer/brand, Model = bus type/model name.
+        private static readonly ExcelTemplateDefinition VehicleTemplate = new()
         {
-            var errors = new List<string>();
-            int successCount = 0;
-
-            try
+            TemplateName = "Vehicle Management",
+            IdentityColumnKey = "LicensePlate",
+            Columns = new List<ExcelColumnDefinition>
             {
-                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
-                var worksheet = workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
-                {
-                    errors.Add("Excel file is empty.");
-                    return (successCount, errors);
-                }
-
-                var firstRow = worksheet.Row(1);
-                var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 1; i <= firstRow.LastCellUsed().Address.ColumnNumber; i++)
-                {
-                    var val = firstRow.Cell(i).GetString().Trim();
-                    if (!string.IsNullOrEmpty(val))
-                    {
-                        headers[val] = i;
-                    }
-                }
-
-                int plateCol = FindColumn(headers, "licnse", "license", "اللوحة", "id no", "plate");
-                int makeCol = FindColumn(headers, "صانع", "make", "brand");
-                int modelCol = FindColumn(headers, "bus type", "نوع الحافلة", "name");
-                int yearCol = FindColumn(headers, "year", "سنة الصنع", "model");
-                int capacityCol = FindColumn(headers, "pass", "سعة", "capacity");
-
-                // The plate column identifies this as a Vehicles sheet at all - if it can't be
-                // found by header keyword, refuse the file instead of silently reading whatever
-                // happens to be in column 1 (which produces garbage rows if the wrong sheet, e.g.
-                // a Routes or Storage export, gets uploaded here by mistake).
-                if (plateCol == -1)
-                {
-                    errors.Add("This file doesn't look like a Vehicles sheet - no column matching \"License Plate\" / \"رقم اللوحة\" was found in the header row. Please check you uploaded the right file.");
-                    return (successCount, errors);
-                }
-
-                var rows = worksheet.RowsUsed().Skip(1); // Skip header
-
-                foreach (var row in rows)
-                {
-                    try
-                    {
-                        var licensePlate = row.Cell(plateCol).GetString().Trim();
-                        var make = makeCol != -1 ? row.Cell(makeCol).GetString().Trim() : "Yutong";
-                        var model = modelCol != -1 ? row.Cell(modelCol).GetString().Trim() : "City Bus";
-                        
-                        // Parse year and capacity safely
-                        int year = 2026;
-                        if (yearCol != -1)
-                        {
-                            var yearStr = row.Cell(yearCol).GetString();
-                            int.TryParse(yearStr, out year);
-                        }
-                        if (year == 0) year = 2026;
-
-                        decimal capacity = 49;
-                        if (capacityCol != -1)
-                        {
-                            var capStr = row.Cell(capacityCol).GetString();
-                            decimal.TryParse(capStr, out capacity);
-                        }
-                        if (capacity == 0) capacity = 49;
-
-                        if (string.IsNullOrEmpty(licensePlate))
-                        {
-                            errors.Add($"Row {row.RowNumber()}: License plate is required.");
-                            continue;
-                        }
-
-                        // Check uniqueness
-                        var existing = (await _vehicleRepository.GetAllAsync())
-                            .FirstOrDefault(v => v.LicensePlate.Replace(" ", "").Equals(licensePlate.Replace(" ", ""), System.StringComparison.OrdinalIgnoreCase));
-                        if (existing != null)
-                        {
-                            // Vehicle already exists, skip or update
-                            continue;
-                        }
-
-                        if (string.IsNullOrEmpty(make)) make = "Yutong";
-                        if (string.IsNullOrEmpty(model)) model = "City Bus";
-
-                        var vehicle = new Vehicle
-                        {
-                            LicensePlate = licensePlate,
-                            Make = make,
-                            Model = model,
-                            Year = year,
-                            Capacity = capacity,
-                            Status = VehicleStatus.Available
-                        };
-
-                        await _vehicleRepository.AddAsync(vehicle);
-                        await _vehicleRepository.SaveChangesAsync();
-                        successCount++;
-                    }
-                    catch (System.Exception ex)
-                    {
-                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
-                    }
-                }
+                new() { Key = "LicensePlate", DisplayName = "Vehicle Plate Number", Required = true,
+                    HeaderAliases = new[] { "vehicle plate number", "license plate", "plate number", "licnse", "plate", "اللوحة", "رقم اللوحة", "id no" } },
+                // Optional for the same reason as Capacity: the real register has no manufacturer
+                // column for a large share of vehicles (rented units, generic "Coaster" entries).
+                new() { Key = "Make", DisplayName = "Make", Required = false,
+                    HeaderAliases = new[] { "make", "manufacturer", "brand", "صانع" } },
+                new() { Key = "Model", DisplayName = "Model / Vehicle Type", Required = true,
+                    HeaderAliases = new[] { "bus type", "نوع الحافلة", "vehicle type", "model" } },
+                new() { Key = "Year", DisplayName = "Year", Required = true,
+                    HeaderAliases = new[] { "year", "سنة الصنع", "سنة" } },
+                // Optional: the official Vehicle Management register most real vehicles are imported
+                // from has no seat-count column at all (see DashboardApiController's TotalCapacity/
+                // AverageCapacity comment on the NewFeature side, and Vehicle.Capacity being decimal?).
+                new() { Key = "Capacity", DisplayName = "Capacity", Required = false,
+                    HeaderAliases = new[] { "capacity", "سعة", "seats", "passengers" } },
+                new() { Key = "Status", DisplayName = "Status", Required = false,
+                    HeaderAliases = new[] { "status", "حالة" } },
+                new() { Key = "Mileage", DisplayName = "Mileage", Required = false,
+                    HeaderAliases = new[] { "mileage", "عداد", "kilometers", "km" } },
+                // Optional short internal fleet/bus number (e.g. the real register's "COMP. Serial"),
+                // distinct from the license plate. Maintenance and Operations work-order/trip imports
+                // reference vehicles by this shorter number rather than the plate, so populating it
+                // here is what lets those uploads resolve to real vehicles instead of creating
+                // placeholders.
+                new() { Key = "BusNumber", DisplayName = "Bus Number", Required = false,
+                    HeaderAliases = new[] { "bus number", "comp. serial", "comp serial", "رقم الحافلة", "الرقم التسلسلي" } },
             }
-            catch (System.Exception ex)
+        };
+
+        private static bool TryParseVehicleStatus(string raw, out VehicleStatus status)
+        {
+            var normalized = raw.Trim().ToLowerInvariant();
+            switch (normalized)
             {
-                errors.Add($"Error processing Excel file: {ex.Message}");
+                case "available":
+                case "متاح":
+                case "متاحة":
+                    status = VehicleStatus.Available; return true;
+                case "active":
+                case "نشط":
+                case "نشطة":
+                    status = VehicleStatus.Active; return true;
+                case "inmaintenance":
+                case "in maintenance":
+                case "maintenance":
+                case "تحت الصيانة":
+                case "صيانة":
+                    status = VehicleStatus.InMaintenance; return true;
+                case "outofservice":
+                case "out of service":
+                case "خارج الخدمة":
+                    status = VehicleStatus.OutOfService; return true;
+                default:
+                    status = VehicleStatus.Available; return false;
             }
-
-            return (successCount, errors);
         }
+
+        #endregion
+
+        #region Bulk Upload
+        public async Task<ExcelImportResultDto> BulkUploadVehiclesAsync(System.IO.Stream excelStream)
+        {
+            // Loaded once, up front - the row handler below only ever reads/writes this in-memory
+            // dictionary, never queries the database again per row (fixes the N+1 query pattern
+            // the previous implementation had via GetAllAsync() inside the loop).
+            var existingVehicles = (await _vehicleRepository.GetAllAsync())
+                .GroupBy(v => NormalizePlate(v.LicensePlate))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            async Task<ExcelRowOutcomeResult> ProcessRow(ExcelRowContext ctx)
+            {
+                var plate = ctx.GetString("LicensePlate");
+                if (string.IsNullOrEmpty(plate))
+                    return ExcelRowOutcomeResult.Skipped("Vehicle Plate Number is required.", "Vehicle Plate Number");
+                if (plate.Length > 20)
+                    return ExcelRowOutcomeResult.Skipped("Vehicle Plate Number cannot exceed 20 characters.", "Vehicle Plate Number");
+
+                var make = ctx.GetString("Make");
+                if (string.IsNullOrEmpty(make)) make = "Unknown";
+                if (make.Length > 50)
+                    return ExcelRowOutcomeResult.Skipped("Make cannot exceed 50 characters.", "Make");
+
+                var model = ctx.GetString("Model");
+                if (string.IsNullOrEmpty(model))
+                    return ExcelRowOutcomeResult.Skipped("Model is required.", "Model / Vehicle Type");
+                if (model.Length > 50)
+                    return ExcelRowOutcomeResult.Skipped("Model cannot exceed 50 characters.", "Model / Vehicle Type");
+
+                var yearStr = ctx.GetString("Year");
+                if (!int.TryParse(yearStr, out var year))
+                    return ExcelRowOutcomeResult.Skipped("Year is required and must be a whole number.", "Year");
+                if (year < 1900 || year > 2100)
+                    return ExcelRowOutcomeResult.Skipped("Year must be between 1900 and 2100.", "Year");
+
+                decimal? capacity = null;
+                var capacityStr = ctx.GetString("Capacity");
+                if (!string.IsNullOrEmpty(capacityStr))
+                {
+                    if (!decimal.TryParse(capacityStr, out var parsedCapacity))
+                        return ExcelRowOutcomeResult.Skipped("Capacity must be a valid number.", "Capacity");
+                    if (parsedCapacity <= 0 || parsedCapacity > 1000)
+                        return ExcelRowOutcomeResult.Skipped("Capacity must be greater than 0 and at most 1000.", "Capacity");
+                    capacity = parsedCapacity;
+                }
+
+                var status = VehicleStatus.Available;
+                var statusStr = ctx.GetString("Status");
+                if (!string.IsNullOrEmpty(statusStr) && !TryParseVehicleStatus(statusStr, out status))
+                    return ExcelRowOutcomeResult.Skipped($"Status \"{statusStr}\" is not recognized. Use one of: Available, Active, InMaintenance, OutOfService.", "Status");
+
+                decimal? mileage = null;
+                var mileageStr = ctx.GetString("Mileage");
+                if (!string.IsNullOrEmpty(mileageStr))
+                {
+                    if (!decimal.TryParse(mileageStr, out var parsedMileage))
+                        return ExcelRowOutcomeResult.Skipped("Mileage must be a valid number.", "Mileage");
+                    if (parsedMileage < 0)
+                        return ExcelRowOutcomeResult.Skipped("Mileage cannot be negative.", "Mileage");
+                    mileage = parsedMileage;
+                }
+
+                var busNumber = ctx.GetString("BusNumber");
+                if (string.IsNullOrEmpty(busNumber)) busNumber = null;
+
+                // Vehicle Plate Number is the business key: a plate already on file is updated in
+                // place rather than duplicated, matching the requirement that re-uploading a known
+                // vehicle should not create a second record.
+                var key = NormalizePlate(plate);
+                if (existingVehicles.TryGetValue(key, out var existing))
+                {
+                    existing.Make = make;
+                    existing.Model = model;
+                    existing.Year = year;
+                    existing.Capacity = capacity;
+                    existing.Status = status;
+                    existing.Mileage = mileage;
+                    existing.BusNumber = busNumber;
+                    return ExcelRowOutcomeResult.Updated();
+                }
+
+                var vehicle = new Vehicle
+                {
+                    LicensePlate = plate,
+                    Make = make,
+                    Model = model,
+                    Year = year,
+                    Capacity = capacity,
+                    Status = status,
+                    Mileage = mileage,
+                    BusNumber = busNumber
+                };
+                await _vehicleRepository.AddAsync(vehicle);
+                existingVehicles[key] = vehicle; // so a duplicate plate later in the same file updates, not conflicts
+                return ExcelRowOutcomeResult.Inserted();
+            }
+
+            var result = await ExcelImportEngine.RunAsync(
+                excelStream,
+                VehicleTemplate,
+                ProcessRow,
+                _vehicleRepository.SaveChangesAsync,
+                _logger);
+
+            if (result.InsertedRows + result.UpdatedRows > 0)
+                await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "Vehicles");
+
+            return result;
+        }
+
+        private static string NormalizePlate(string plate) =>
+            (plate ?? string.Empty).Replace(" ", "").ToUpperInvariant();
 
         private int FindColumn(Dictionary<string, int> headers, params string[] searchTerms)
         {
@@ -524,15 +676,6 @@ namespace NewFeature.Services
                 if (match != null) return headers[match];
             }
             return -1;
-        }
-
-        // Cheap sanity check: does row 1 contain at least one keyword we'd expect for a Routes
-        // sheet? Used to refuse obviously-mismatched files (e.g. a Storage/Inventory export
-        // uploaded to the Routes endpoint) before any positional column reading happens.
-        private static bool HeaderLooksLikeRoutesSheet(ClosedXML.Excel.IXLWorksheet worksheet)
-        {
-            string[] keywords = { "route", "مسار", "خط", "distance", "مسافة", "start", "بداية", "end", "نهاية", "destination", "وجهة" };
-            return HeaderContainsAny(worksheet, keywords);
         }
 
         private static bool HeaderLooksLikeTripsSheet(ClosedXML.Excel.IXLWorksheet worksheet)
@@ -560,72 +703,11 @@ namespace NewFeature.Services
             return false;
         }
 
-        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadRoutesAsync(System.IO.Stream excelStream)
-        {
-            var errors = new List<string>();
-            int successCount = 0;
-
-            try
-            {
-                using var workbook = new ClosedXML.Excel.XLWorkbook(excelStream);
-                var worksheet = workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
-
-                // Sanity-check the header row before touching any data. Without this, uploading
-                // an unrelated sheet (e.g. a Storage/Inventory export) here would silently create
-                // garbage Route rows, since this importer reads fixed columns 1-7 with no awareness
-                // of what's actually in them.
-                if (!HeaderLooksLikeRoutesSheet(worksheet))
-                {
-                    errors.Add("This file doesn't look like a Routes sheet - expected columns like \"Route Name\" / \"اسم المسار\", \"Start\" / \"بداية\", \"End\" / \"نهاية\", or \"Distance\" / \"المسافة\" were not found. Please check you uploaded the right file.");
-                    return (0, errors);
-                }
-
-                var rows = worksheet.RowsUsed().Skip(1);
-                foreach (var row in rows)
-                {
-                    try
-                    {
-                        var nameEn = row.Cell(1).GetString().Trim();
-                        var nameAr = row.Cell(2).GetString().Trim();
-                        var startEn = row.Cell(3).GetString().Trim();
-                        var startAr = row.Cell(4).GetString().Trim();
-                        var endEn = row.Cell(5).GetString().Trim();
-                        var endAr = row.Cell(6).GetString().Trim();
-                        decimal.TryParse(row.Cell(7).GetString(), out decimal distance);
-
-                        if (string.IsNullOrEmpty(nameEn) || string.IsNullOrEmpty(nameAr))
-                        {
-                            errors.Add($"Row {row.RowNumber()}: Name is required.");
-                            continue;
-                        }
-
-                        var route = new Models.Route
-                        {
-                            NameEn = nameEn,
-                            NameAr = nameAr,
-                            StartLocationEn = startEn,
-                            StartLocationAr = startAr,
-                            EndLocationEn = endEn,
-                            EndLocationAr = endAr,
-                            DistanceKm = distance
-                        };
-
-                        await _routeRepository.AddAsync(route);
-                        successCount++;
-                    }
-                    catch (System.Exception ex)
-                    {
-                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
-                    }
-                }
-
-                if (successCount > 0) await _routeRepository.SaveChangesAsync();
-            }
-            catch (System.Exception ex) { errors.Add(ex.Message); }
-
-            return (successCount, errors);
-        }
+        // Route bulk-upload used to live here (positional columns 1-7, no header validation, no
+        // per-row structured result). It has been superseded by RouteOperationsService.
+        // BulkUploadRoutesAsync, which uses the shared ExcelImportEngine with proper header
+        // matching, per-row validation, and update-by-NameEn duplicate handling. See
+        // Services/RouteOperationsService.cs and Services/IRouteOperationsService.cs.
 
         public async Task<(int SuccessCount, List<string> Errors)> BulkUploadTripsAsync(System.IO.Stream excelStream)
         {
@@ -682,7 +764,11 @@ namespace NewFeature.Services
                     }
                 }
 
-                if (successCount > 0) await _tripRepository.SaveChangesAsync();
+                if (successCount > 0)
+                {
+                    await _tripRepository.SaveChangesAsync();
+                    await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "Trips");
+                }
             }
             catch (System.Exception ex) { errors.Add(ex.Message); }
 
