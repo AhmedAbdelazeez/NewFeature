@@ -90,6 +90,36 @@ namespace NewFeature.Controllers
 
             return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
         }
+
+        // Replaces the official-drivers compliance roster snapshot (اسطول الحافلات - السائقين الرسميين.xlsx).
+        [HttpPost("bulk-upload-drivers")]
+        public async Task<IActionResult> BulkUploadOfficialDrivers(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
+
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
+            var result = await _operationsService.BulkUploadOfficialDriversAsync(stream);
+
+            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        }
+
+        // Replaces the route-scheduling requests snapshot (جدولة الخطوط.xlsx).
+        [HttpPost("bulk-upload-route-schedules")]
+        public async Task<IActionResult> BulkUploadRouteSchedules(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
+
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
+            var result = await _operationsService.BulkUploadRouteSchedulesAsync(stream);
+
+            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        }
         #endregion
 
         #region Incidents
@@ -139,6 +169,20 @@ namespace NewFeature.Controllers
         {
             var kpis = await _operationsService.GetOperationsKpisAsync();
             return Ok(kpis);
+        }
+
+        // Paged, searchable listing of the real uploaded trip log - lets the Operations landing page
+        // show an actual browsable table instead of only aggregate KPI numbers.
+        [HttpGet("trips")]
+        public async Task<ActionResult<PagedResultDto<OperationsTripDto>>> GetTrips(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] System.DateTime? fromDate = null,
+            [FromQuery] System.DateTime? toDate = null)
+        {
+            var result = await _operationsService.GetTripsPagedAsync(page, pageSize, search, fromDate, toDate);
+            return Ok(result);
         }
         #endregion
     }

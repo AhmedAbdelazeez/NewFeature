@@ -164,6 +164,13 @@ namespace NewFeature.Services
             var distinctDays = trips.Select(t => t.ScheduledDeparture.Date).Distinct().Count();
             var averageTripsPerDay = distinctDays > 0 ? (double)totalTrips / distinctDays : 0;
 
+            var registeredDriversCount = await _context.OfficialDrivers.AsNoTracking().CountAsync();
+
+            var scheduleRequests = await _context.RouteScheduleRequests.AsNoTracking().ToListAsync();
+            double? schedulingSuccessRate = scheduleRequests.Count > 0
+                ? Math.Round(scheduleRequests.Count(r => r.IsScheduled) / (double)scheduleRequests.Count * 100.0, 1)
+                : null;
+
             return new OperationsKpisDto
             {
                 TotalTrips = totalTrips,
@@ -172,7 +179,65 @@ namespace NewFeature.Services
                 ActiveDriversCount = activeDriversCount,
                 VehiclesDeployedCount = vehiclesDeployedCount,
                 ClientsServedCount = clientsServedCount,
-                AverageTripsPerDay = Math.Round(averageTripsPerDay, 1)
+                AverageTripsPerDay = Math.Round(averageTripsPerDay, 1),
+                RegisteredDriversCount = registeredDriversCount > 0 ? registeredDriversCount : null,
+                SchedulingSuccessRatePercent = schedulingSuccessRate
+            };
+        }
+
+        public async Task<PagedResultDto<OperationsTripDto>> GetTripsPagedAsync(int page, int pageSize, string? search, DateTime? fromDate, DateTime? toDate)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var query = _context.Trips.AsNoTracking().AsQueryable();
+            if (fromDate.HasValue) query = query.Where(t => t.ScheduledDeparture >= fromDate.Value.Date);
+            if (toDate.HasValue) query = query.Where(t => t.ScheduledDeparture < toDate.Value.Date.AddDays(1));
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(t =>
+                    (t.ClientName != null && t.ClientName.Contains(term)) ||
+                    (t.BookingReference != null && t.BookingReference.Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            // Skip/Take happens before the Includes are materialized, so only this one page (max
+            // 200 rows) is ever joined against Vehicles/Routes - not the whole Trips table, which is
+            // exactly the pattern that made the dashboard summary query slow before it was fixed.
+            var pageTrips = await query
+                .OrderByDescending(t => t.ScheduledDeparture).ThenByDescending(t => t.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Include(t => t.Vehicle)
+                .Include(t => t.Route)
+                .ToListAsync();
+
+            var driverIds = pageTrips.Select(t => t.DriverId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+            var driverMap = await _context.Users.AsNoTracking()
+                .Where(u => driverIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullNameAr ?? u.FullNameEn ?? u.UserName ?? "Unknown");
+
+            var items = pageTrips.Select(t => new OperationsTripDto
+            {
+                Id = t.Id,
+                ScheduledDeparture = t.ScheduledDeparture,
+                ClientName = t.ClientName,
+                VehiclePlate = t.Vehicle?.LicensePlate ?? "Unknown",
+                DriverName = driverMap.GetValueOrDefault(t.DriverId, "Unknown"),
+                RouteName = t.Route?.NameAr ?? t.Route?.NameEn ?? "Unknown",
+                Status = t.Status.ToString(),
+                BookingReference = t.BookingReference
+            }).ToList();
+
+            return new PagedResultDto<OperationsTripDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
             };
         }
         #endregion
@@ -460,6 +525,168 @@ namespace NewFeature.Services
             return (successCount, errors);
         }
 
+        // Replaces the official-drivers compliance roster snapshot (اسطول الحافلات - السائقين
+        // الرسميين.xlsx, sheet "السائقين الرسميين") - a new upload always supersedes the previous one.
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadOfficialDriversAsync(Stream excelStream)
+        {
+            var errors = new List<string>();
+            var newRows = new List<OfficialDriver>();
+
+            try
+            {
+                using var workbook = new XLWorkbook(excelStream);
+                var ws = workbook.Worksheets.FirstOrDefault(w => FindHeaderRowByTerms(w, "Employee", "Arabic Name", "IqamaNoForBank") > 0)
+                          ?? workbook.Worksheets.FirstOrDefault();
+                if (ws == null) return (0, new List<string> { "Excel file has no worksheets." });
+
+                int headerRow = FindHeaderRowByTerms(ws, "Employee", "Arabic Name", "IqamaNoForBank");
+                if (headerRow == -1) return (0, new List<string> { "Could not locate the header row (expected columns like 'Employee' / 'Arabic Name')." });
+
+                var headers = BuildHeaderMap(ws, headerRow);
+                int employeeCol = FindColumn(headers, "Employee");
+                int iqamaCol = FindColumn(headers, "IqamaNoForBank", "iqama");
+                int arabicNameCol = FindColumn(headers, "Arabic Name", "الاسم");
+                int englishNameCol = FindColumn(headers, "Employee Name", "English Name");
+                int nationalityCol = FindColumn(headers, "Nationality");
+                int licenseExpiryCol = FindColumn(headers, "تاريخ انتهاء الرخصة", "license");
+                int notesCol = FindColumn(headers, "عمود2", "ملاحظات", "notes");
+
+                if (arabicNameCol == -1) return (0, new List<string> { "Required column (Arabic Name) was not found." });
+
+                var lastRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
+                for (int r = headerRow + 1; r <= lastRow; r++)
+                {
+                    try
+                    {
+                        var arabicName = CellText(ws, r, arabicNameCol);
+                        var employeeCode = CellText(ws, r, employeeCol);
+                        if (arabicName.Length == 0 && employeeCode.Length == 0) continue; // blank padding row
+
+                        if (arabicName.Length == 0)
+                        {
+                            errors.Add($"Row {r}: missing driver name - row skipped.");
+                            continue;
+                        }
+
+                        DateTime? licenseExpiry = null;
+                        var licenseText = licenseExpiryCol != -1 ? CellText(ws, r, licenseExpiryCol) : string.Empty;
+                        if (!string.IsNullOrEmpty(licenseText) && DateTime.TryParse(licenseText, out var parsedDate))
+                            licenseExpiry = parsedDate;
+
+                        newRows.Add(new OfficialDriver
+                        {
+                            EmployeeCode = employeeCode.Length > 0 ? employeeCode : null,
+                            IqamaNumber = iqamaCol != -1 ? (CellText(ws, r, iqamaCol) is var iq && iq.Length > 0 ? iq : null) : null,
+                            ArabicName = arabicName,
+                            EnglishName = englishNameCol != -1 ? (CellText(ws, r, englishNameCol) is var en && en.Length > 0 ? en : null) : null,
+                            Nationality = nationalityCol != -1 ? (CellText(ws, r, nationalityCol) is var nat && nat.Length > 0 ? nat : null) : null,
+                            LicenseExpiryDate = licenseExpiry,
+                            Notes = notesCol != -1 ? (CellText(ws, r, notesCol) is var nt && nt.Length > 0 ? nt : null) : null
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Row {r}: {ex.Message}");
+                    }
+                }
+
+                if (newRows.Count == 0)
+                    return (0, errors.Count > 0 ? errors : new List<string> { "No valid driver rows found in the file." });
+
+                // Point-in-time roster snapshot - a new upload replaces the previous one entirely.
+                _context.OfficialDrivers.RemoveRange(_context.OfficialDrivers);
+                _context.OfficialDrivers.AddRange(newRows);
+                await _context.SaveChangesAsync();
+                await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "OfficialDrivers");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Error processing Excel file: {ex.Message}");
+                return (0, errors);
+            }
+
+            return (newRows.Count, errors);
+        }
+
+        // Replaces the route-scheduling requests snapshot (جدولة الخطوط.xlsx).
+        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadRouteSchedulesAsync(Stream excelStream)
+        {
+            var errors = new List<string>();
+            var newRows = new List<RouteScheduleRequest>();
+
+            try
+            {
+                using var workbook = new XLWorkbook(excelStream);
+                var ws = workbook.Worksheets.FirstOrDefault(w => FindHeaderRowByTerms(w, "تاريخ التنفيذ", "رقم أمر الايجار", "الجدولة") > 0)
+                          ?? workbook.Worksheets.FirstOrDefault();
+                if (ws == null) return (0, new List<string> { "Excel file has no worksheets." });
+
+                int headerRow = FindHeaderRowByTerms(ws, "تاريخ التنفيذ", "رقم أمر الايجار", "الجدولة");
+                if (headerRow == -1) return (0, new List<string> { "Could not locate the header row (expected columns like 'تاريخ التنفيذ' / 'الجدولة')." });
+
+                var headers = BuildHeaderMap(ws, headerRow);
+                int dateCol = FindColumn(headers, "تاريخ التنفيذ");
+                int orderCol = FindColumn(headers, "رقم أمر الايجار", "امر الايجار");
+                int clientCol = FindColumn(headers, "أسم العميل", "اسم العميل");
+                int serviceCol = FindColumn(headers, "اسم الصنف");
+                int locationCol = FindColumn(headers, "مكان التشغيل");
+                int scheduleCol = FindColumn(headers, "الجدولة");
+
+                if (scheduleCol == -1) return (0, new List<string> { "Required column (الجدولة) was not found." });
+
+                var lastRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
+                for (int r = headerRow + 1; r <= lastRow; r++)
+                {
+                    try
+                    {
+                        var scheduleRaw = CellText(ws, r, scheduleCol);
+                        var orderRaw = orderCol != -1 ? CellText(ws, r, orderCol) : string.Empty;
+                        if (scheduleRaw.Length == 0 && orderRaw.Length == 0) continue; // blank padding row
+
+                        DateTime? execDate = null;
+                        var dateText = dateCol != -1 ? CellText(ws, r, dateCol) : string.Empty;
+                        if (!string.IsNullOrEmpty(dateText) && DateTime.TryParse(dateText, out var parsedDate))
+                            execDate = parsedDate;
+
+                        // "الجدولة" holds a schedulable count/"1" when scheduled, or the literal text
+                        // "غير مجدول" when not - anything that isn't that phrase and isn't blank counts
+                        // as scheduled.
+                        var isScheduled = scheduleRaw.Length > 0 && !scheduleRaw.Contains("غير مجدول");
+
+                        newRows.Add(new RouteScheduleRequest
+                        {
+                            ExecutionDate = execDate,
+                            RentalOrderNumber = orderRaw.Length > 0 ? orderRaw : null,
+                            ClientName = clientCol != -1 ? (CellText(ws, r, clientCol) is var cn && cn.Length > 0 ? cn : null) : null,
+                            ServiceName = serviceCol != -1 ? (CellText(ws, r, serviceCol) is var sn && sn.Length > 0 ? sn : null) : null,
+                            Location = locationCol != -1 ? (CellText(ws, r, locationCol) is var loc && loc.Length > 0 ? loc : null) : null,
+                            ScheduleStatusRaw = scheduleRaw.Length > 0 ? scheduleRaw : null,
+                            IsScheduled = isScheduled
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Row {r}: {ex.Message}");
+                    }
+                }
+
+                if (newRows.Count == 0)
+                    return (0, errors.Count > 0 ? errors : new List<string> { "No valid scheduling rows found in the file." });
+
+                _context.RouteScheduleRequests.RemoveRange(_context.RouteScheduleRequests);
+                _context.RouteScheduleRequests.AddRange(newRows);
+                await _context.SaveChangesAsync();
+                await DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "RouteScheduleRequests");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Error processing Excel file: {ex.Message}");
+                return (0, errors);
+            }
+
+            return (newRows.Count, errors);
+        }
+
         // Scans the first few rows of a worksheet for the real header row (the real workbooks have
         // title/notice rows before it), looking for a row containing at least 2 recognizable column names.
         private static int FindHeaderRow(IXLWorksheet worksheet)
@@ -534,6 +761,47 @@ namespace NewFeature.Services
             }
             return -1;
         }
+
+        // Generic header-row finder used by the roster/scheduling snapshot uploaders (unlike
+        // FindHeaderRow(IXLWorksheet) above, which is hard-coded to the trip-dispatch column names).
+        private static int FindHeaderRowByTerms(IXLWorksheet ws, params string[] keywords)
+        {
+            var lastRow = Math.Min(ws.LastRowUsed()?.RowNumber() ?? 0, 15);
+            for (int r = 1; r <= lastRow; r++)
+            {
+                var row = ws.Row(r);
+                var lastCell = row.LastCellUsed();
+                if (lastCell == null) continue;
+
+                int hits = 0;
+                for (int c = 1; c <= lastCell.Address.ColumnNumber; c++)
+                {
+                    var text = row.Cell(c).GetString().Trim();
+                    if (text.Length == 0) continue;
+                    if (keywords.Any(kw => text.Contains(kw, StringComparison.OrdinalIgnoreCase))) hits++;
+                }
+                if (hits >= 2) return r;
+            }
+            return -1;
+        }
+
+        private static Dictionary<string, int> BuildHeaderMap(IXLWorksheet ws, int headerRow)
+        {
+            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var row = ws.Row(headerRow);
+            var lastCell = row.LastCellUsed();
+            if (lastCell == null) return map;
+
+            for (int c = 1; c <= lastCell.Address.ColumnNumber; c++)
+            {
+                var text = row.Cell(c).GetString().Trim();
+                if (text.Length > 0 && !map.ContainsKey(text)) map[text] = c;
+            }
+            return map;
+        }
+
+        private static string CellText(IXLWorksheet ws, int row, int col) =>
+            col == -1 ? string.Empty : ws.Cell(row, col).GetString().Trim();
         #endregion
 
         #region Mappers

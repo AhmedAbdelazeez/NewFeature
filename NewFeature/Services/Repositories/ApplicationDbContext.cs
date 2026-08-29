@@ -63,6 +63,10 @@ namespace NewFeature.Services.Repositories
         public DbSet<SalesFleetCapacity> SalesFleetCapacities { get; set; } = null!;
         public DbSet<SalesDailyOperation> SalesDailyOperations { get; set; } = null!;
 
+        // Operations Department - roster/scheduling snapshots
+        public DbSet<OfficialDriver> OfficialDrivers { get; set; } = null!;
+        public DbSet<RouteScheduleRequest> RouteScheduleRequests { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
