@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
+using Microsoft.Extensions.Logging;
+using NewFeature.Services.ExcelImport;
 using NewFeature.Services.Repositories;
 
 namespace NewFeature.Services
@@ -11,10 +13,12 @@ namespace NewFeature.Services
     public class FinanceService : IFinanceService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<FinanceService> _logger;
 
-        public FinanceService(ApplicationDbContext context)
+        public FinanceService(ApplicationDbContext context, ILogger<FinanceService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         #region Transactions CRUD
@@ -176,6 +180,33 @@ namespace NewFeature.Services
             decimal currentLiabilities = transactions.Where(t => t.Type == "Liability").Sum(t => t.Amount);
             decimal workingCapital = currentAssets - currentLiabilities;
 
+            // ─── Simple indicators, computed only from what the uploaded ledger carries ───
+            // Revenue, expenses and the gap between them; no balance-sheet assumptions.
+            int transactionsCount = transactions.Count;
+
+            // Average monthly revenue is spread over the months the ledger actually covers, not
+            // over a fixed twelve, so a sheet holding one quarter is not reported as a third of
+            // its real monthly run rate.
+            var revenueTransactions = transactions.Where(t => t.Type == "Revenue").ToList();
+            int revenueMonthsCovered = revenueTransactions
+                .Select(t => new { t.Date.Year, t.Date.Month })
+                .Distinct()
+                .Count();
+            decimal averageMonthlyRevenue = revenueMonthsCovered > 0
+                ? totalRevenue / revenueMonthsCovered
+                : 0m;
+
+            double expenseToRevenueRatio = totalRevenue > 0
+                ? (double)(totalExpense / totalRevenue) * 100.0
+                : 0.0;
+
+            var topExpense = transactions
+                .Where(t => t.Type == "Expense")
+                .GroupBy(t => t.CategoryAr)
+                .Select(g => new { Category = g.Key, Amount = g.Sum(t => t.Amount) })
+                .OrderByDescending(g => g.Amount)
+                .FirstOrDefault();
+
             return new FinanceKpisDto
             {
                 TotalRevenueActual = totalRevenue,
@@ -197,7 +228,15 @@ namespace NewFeature.Services
                 BudgetVarianceRateTarget = 5.0, // We want low variance, e.g. target is under 5%
 
                 WorkingCapitalActual = workingCapital,
-                WorkingCapitalTarget = 3000000m
+                WorkingCapitalTarget = 3000000m,
+
+                TotalExpensesActual = totalExpense,
+                NetProfitActual = netProfit,
+                ExpenseToRevenueRatioActual = Math.Round(expenseToRevenueRatio, 1),
+                TransactionsCountActual = transactionsCount,
+                AverageMonthlyRevenueActual = Math.Round(averageMonthlyRevenue, 2),
+                TopExpenseCategoryName = topExpense?.Category ?? "--",
+                TopExpenseCategoryAmount = topExpense?.Amount ?? 0m
             };
         }
         #endregion
@@ -224,6 +263,94 @@ namespace NewFeature.Services
             SpentAmount = fb.SpentAmount,
             Year = fb.Year
         };
+        #endregion
+        #region Bulk upload (approved single-sheet finance ledger)
+        // Imports the approved Finance template: one row per revenue or expense entry. A ledger
+        // line is identified by date + statement text, so re-uploading a corrected month updates
+        // the same entries instead of double-counting revenue.
+        public async Task<ExcelImportResultDto> BulkUploadTransactionsAsync(System.IO.Stream excelStream)
+        {
+            var transactions = await _context.FinanceTransactions.ToListAsync();
+
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                DepartmentTemplates.Finance,
+                async row =>
+                {
+                    var statement = row.GetString(DepartmentTemplates.FinanceStatement);
+                    if (string.IsNullOrWhiteSpace(statement))
+                        return ExcelRowOutcomeResult.Skipped("البيان مطلوب.", "البيان");
+                    if (statement.Length > 200) statement = statement.Substring(0, 200);
+
+                    var date = row.GetDate(DepartmentTemplates.FinanceDate);
+                    if (date == null)
+                        return ExcelRowOutcomeResult.Skipped("التاريخ غير مقروء. استخدم الصيغة يوم/شهر/سنة.", "التاريخ");
+
+                    var amount = row.GetDecimal(DepartmentTemplates.FinanceAmount);
+                    // The entity requires a strictly positive amount; direction is carried by the
+                    // type column, never by a negative figure.
+                    if (amount == null || amount <= 0)
+                        return ExcelRowOutcomeResult.Skipped("المبلغ يجب أن يكون رقماً أكبر من صفر.", "المبلغ");
+
+                    var type = ParseTransactionType(row.GetString(DepartmentTemplates.FinanceType));
+                    if (type == null)
+                        return ExcelRowOutcomeResult.Skipped("النوع يجب أن يكون \"إيراد\" أو \"مصروف\".", "النوع");
+
+                    var category = row.GetString(DepartmentTemplates.FinanceCategory);
+                    if (string.IsNullOrWhiteSpace(category)) category = "عام";
+                    if (category.Length > 100) category = category.Substring(0, 100);
+
+                    var existing = transactions.FirstOrDefault(t =>
+                        t.Date.Date == date.Value.Date &&
+                        string.Equals(t.DescriptionAr, statement, StringComparison.OrdinalIgnoreCase));
+
+                    if (existing != null)
+                    {
+                        existing.DescriptionEn = statement;
+                        existing.Amount = amount.Value;
+                        existing.Type = type;
+                        existing.CategoryAr = category;
+                        existing.CategoryEn = category;
+                        return ExcelRowOutcomeResult.Updated();
+                    }
+
+                    var transaction = new FinanceTransaction
+                    {
+                        DescriptionAr = statement,
+                        DescriptionEn = statement,
+                        Amount = amount.Value,
+                        Type = type,
+                        Date = date.Value.Date,
+                        CategoryAr = category,
+                        CategoryEn = category
+                    };
+                    _context.FinanceTransactions.Add(transaction);
+                    transactions.Add(transaction);
+                    await System.Threading.Tasks.Task.CompletedTask;
+                    return ExcelRowOutcomeResult.Inserted();
+                },
+                () => _context.SaveChangesAsync(),
+                _logger);
+        }
+
+        // Returns the entity's stored type string, or null when the cell says neither.
+        private static string? ParseTransactionType(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(value)) return null;
+
+            if (value.Contains("إيراد") || value.Contains("ايراد") || value.Contains("دخل") ||
+                value.IndexOf("revenue", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("income", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Revenue";
+
+            if (value.Contains("مصروف") || value.Contains("مصاريف") || value.Contains("تكلفة") ||
+                value.IndexOf("expense", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("cost", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Expense";
+
+            return null;
+        }
         #endregion
     }
 }

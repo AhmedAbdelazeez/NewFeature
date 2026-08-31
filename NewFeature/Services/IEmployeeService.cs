@@ -22,5 +22,9 @@ namespace NewFeature.Services
 
         // HR KPIs
         Task<HrKpisDto> GetHrKpisAsync();
+
+        // Bulk upload of the approved single-sheet employee roster (see DepartmentTemplates.Hr).
+        // The stream must already be a readable .xlsx stream - see ExcelCompatibility.EnsureXlsxStream.
+        Task<ExcelImportResultDto> BulkUploadEmployeesAsync(System.IO.Stream excelStream);
     }
 }

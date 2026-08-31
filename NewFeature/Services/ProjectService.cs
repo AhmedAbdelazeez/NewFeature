@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -5,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
+using Microsoft.Extensions.Logging;
+using NewFeature.Services.ExcelImport;
 using NewFeature.Services.Repositories;
 
 namespace NewFeature.Services
@@ -18,6 +21,7 @@ namespace NewFeature.Services
         private readonly IRepository<Models.Route> _routeRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<ProjectService> _logger;
 
         public ProjectService(
             IRepository<Project> projectRepository, 
@@ -26,7 +30,8 @@ namespace NewFeature.Services
             IRepository<Vehicle> vehicleRepository,
             IRepository<Models.Route> routeRepository,
             UserManager<ApplicationUser> userManager,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<ProjectService> logger)
         {
             _projectRepository = projectRepository;
             _clientRepository = clientRepository;
@@ -35,6 +40,7 @@ namespace NewFeature.Services
             _routeRepository = routeRepository;
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         private bool IsArabic()
@@ -247,5 +253,127 @@ namespace NewFeature.Services
                 Trips = tripDtos
             };
         }
+        #region Bulk upload (approved single-sheet projects register)
+        // Imports the approved Project Management template: one row per project. A client named in
+        // the sheet that is not on file yet is created as a minimal record so the coordinator does
+        // not have to register clients first; a project already on file (matched on Arabic name) is
+        // updated rather than duplicated.
+        public async Task<ExcelImportResultDto> BulkUploadProjectsAsync(System.IO.Stream excelStream)
+        {
+            var clients = (await _clientRepository.GetAllAsync()).ToList();
+            var projects = (await _projectRepository.GetAllAsync()).ToList();
+
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                DepartmentTemplates.Projects,
+                async row =>
+                {
+                    var name = row.GetString(DepartmentTemplates.ProjectName);
+                    if (string.IsNullOrWhiteSpace(name))
+                        return ExcelRowOutcomeResult.Skipped("اسم المشروع مطلوب.", "اسم المشروع");
+
+                    var startDate = row.GetDate(DepartmentTemplates.ProjectStartDate);
+                    if (startDate == null)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ البداية غير مقروء. استخدم الصيغة يوم/شهر/سنة.", "تاريخ البداية");
+
+                    var endDate = row.GetDate(DepartmentTemplates.ProjectEndDate);
+                    if (endDate == null)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ النهاية غير مقروء. استخدم الصيغة يوم/شهر/سنة.", "تاريخ النهاية");
+
+                    // An end date before the start date would make the "delayed projects" count
+                    // meaningless, so the row is rejected rather than imported.
+                    if (endDate.Value.Date < startDate.Value.Date)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ النهاية أسبق من تاريخ البداية.", "تاريخ النهاية");
+
+                    var clientName = row.GetString(DepartmentTemplates.ProjectClient);
+                    if (string.IsNullOrWhiteSpace(clientName))
+                        return ExcelRowOutcomeResult.Skipped("اسم العميل مطلوب.", "العميل");
+
+                    var client = clients.FirstOrDefault(c =>
+                        string.Equals(c.NameAr, clientName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(c.NameEn, clientName, StringComparison.OrdinalIgnoreCase));
+                    if (client == null)
+                    {
+                        client = new Client
+                        {
+                            NameAr = clientName,
+                            NameEn = clientName,
+                            Code = $"CLI-{clients.Count + 1:D3}",
+                            // Email/Phone are non-nullable on the entity but are not part of this
+                            // template - placeholders keep the insert valid and are obviously
+                            // placeholders when someone opens the client record to complete it.
+                            Email = $"client{clients.Count + 1}@rawahel.local",
+                            Phone = "-"
+                        };
+                        await _clientRepository.AddAsync(client);
+                        clients.Add(client);
+                    }
+
+                    var status = ParseProjectStatus(row.GetString(DepartmentTemplates.ProjectStatus));
+                    var contractValue = row.GetDecimal(DepartmentTemplates.ProjectContractValue) ?? 0m;
+                    if (contractValue < 0) contractValue = 0m;
+                    var vehicles = row.GetInt(DepartmentTemplates.ProjectVehicles) ?? 0;
+                    if (vehicles < 0) vehicles = 0;
+                    var trips = row.GetInt(DepartmentTemplates.ProjectTrips) ?? 0;
+                    if (trips < 0) trips = 0;
+
+                    var existing = projects.FirstOrDefault(p =>
+                        string.Equals(p.NameAr, name, StringComparison.OrdinalIgnoreCase));
+
+                    if (existing != null)
+                    {
+                        existing.NameEn = name;
+                        existing.Client = client;
+                        existing.StartDate = startDate.Value.Date;
+                        existing.EndDate = endDate.Value.Date;
+                        existing.Status = status;
+                        existing.ContractValue = contractValue;
+                        existing.RequiredVehiclesCount = vehicles;
+                        existing.EstimatedTripsCount = trips;
+                        return ExcelRowOutcomeResult.Updated();
+                    }
+
+                    var project = new Project
+                    {
+                        NameAr = name,
+                        NameEn = name,
+                        DescriptionAr = name,
+                        DescriptionEn = name,
+                        Client = client,
+                        StartDate = startDate.Value.Date,
+                        EndDate = endDate.Value.Date,
+                        Status = status,
+                        ContractValue = contractValue,
+                        RequiredVehiclesCount = vehicles,
+                        EstimatedTripsCount = trips
+                    };
+                    await _projectRepository.AddAsync(project);
+                    projects.Add(project);
+                    return ExcelRowOutcomeResult.Inserted();
+                },
+                () => _projectRepository.SaveChangesAsync(),
+                _logger);
+        }
+
+        private static ProjectStatus ParseProjectStatus(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+
+            if (value.Contains("مكتمل") || value.Contains("منجز") ||
+                value.IndexOf("completed", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ProjectStatus.Completed;
+
+            if (value.Contains("متوقف") || value.Contains("معلق") ||
+                value.IndexOf("hold", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ProjectStatus.OnHold;
+
+            if (value.Contains("نشط") || value.Contains("جاري") || value.Contains("قيد التنفيذ") ||
+                value.IndexOf("active", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("progress", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ProjectStatus.Active;
+
+            return ProjectStatus.Planning;
+        }
+        #endregion
     }
 }

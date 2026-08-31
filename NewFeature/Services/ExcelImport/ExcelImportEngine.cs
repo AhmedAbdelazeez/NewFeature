@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -54,6 +55,81 @@ namespace NewFeature.Services.ExcelImport
         {
             if (!_columnMap.TryGetValue(key, out var col)) return string.Empty;
             return _row.Cell(col).GetString().Trim();
+        }
+
+        // Typed readers used by the department templates. Every one of them is deliberately
+        // lenient: the approved templates are filled in by hand, so a cell can arrive as a real
+        // Excel date/number or as free text ("15/03/2026", "12,500 ريال", "٤"). A cell that
+        // can't be understood comes back null rather than throwing, and the calling row handler
+        // decides whether that makes the row skippable or just leaves a default in place.
+        public DateTime? GetDate(string key)
+        {
+            if (!_columnMap.TryGetValue(key, out var col)) return null;
+            var cell = _row.Cell(col);
+
+            if (cell.DataType == XLDataType.DateTime && cell.TryGetValue<DateTime>(out var typed))
+                return typed;
+
+            var raw = Normalize(cell.GetString());
+            if (string.IsNullOrEmpty(raw)) return null;
+
+            if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)) return parsed;
+            if (DateTime.TryParse(raw, out parsed)) return parsed;
+
+            // Excel stores dates as day serial numbers; a cell formatted as General shows the raw
+            // serial instead of a date string.
+            if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var serial)
+                && serial > 0 && serial < 2958466)
+            {
+                try { return DateTime.FromOADate(serial); } catch (ArgumentException) { return null; }
+            }
+
+            return null;
+        }
+
+        public decimal? GetDecimal(string key)
+        {
+            if (!_columnMap.TryGetValue(key, out var col)) return null;
+            var cell = _row.Cell(col);
+
+            if (cell.DataType == XLDataType.Number && cell.TryGetValue<double>(out var typed))
+                return (decimal)typed;
+
+            var raw = Normalize(cell.GetString());
+            if (string.IsNullOrEmpty(raw)) return null;
+
+            // Strip any currency wording typed alongside the figure.
+            var cleaned = new string(raw.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
+            if (string.IsNullOrEmpty(cleaned)) return null;
+
+            return decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : null;
+        }
+
+        public int? GetInt(string key)
+        {
+            var value = GetDecimal(key);
+            if (value == null) return null;
+            if (value < int.MinValue || value > int.MaxValue) return null;
+            return (int)Math.Round(value.Value, MidpointRounding.AwayFromZero);
+        }
+
+        // Arabic-Indic digits are what a keyboard set to Arabic produces, and they never parse
+        // with the invariant culture - fold them to ASCII before any TryParse sees the text.
+        private static string Normalize(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+            var builder = new System.Text.StringBuilder(text.Length);
+            foreach (var ch in text.Trim())
+            {
+                if (ch >= '\u0660' && ch <= '\u0669') builder.Append((char)('0' + (ch - '\u0660')));       // Arabic-Indic
+                else if (ch >= '\u06F0' && ch <= '\u06F9') builder.Append((char)('0' + (ch - '\u06F0'))); // Extended Arabic-Indic
+                else if (ch == ',' || ch == '\u066C') continue;                                           // thousands separators
+                else builder.Append(ch);
+            }
+            return builder.ToString().Trim();
         }
     }
 

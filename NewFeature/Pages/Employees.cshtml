@@ -10,7 +10,14 @@
             <h1 class="glow-text"><i class="bi bi-people me-2"></i> <span data-i18n="employees-title">إدارة الموارد البشرية</span></h1>
             <p class="text-muted mb-0" data-i18n="employees-subtitle">إدارة شؤون الموظفين، تقييم الأداء، وتوزيع المهام والأدوار الأمنية</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center">
+            <a class="btn btn-outline-secondary btn-sm me-2" href="/templates/HR_Template.xlsx" download title="نموذج كشف الموظفين">
+                <i class="bi bi-download"></i> <span>تحميل النموذج</span>
+            </a>
+            <input type="file" id="bulkUploadHrFile" class="d-none" accept=".xlsx,.xls" onchange="handleBulkUpload(event, '/api/employees/bulk-upload')">
+            <button class="btn btn-neon-outline btn-sm me-2" onclick="document.getElementById('bulkUploadHrFile').click()">
+                <i class="bi bi-file-earmark-excel"></i> <span>رفع ملف إكسل</span>
+            </button>
             <button class="btn btn-neon me-2" onclick="openAddEmployeeModal()">
                 <i class="bi bi-person-plus me-1"></i> <span data-i18n="employees-btn-add">إضافة موظف جديد</span>
             </button>
@@ -628,6 +635,57 @@
                 }
             } catch (err) {
                 console.error("Error deleting evaluation:", err);
+            }
+        }
+
+        // ── Bulk Excel upload (approved single-sheet department template) ──
+        // Reports the row statistics the shared ExcelImportEngine returns - inserted / updated /
+        // skipped - rather than a bare success count, so a coordinator can see immediately that,
+        // say, 3 rows were rejected and exactly which cell in each one caused it.
+        async function handleBulkUpload(event, url) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const res = await fetch(url, { method: "POST", body: formData });
+                const contentType = res.headers.get("content-type") || "";
+                const payload = contentType.includes("application/json") ? await res.json() : await res.text();
+
+                if (typeof payload === "string") {
+                    alert("فشل رفع الملف: " + payload);
+                    return;
+                }
+
+                const lines = [payload.message || (res.ok ? "تم رفع الملف." : "فشل رفع الملف.")];
+
+                if (res.ok) {
+                    lines.push("صفوف مضافة: " + payload.insertedRows);
+                    lines.push("صفوف محدّثة: " + payload.updatedRows);
+                    lines.push("صفوف متجاهلة: " + payload.skippedRows);
+                }
+
+                if (payload.errors && payload.errors.length > 0) {
+                    lines.push("");
+                    lines.push("تفاصيل الصفوف المتجاهلة:");
+                    payload.errors.slice(0, 8).forEach(function (e) {
+                        lines.push("صف " + e.rowNumber + (e.column ? " (" + e.column + ")" : "") + ": " + e.message);
+                    });
+                    if (payload.errors.length > 8) {
+                        lines.push("... و " + (payload.errors.length - 8) + " صف آخر.");
+                    }
+                }
+
+                alert(lines.join("\n"));
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ أثناء رفع الملف.");
+            } finally {
+                // Always clear the input so re-picking the same file fires change again.
+                event.target.value = "";
+                loadEmployees();
             }
         }
     </script>

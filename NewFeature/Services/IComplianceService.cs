@@ -43,5 +43,9 @@ namespace NewFeature.Services
 
         // KPIs dashboard
         Task<ComplianceKpisDto> GetComplianceKpisAsync();
+
+        // Bulk upload of the approved single-sheet violations log (see DepartmentTemplates.Compliance).
+        // The stream must already be a readable .xlsx stream - see ExcelCompatibility.EnsureXlsxStream.
+        Task<ExcelImportResultDto> BulkUploadViolationsAsync(System.IO.Stream excelStream);
     }
 }

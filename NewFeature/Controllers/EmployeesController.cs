@@ -117,5 +117,23 @@ namespace NewFeature.Controllers
             return NoContent();
         }
         #endregion
+
+        // Bulk upload of the approved single-sheet HR employee roster template.
+        [HttpPost("bulk-upload")]
+        public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
+                return BadRequest("Only .xlsx or .xls files are supported.");
+
+            using var rawStream = file.OpenReadStream();
+            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
+            var result = await _employeeService.BulkUploadEmployeesAsync(stream);
+
+            // A template/header problem is the uploader's mistake, not a server fault - report it
+            // as 422 so the page can surface the message instead of a generic failure.
+            if (!result.Success) return UnprocessableEntity(result);
+            return Ok(result);
+        }
     }
 }

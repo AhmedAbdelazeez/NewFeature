@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
+using Microsoft.Extensions.Logging;
+using NewFeature.Services.ExcelImport;
 using NewFeature.Services.Repositories;
 
 namespace NewFeature.Services
@@ -11,10 +13,12 @@ namespace NewFeature.Services
     public class EmployeeService : IEmployeeService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<EmployeeService> _logger;
 
-        public EmployeeService(ApplicationDbContext context)
+        public EmployeeService(ApplicationDbContext context, ILogger<EmployeeService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         #region Employee CRUD
@@ -174,6 +178,8 @@ namespace NewFeature.Services
             var evaluations = await _context.EmployeeEvaluations.ToListAsync();
 
             int totalEmployees = employees.Count;
+            int activeCount = employees.Count(e => e.IsActive);
+            int leaversCount = totalEmployees - activeCount;
 
             double saudization = 0;
             double retention = 0;
@@ -182,13 +188,29 @@ namespace NewFeature.Services
             decimal avgSalary = 0;
             double avgTasks = 0;
 
+            // Employee Retention Rate (نسبة بقاء الموظفين): of the people who were already on the
+            // payroll twelve months ago, what share is still on it today. Measuring it over that
+            // cohort - rather than over everyone ever hired - is what keeps a hiring spree from
+            // inflating the figure, since this year's new joiners had no chance to leave yet.
+            // When the roster has nobody with a full year of service (a freshly uploaded sheet,
+            // or a brand-new department), that cohort is empty and the rate falls back to the
+            // plain active-headcount share so the card still reports something truthful.
+            var retentionCohortStart = DateTime.UtcNow.Date.AddYears(-1);
+            var retentionCohort = employees.Where(e => e.JoinDate.Date <= retentionCohortStart).ToList();
+
+            if (retentionCohort.Count > 0)
+            {
+                retention = ((double)retentionCohort.Count(e => e.IsActive) / retentionCohort.Count) * 100;
+            }
+            else if (totalEmployees > 0)
+            {
+                retention = ((double)activeCount / totalEmployees) * 100;
+            }
+
             if (totalEmployees > 0)
             {
                 int saudiCount = employees.Count(e => e.IsSaudi);
                 saudization = ((double)saudiCount / totalEmployees) * 100;
-
-                int activeCount = employees.Count(e => e.IsActive);
-                retention = ((double)activeCount / totalEmployees) * 100;
 
                 avgRating = employees.Average(e => e.Rating);
 
@@ -225,7 +247,15 @@ namespace NewFeature.Services
                 AvgSalaryTarget = 9000.00m, // Target Average Salary: 9000 SAR
 
                 AvgTasksPerEmployeeActual = Math.Round(avgTasks, 1),
-                AvgTasksPerEmployeeTarget = 4.0 // Target Average Tasks per Employee: 4
+                AvgTasksPerEmployeeTarget = 4.0, // Target Average Tasks per Employee: 4
+
+                ActiveEmployeesActual = activeCount,
+                LeaversCountActual = leaversCount,
+
+                // Turnover is retention's complement over the same cohort, so the two cards on the
+                // dashboard always add up to 100% instead of telling two different stories.
+                TurnoverRateActual = Math.Round(100.0 - retention, 1),
+                TurnoverRateTarget = 10.0
             };
         }
         #endregion
@@ -271,6 +301,133 @@ namespace NewFeature.Services
                 NotesAr = ee.NotesAr,
                 Notes = isAr ? ee.NotesAr : ee.NotesEn
             };
+        }
+        #endregion
+        #region Bulk upload (approved single-sheet employee roster)
+        // Imports the approved HR template: one row per employee. Departments named in the sheet
+        // are created on the fly, and an employee already on file (matched on Arabic name) is
+        // updated rather than duplicated, so re-uploading a corrected roster is safe.
+        public async Task<ExcelImportResultDto> BulkUploadEmployeesAsync(System.IO.Stream excelStream)
+        {
+            var departments = await _context.Departments.ToListAsync();
+            var employees = await _context.Employees.ToListAsync();
+
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                DepartmentTemplates.Hr,
+                async row =>
+                {
+                    var name = row.GetString(DepartmentTemplates.HrEmployeeName);
+                    if (string.IsNullOrWhiteSpace(name))
+                        return ExcelRowOutcomeResult.Skipped("اسم الموظف مطلوب.", "اسم الموظف");
+
+                    // Without a join date the retention rate has no cohort to measure, so a row
+                    // missing it is rejected instead of quietly defaulting to today.
+                    var joinDate = row.GetDate(DepartmentTemplates.HrJoinDate);
+                    if (joinDate == null)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ التعيين غير مقروء. استخدم الصيغة يوم/شهر/سنة.", "تاريخ التعيين");
+                    if (joinDate.Value.Date > DateTime.UtcNow.Date)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ التعيين في المستقبل.", "تاريخ التعيين");
+
+                    var departmentName = row.GetString(DepartmentTemplates.HrDepartment);
+                    if (string.IsNullOrWhiteSpace(departmentName))
+                        return ExcelRowOutcomeResult.Skipped("القسم مطلوب.", "القسم");
+
+                    var department = departments.FirstOrDefault(d =>
+                        string.Equals(d.NameAr, departmentName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(d.NameEn, departmentName, StringComparison.OrdinalIgnoreCase));
+                    if (department == null)
+                    {
+                        department = new Department
+                        {
+                            NameAr = departmentName,
+                            NameEn = departmentName,
+                            Code = $"DEP-{departments.Count + 1:D3}",
+                            IsCompliant = true
+                        };
+                        _context.Departments.Add(department);
+                        departments.Add(department);
+                    }
+
+                    var role = row.GetString(DepartmentTemplates.HrJobTitle);
+                    if (string.IsNullOrWhiteSpace(role)) role = "موظف";
+
+                    var phone = row.GetString(DepartmentTemplates.HrPhone);
+                    if (string.IsNullOrWhiteSpace(phone)) phone = "-";
+                    if (phone.Length > 20) phone = phone.Substring(0, 20);
+
+                    var salary = row.GetDecimal(DepartmentTemplates.HrSalary) ?? 0m;
+                    if (salary < 0) salary = 0m;
+
+                    // The entity constrains Rating to 1-5; a blank or out-of-range cell settles on
+                    // the neutral middle score rather than failing the whole row.
+                    var rating = row.GetInt(DepartmentTemplates.HrRating) ?? 3;
+                    if (rating < 1) rating = 1;
+                    if (rating > 5) rating = 5;
+
+                    var isSaudi = ParseIsSaudi(row.GetString(DepartmentTemplates.HrNationality));
+                    var isActive = ParseIsActive(row.GetString(DepartmentTemplates.HrEmploymentStatus));
+
+                    var existing = employees.FirstOrDefault(e =>
+                        string.Equals(e.FullNameAr, name, StringComparison.OrdinalIgnoreCase));
+
+                    if (existing != null)
+                    {
+                        existing.FullNameEn = name;
+                        existing.PhoneNumber = phone;
+                        existing.Role = role;
+                        existing.Department = department;
+                        existing.JoinDate = joinDate.Value.Date;
+                        existing.Salary = salary;
+                        existing.Rating = rating;
+                        existing.IsSaudi = isSaudi;
+                        existing.IsActive = isActive;
+                        return ExcelRowOutcomeResult.Updated();
+                    }
+
+                    var employee = new Employee
+                    {
+                        FullNameAr = name,
+                        FullNameEn = name,
+                        PhoneNumber = phone,
+                        Role = role,
+                        Department = department,
+                        JoinDate = joinDate.Value.Date,
+                        Salary = salary,
+                        Rating = rating,
+                        IsSaudi = isSaudi,
+                        IsActive = isActive
+                    };
+                    _context.Employees.Add(employee);
+                    employees.Add(employee);
+                    await System.Threading.Tasks.Task.CompletedTask;
+                    return ExcelRowOutcomeResult.Inserted();
+                },
+                () => _context.SaveChangesAsync(),
+                _logger);
+        }
+
+        private static bool ParseIsSaudi(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(value)) return false;
+            // "غير سعودي" contains "سعودي", so the negation has to be checked first.
+            if (value.Contains("غير") || value.IndexOf("non", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            return value.Contains("سعودي") || value.IndexOf("saudi", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool ParseIsActive(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(value)) return true;
+            if (value.Contains("منته") || value.Contains("مستقيل") || value.Contains("مفصول") ||
+                value.Contains("ترك") || value.Contains("مغادر") ||
+                value.IndexOf("resigned", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("terminated", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("inactive", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("left", StringComparison.OrdinalIgnoreCase) >= 0)
+                return false;
+            return true;
         }
         #endregion
     }

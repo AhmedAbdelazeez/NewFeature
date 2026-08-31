@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using NewFeature.Models;
+using Microsoft.Extensions.Logging;
+using NewFeature.Services.ExcelImport;
 using NewFeature.Services.Repositories;
 
 namespace NewFeature.Services
@@ -18,6 +20,7 @@ namespace NewFeature.Services
         private readonly IRepository<ImprovementAction> _improvementRepository;
         private readonly IRepository<ContractItem> _contractItemRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<ComplianceService> _logger;
 
         public ComplianceService(
             IRepository<Department> departmentRepository,
@@ -26,7 +29,8 @@ namespace NewFeature.Services
             IRepository<InternalAudit> auditRepository,
             IRepository<ImprovementAction> improvementRepository,
             IRepository<ContractItem> contractItemRepository,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<ComplianceService> logger)
         {
             _departmentRepository = departmentRepository;
             _classificationRepository = classificationRepository;
@@ -35,6 +39,7 @@ namespace NewFeature.Services
             _improvementRepository = improvementRepository;
             _contractItemRepository = contractItemRepository;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         private bool IsArabic()
@@ -583,6 +588,13 @@ namespace NewFeature.Services
                 ? Math.Round((double)implementedImprovements / totalImprovements * 100, 1)
                 : 100.0;
 
+            // --- Simple indicators (direct counts over the uploaded violations log) ---
+            kpis.OpenViolationsCount = violations.Count(v => v.Status == ViolationStatus.Open);
+            kpis.ClosedViolationsCount = closedViolations;
+            kpis.CriticalViolationsCount = violations.Count(v => v.Severity == ViolationSeverity.Critical);
+            kpis.TotalFinesAmount = violations.Sum(v => v.FineAmount);
+            kpis.DepartmentsWithViolationsCount = violations.Select(v => v.DepartmentId).Distinct().Count();
+
             // --- Charts Data ---
 
             // Violations by Severity
@@ -626,6 +638,147 @@ namespace NewFeature.Services
             }).ToList();
 
             return kpis;
+        }
+        #endregion
+        #region Bulk upload (approved single-sheet violations log)
+        // Imports the approved Compliance template: one row per recorded violation. Departments
+        // and classifications named in the sheet are created on the fly so the coordinator never
+        // has to pre-register a lookup before uploading; rows are matched on description + detection
+        // date, so re-uploading a corrected sheet updates the same violations instead of duplicating
+        // them.
+        public async Task<ExcelImportResultDto> BulkUploadViolationsAsync(System.IO.Stream excelStream)
+        {
+            var departments = (await _departmentRepository.GetAllAsync()).ToList();
+            var classifications = (await _classificationRepository.GetAllAsync()).ToList();
+            var violations = (await _violationRepository.GetAllAsync()).ToList();
+
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                DepartmentTemplates.Compliance,
+                async row =>
+                {
+                    var description = row.GetString(DepartmentTemplates.ComplianceDescription);
+                    if (string.IsNullOrWhiteSpace(description))
+                        return ExcelRowOutcomeResult.Skipped("وصف المخالفة مطلوب.", "وصف المخالفة");
+
+                    var detectionDate = row.GetDate(DepartmentTemplates.ComplianceDetectionDate);
+                    if (detectionDate == null)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ الرصد غير مقروء. استخدم الصيغة يوم/شهر/سنة.", "تاريخ الرصد");
+
+                    var departmentName = row.GetString(DepartmentTemplates.ComplianceDepartment);
+                    if (string.IsNullOrWhiteSpace(departmentName))
+                        return ExcelRowOutcomeResult.Skipped("اسم الإدارة مطلوب.", "الإدارة");
+
+                    var department = departments.FirstOrDefault(d =>
+                        string.Equals(d.NameAr, departmentName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(d.NameEn, departmentName, StringComparison.OrdinalIgnoreCase));
+                    if (department == null)
+                    {
+                        department = new Department
+                        {
+                            NameAr = departmentName,
+                            NameEn = departmentName,
+                            Code = BuildLookupCode("DEP", departments.Count + 1),
+                            IsCompliant = true
+                        };
+                        await _departmentRepository.AddAsync(department);
+                        departments.Add(department);
+                    }
+
+                    var classificationName = row.GetString(DepartmentTemplates.ComplianceClassification);
+                    if (string.IsNullOrWhiteSpace(classificationName)) classificationName = "غير مصنفة";
+
+                    var classification = classifications.FirstOrDefault(c =>
+                        string.Equals(c.NameAr, classificationName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(c.NameEn, classificationName, StringComparison.OrdinalIgnoreCase));
+                    if (classification == null)
+                    {
+                        classification = new ViolationClassification
+                        {
+                            NameAr = classificationName,
+                            NameEn = classificationName,
+                            Code = BuildLookupCode("CLS", classifications.Count + 1)
+                        };
+                        await _classificationRepository.AddAsync(classification);
+                        classifications.Add(classification);
+                    }
+
+                    var status = ParseViolationStatus(row.GetString(DepartmentTemplates.ComplianceStatus));
+                    var closureDate = row.GetDate(DepartmentTemplates.ComplianceClosureDate);
+
+                    // A closed violation with no closure date cannot contribute to the average
+                    // resolution time, and a closure date earlier than the detection date would make
+                    // it negative - both are rejected rather than silently distorting the KPI.
+                    if (status == ViolationStatus.Closed && closureDate == null)
+                        return ExcelRowOutcomeResult.Skipped("المخالفة مغلقة ولكن تاريخ الإغلاق غير مُدخل.", "تاريخ الإغلاق");
+                    if (closureDate != null && closureDate.Value.Date < detectionDate.Value.Date)
+                        return ExcelRowOutcomeResult.Skipped("تاريخ الإغلاق أسبق من تاريخ الرصد.", "تاريخ الإغلاق");
+                    if (status == ViolationStatus.Open) closureDate = null;
+
+                    var severity = ParseViolationSeverity(row.GetString(DepartmentTemplates.ComplianceSeverity));
+                    var fine = row.GetDecimal(DepartmentTemplates.ComplianceFine) ?? 0m;
+                    if (fine < 0) fine = 0m;
+
+                    var existing = violations.FirstOrDefault(v =>
+                        string.Equals(v.TitleAr, description, StringComparison.OrdinalIgnoreCase) &&
+                        v.DetectionDate.Date == detectionDate.Value.Date);
+
+                    if (existing != null)
+                    {
+                        existing.TitleEn = description;
+                        existing.DescriptionAr = description;
+                        existing.DescriptionEn = description;
+                        existing.Department = department;
+                        existing.Classification = classification;
+                        existing.Status = status;
+                        existing.Severity = severity;
+                        existing.ResolutionDate = closureDate?.Date;
+                        existing.FineAmount = fine;
+                        return ExcelRowOutcomeResult.Updated();
+                    }
+
+                    var violation = new Violation
+                    {
+                        TitleAr = description,
+                        TitleEn = description,
+                        DescriptionAr = description,
+                        DescriptionEn = description,
+                        DetectionDate = detectionDate.Value.Date,
+                        ResolutionDate = closureDate?.Date,
+                        Status = status,
+                        Severity = severity,
+                        Department = department,
+                        Classification = classification,
+                        FineAmount = fine
+                    };
+                    await _violationRepository.AddAsync(violation);
+                    violations.Add(violation);
+                    return ExcelRowOutcomeResult.Inserted();
+                },
+                () => _violationRepository.SaveChangesAsync(),
+                _logger);
+        }
+
+        private static string BuildLookupCode(string prefix, int sequence) => $"{prefix}-{sequence:D3}";
+
+        private static ViolationStatus ParseViolationStatus(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (value.Contains("مغلق") || value.Contains("منته") ||
+                value.IndexOf("closed", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ViolationStatus.Closed;
+            return ViolationStatus.Open;
+        }
+
+        private static ViolationSeverity ParseViolationSeverity(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (value.Contains("حرج") || value.IndexOf("critical", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ViolationSeverity.Critical;
+            if (value.Contains("جسيم") || value.Contains("كبير") ||
+                value.IndexOf("major", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ViolationSeverity.Major;
+            return ViolationSeverity.Minor;
         }
         #endregion
     }

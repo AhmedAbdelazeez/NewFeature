@@ -22,5 +22,9 @@ namespace NewFeature.Services
 
         // KPIs
         Task<FinanceKpisDto> GetFinanceKpisAsync();
+
+        // Bulk upload of the approved single-sheet finance ledger (see DepartmentTemplates.Finance).
+        // The stream must already be a readable .xlsx stream - see ExcelCompatibility.EnsureXlsxStream.
+        Task<ExcelImportResultDto> BulkUploadTransactionsAsync(System.IO.Stream excelStream);
     }
 }

@@ -71,5 +71,17 @@ namespace NewFeature.Models
 
         public decimal WorkingCapitalActual { get; set; }
         public decimal WorkingCapitalTarget { get; set; }
+
+        // ─── Simple indicators, each a direct sum/count over the uploaded ledger ───
+        // These are what the executive dashboard shows. Unlike EBITDA/ROA/working capital above,
+        // every one of them is answerable from the approved single-sheet Finance template alone
+        // (date, statement, revenue-or-expense, category, amount) with no balance-sheet data.
+        public decimal TotalExpensesActual { get; set; }
+        public decimal NetProfitActual { get; set; }
+        public double ExpenseToRevenueRatioActual { get; set; }
+        public int TransactionsCountActual { get; set; }
+        public decimal AverageMonthlyRevenueActual { get; set; }
+        public string TopExpenseCategoryName { get; set; } = "--";
+        public decimal TopExpenseCategoryAmount { get; set; }
     }
 }

@@ -200,6 +200,15 @@ namespace NewFeature.Models
         public double ContinuousImprovementRateActual { get; set; }
         public double ContinuousImprovementRateTarget { get; set; } = 90.0; // 90%
 
+        // ─── Simple indicators, each a direct count/sum over the uploaded violations log ───
+        // These are what the executive dashboard shows: every one of them is answerable from the
+        // approved single-sheet Compliance template alone, with no other system involved.
+        public int OpenViolationsCount { get; set; }
+        public int ClosedViolationsCount { get; set; }
+        public int CriticalViolationsCount { get; set; }
+        public decimal TotalFinesAmount { get; set; }
+        public int DepartmentsWithViolationsCount { get; set; }
+
         // Chart Data
         public List<ChartDataPoint> ViolationsBySeverity { get; set; } = new();
         public List<ChartDataPoint> ViolationsByStatus { get; set; } = new();

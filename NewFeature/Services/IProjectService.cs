@@ -12,5 +12,9 @@ namespace NewFeature.Services
         Task<bool> UpdateProjectAsync(ProjectDto dto);
         Task<bool> DeleteProjectAsync(int id);
         Task<ProjectDetailsDto?> GetProjectDetailsAsync(int id);
+
+        // Bulk upload of the approved single-sheet projects register (see DepartmentTemplates.Projects).
+        // The stream must already be a readable .xlsx stream - see ExcelCompatibility.EnsureXlsxStream.
+        Task<ExcelImportResultDto> BulkUploadProjectsAsync(System.IO.Stream excelStream);
     }
 }

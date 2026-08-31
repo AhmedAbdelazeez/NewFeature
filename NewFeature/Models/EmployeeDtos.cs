@@ -90,5 +90,13 @@ namespace NewFeature.Models
 
         public double AvgTasksPerEmployeeActual { get; set; }
         public double AvgTasksPerEmployeeTarget { get; set; }
+
+        // ─── Employee Retention Rate (نسبة بقاء الموظفين) breakdown ───
+        // RetentionRateActual above is the headline figure. These three expose the cohort behind
+        // it so the dashboard can show what the percentage is actually measured over.
+        public int ActiveEmployeesActual { get; set; }
+        public int LeaversCountActual { get; set; }
+        public double TurnoverRateActual { get; set; }
+        public double TurnoverRateTarget { get; set; } = 10.0;
     }
 }
