@@ -34,10 +34,10 @@
         <div class="tab-pane fade show active" id="tickets-tab-content" role="tabpanel" aria-labelledby="tickets-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="ticketSearch" class="form-control form-control-glass" placeholder="البحث في تذاكر الدعم..." onkeyup="filterTickets()">
+                            <input type="text" id="ticketSearch" class="form-control form-control-glass" placeholder="البحث في تذاكر الدعم..." onkeyup="handleTicketSearchKeyup(event)">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -46,6 +46,14 @@
                             <option value="Open" data-i18n="opt-status-open">مفتوحة (Open)</option>
                             <option value="In Progress" data-i18n="opt-status-inprogress">قيد المعالجة (In Progress)</option>
                             <option value="Resolved" data-i18n="opt-status-resolved">مكتملة (Resolved)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="ticketPageSizeSelect" class="form-control form-control-glass" onchange="changeTicketPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -73,15 +81,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="ticketsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="ticketsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="ticketsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="ticketsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="ticketsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: IT Systems -->
         <div class="tab-pane fade" id="systems-tab-content" role="tabpanel" aria-labelledby="systems-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="systemSearch" class="form-control form-control-glass" placeholder="البحث في الأنظمة..." onkeyup="filterSystems()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="systemSearch" class="form-control form-control-glass" placeholder="البحث في الأنظمة..." onkeyup="handleSystemSearchKeyup(event)">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="systemPageSizeSelect" class="form-control form-control-glass" onchange="changeSystemPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -104,6 +133,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="systemsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="systemsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="systemsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="systemsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="systemsLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -249,8 +287,16 @@
 
 @section Scripts {
     <script>
-        let tickets = [];
-        let systems = [];
+        // ───────── Pagination state ─────────
+        let ticketsCurrentPage = 1;
+        let ticketsPageSize = 20;
+        let ticketsSearchTerm = '';
+        let ticketsTotalPages = 1;
+
+        let systemsCurrentPage = 1;
+        let systemsPageSize = 20;
+        let systemsSearchTerm = '';
+        let systemsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadTickets();
@@ -259,11 +305,24 @@
 
         // ───────── Tickets Fetch & Render ─────────
         async function loadTickets() {
+            const isAr = document.documentElement.lang === 'ar';
+            const listContainer = document.getElementById("ticketsList");
+            listContainer.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل التذاكر...</td></tr>`;
+
+            const status = document.getElementById("ticketStatusFilter").value;
+            let url = `/api/it/tickets/paged?page=${ticketsCurrentPage}&pageSize=${ticketsPageSize}`;
+            if (ticketsSearchTerm) url += `&search=${encodeURIComponent(ticketsSearchTerm)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+
             try {
-                const res = await fetch("/api/it/tickets");
+                const res = await fetch(url);
                 if (res.ok) {
-                    tickets = await res.json();
-                    renderTickets(tickets);
+                    const data = await res.json();
+                    ticketsTotalPages = data.totalPages || 1;
+                    renderTickets(data.items || []);
+                    document.getElementById('ticketsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${ticketsTotalPages} (${data.totalCount} تذكرة)`
+                        : `Page ${data.page} of ${ticketsTotalPages} (${data.totalCount} tickets)`;
                 }
             } catch (err) {
                 console.error("Error loading tickets:", err);
@@ -314,29 +373,56 @@
             });
         }
 
+        function handleTicketSearchKeyup(event) {
+            if (event.key === 'Enter') filterTickets();
+        }
+
         function filterTickets() {
-            const query = document.getElementById("ticketSearch").value.toLowerCase();
-            const statusFilter = document.getElementById("ticketStatusFilter").value;
-            const isAr = document.documentElement.lang === 'ar';
+            ticketsSearchTerm = document.getElementById("ticketSearch").value.trim();
+            ticketsCurrentPage = 1;
+            loadTickets();
+        }
 
-            const filtered = tickets.filter(t => {
-                const title = isAr ? t.titleAr : t.titleEn;
-                const description = isAr ? t.descriptionAr : t.descriptionEn;
-                const matchesQuery = title.toLowerCase().includes(query) || (description && description.toLowerCase().includes(query));
-                const matchesStatus = !statusFilter || t.status === statusFilter;
-                return matchesQuery && matchesStatus;
-            });
+        function changeTicketPageSize() {
+            ticketsPageSize = parseInt(document.getElementById("ticketPageSizeSelect").value, 10);
+            ticketsCurrentPage = 1;
+            loadTickets();
+        }
 
-            renderTickets(filtered);
+        function ticketsFirstPage() {
+            if (ticketsCurrentPage !== 1) { ticketsCurrentPage = 1; loadTickets(); }
+        }
+
+        function ticketsPrevPage() {
+            if (ticketsCurrentPage > 1) { ticketsCurrentPage--; loadTickets(); }
+        }
+
+        function ticketsNextPage() {
+            if (ticketsCurrentPage < ticketsTotalPages) { ticketsCurrentPage++; loadTickets(); }
+        }
+
+        function ticketsLastPage() {
+            if (ticketsCurrentPage !== ticketsTotalPages) { ticketsCurrentPage = ticketsTotalPages; loadTickets(); }
         }
 
         // ───────── Systems Fetch & Render ─────────
         async function loadSystems() {
+            const isAr = document.documentElement.lang === 'ar';
+            const listContainer = document.getElementById("systemsList");
+            listContainer.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الأنظمة...</td></tr>`;
+
+            let url = `/api/it/systems/paged?page=${systemsCurrentPage}&pageSize=${systemsPageSize}`;
+            if (systemsSearchTerm) url += `&search=${encodeURIComponent(systemsSearchTerm)}`;
+
             try {
-                const res = await fetch("/api/it/systems");
+                const res = await fetch(url);
                 if (res.ok) {
-                    systems = await res.json();
-                    renderSystems(systems);
+                    const data = await res.json();
+                    systemsTotalPages = data.totalPages || 1;
+                    renderSystems(data.items || []);
+                    document.getElementById('systemsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${systemsTotalPages} (${data.totalCount} نظام)`
+                        : `Page ${data.page} of ${systemsTotalPages} (${data.totalCount} systems)`;
                 }
             } catch (err) {
                 console.error("Error loading systems:", err);
@@ -384,10 +470,36 @@
             });
         }
 
+        function handleSystemSearchKeyup(event) {
+            if (event.key === 'Enter') filterSystems();
+        }
+
         function filterSystems() {
-            const query = document.getElementById("systemSearch").value.toLowerCase();
-            const filtered = systems.filter(s => s.nameEn.toLowerCase().includes(query) || s.nameAr.includes(query));
-            renderSystems(filtered);
+            systemsSearchTerm = document.getElementById("systemSearch").value.trim();
+            systemsCurrentPage = 1;
+            loadSystems();
+        }
+
+        function changeSystemPageSize() {
+            systemsPageSize = parseInt(document.getElementById("systemPageSizeSelect").value, 10);
+            systemsCurrentPage = 1;
+            loadSystems();
+        }
+
+        function systemsFirstPage() {
+            if (systemsCurrentPage !== 1) { systemsCurrentPage = 1; loadSystems(); }
+        }
+
+        function systemsPrevPage() {
+            if (systemsCurrentPage > 1) { systemsCurrentPage--; loadSystems(); }
+        }
+
+        function systemsNextPage() {
+            if (systemsCurrentPage < systemsTotalPages) { systemsCurrentPage++; loadSystems(); }
+        }
+
+        function systemsLastPage() {
+            if (systemsCurrentPage !== systemsTotalPages) { systemsCurrentPage = systemsTotalPages; loadSystems(); }
         }
 
         // ───────── Ticket Modals / CRUD ─────────

@@ -27,6 +27,18 @@ namespace NewFeature.Controllers
             return Ok(items);
         }
 
+        // Paginated + searchable listing used by the Finance page's Transactions table.
+        [HttpGet("transactions/paged")]
+        public async Task<ActionResult<PagedResultDto<FinanceTransactionDto>>> GetTransactionsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null)
+        {
+            var result = await _financeService.GetTransactionsPagedAsync(page, pageSize, search, type);
+            return Ok(result);
+        }
+
         [HttpGet("transactions/{id}")]
         public async Task<ActionResult<FinanceTransactionDto>> GetTransaction(int id)
         {
@@ -69,6 +81,17 @@ namespace NewFeature.Controllers
         {
             var items = await _financeService.GetAllBudgetsAsync();
             return Ok(items);
+        }
+
+        // Paginated + searchable listing used by the Finance page's Budgets table.
+        [HttpGet("budgets/paged")]
+        public async Task<ActionResult<PagedResultDto<FinanceBudgetDto>>> GetBudgetsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _financeService.GetBudgetsPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("budgets/{id}")]

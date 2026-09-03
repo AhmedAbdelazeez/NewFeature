@@ -8,6 +8,7 @@ namespace NewFeature.Services
     {
         // Hotel Bookings
         Task<IEnumerable<TourismHotelBookingDto>> GetAllHotelBookingsAsync();
+        Task<PagedResultDto<TourismHotelBookingDto>> GetHotelBookingsPagedAsync(int page, int pageSize, string? search, string? status);
         Task<TourismHotelBookingDto?> GetHotelBookingByIdAsync(int id);
         Task<TourismHotelBookingDto> CreateHotelBookingAsync(TourismHotelBookingDto dto);
         Task<bool> UpdateHotelBookingAsync(TourismHotelBookingDto dto);
@@ -15,6 +16,7 @@ namespace NewFeature.Services
 
         // Sightseeing Tours
         Task<IEnumerable<TourismTourDto>> GetAllToursAsync();
+        Task<PagedResultDto<TourismTourDto>> GetToursPagedAsync(int page, int pageSize, string? search);
         Task<TourismTourDto?> GetTourByIdAsync(int id);
         Task<TourismTourDto> CreateTourAsync(TourismTourDto dto);
         Task<bool> UpdateTourAsync(TourismTourDto dto);

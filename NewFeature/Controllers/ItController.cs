@@ -27,6 +27,18 @@ namespace NewFeature.Controllers
             return Ok(tickets);
         }
 
+        // Paginated + searchable listing used by the IT page's Tickets table.
+        [HttpGet("tickets/paged")]
+        public async Task<ActionResult<PagedResultDto<ItTicketDto>>> GetTicketsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null)
+        {
+            var result = await _itService.GetTicketsPagedAsync(page, pageSize, search, status);
+            return Ok(result);
+        }
+
         [HttpGet("tickets/{id}")]
         public async Task<ActionResult<ItTicketDto>> GetTicket(int id)
         {
@@ -69,6 +81,17 @@ namespace NewFeature.Controllers
         {
             var systems = await _itService.GetAllSystemsAsync();
             return Ok(systems);
+        }
+
+        // Paginated + searchable listing used by the IT page's Systems table.
+        [HttpGet("systems/paged")]
+        public async Task<ActionResult<PagedResultDto<ItSystemDto>>> GetSystemsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _itService.GetSystemsPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("systems/{id}")]

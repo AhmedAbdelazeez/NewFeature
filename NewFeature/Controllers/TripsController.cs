@@ -24,6 +24,14 @@ namespace NewFeature.Controllers
             return Ok(trips);
         }
 
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<TripDto>>> GetTripsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _fleetService.GetTripsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<TripDto>> GetTrip(int id)
         {

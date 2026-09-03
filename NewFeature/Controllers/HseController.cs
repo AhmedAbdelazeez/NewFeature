@@ -27,6 +27,18 @@ namespace NewFeature.Controllers
             return Ok(incidents);
         }
 
+        // Paginated + searchable listing used by the HSE page's Incidents table.
+        [HttpGet("incidents/paged")]
+        public async Task<ActionResult<PagedResultDto<HseIncidentDto>>> GetIncidentsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null)
+        {
+            var result = await _hseService.GetIncidentsPagedAsync(page, pageSize, search, type);
+            return Ok(result);
+        }
+
         [HttpGet("incidents/{id}")]
         public async Task<ActionResult<HseIncidentDto>> GetIncident(int id)
         {
@@ -69,6 +81,17 @@ namespace NewFeature.Controllers
         {
             var inspections = await _hseService.GetAllInspectionsAsync();
             return Ok(inspections);
+        }
+
+        // Paginated + searchable listing used by the HSE page's Inspections table.
+        [HttpGet("inspections/paged")]
+        public async Task<ActionResult<PagedResultDto<HseInspectionDto>>> GetInspectionsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _hseService.GetInspectionsPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("inspections/{id}")]

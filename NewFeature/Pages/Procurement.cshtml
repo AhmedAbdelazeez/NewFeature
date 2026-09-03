@@ -34,7 +34,7 @@
         <div class="tab-pane fade show active" id="requests-tab-content" role="tabpanel" aria-labelledby="requests-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                             <input type="text" id="requestSearch" class="form-control form-control-glass" placeholder="البحث في طلبات الشراء..." onkeyup="filterRequests()">
@@ -48,6 +48,14 @@
                             <option value="Ordered" data-i18n="opt-status-ordered">مطلوب من المورد (Ordered)</option>
                             <option value="Received" data-i18n="opt-status-received">مستلم (Received)</option>
                             <option value="Cancelled" data-i18n="opt-status-cancelled">ملغي (Cancelled)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="requestsPageSizeSelect" class="form-control form-control-glass" onchange="changeRequestsPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
                         </select>
                     </div>
                 </div>
@@ -76,15 +84,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="requestsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="requestsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="requestsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="requestsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="requestsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: Inventory -->
         <div class="tab-pane fade" id="inventory-tab-content" role="tabpanel" aria-labelledby="inventory-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="inventorySearch" class="form-control form-control-glass" placeholder="البحث في المستودعات..." onkeyup="filterInventory()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="inventorySearch" class="form-control form-control-glass" placeholder="البحث في المستودعات..." onkeyup="filterInventory()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="inventoryPageSizeSelect" class="form-control form-control-glass" onchange="changeInventoryPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -110,6 +139,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="inventoryPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inventoryFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inventoryPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inventoryNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="inventoryLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,8 +274,15 @@
 
 @section Scripts {
     <script>
-        let allRequests = [];
-        let allInventory = [];
+        let requestsPage = 1;
+        let requestsPageSize = 20;
+        let requestsSearch = '';
+        let requestsTotalPages = 1;
+
+        let inventoryPage = 1;
+        let inventoryPageSize = 20;
+        let inventorySearch = '';
+        let inventoryTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadRequests();
@@ -246,15 +291,52 @@
 
         // ───────── Requests Data Loading & Filter ─────────
         async function loadRequests() {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("requestsList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> ${isAr ? 'جاري تحميل طلبات الشراء...' : 'Loading procurement requests...'}</td></tr>`;
+            }
+
+            const status = document.getElementById("requestStatusFilter").value;
+            let url = `/api/procurement/requests/paged?page=${requestsPage}&pageSize=${requestsPageSize}`;
+            if (requestsSearch) url += `&search=${encodeURIComponent(requestsSearch)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+
             try {
-                const res = await fetch('/api/procurement/requests');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allRequests = await res.json();
-                    renderRequests(allRequests);
+                    const data = await res.json();
+                    requestsTotalPages = data.totalPages || 1;
+                    renderRequests(data.items || []);
+                    document.getElementById('requestsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${requestsTotalPages} (${data.totalCount} طلب)`
+                        : `Page ${data.page} of ${requestsTotalPages} (${data.totalCount} requests)`;
                 }
             } catch (err) {
                 console.error("Error loading requests:", err);
             }
+        }
+
+        function changeRequestsPageSize() {
+            requestsPageSize = parseInt(document.getElementById("requestsPageSizeSelect").value, 10);
+            requestsPage = 1;
+            loadRequests();
+        }
+
+        function requestsFirstPage() {
+            if (requestsPage !== 1) { requestsPage = 1; loadRequests(); }
+        }
+
+        function requestsPrevPage() {
+            if (requestsPage > 1) { requestsPage--; loadRequests(); }
+        }
+
+        function requestsNextPage() {
+            if (requestsPage < requestsTotalPages) { requestsPage++; loadRequests(); }
+        }
+
+        function requestsLastPage() {
+            if (requestsPage !== requestsTotalPages) { requestsPage = requestsTotalPages; loadRequests(); }
         }
 
         function renderRequests(list) {
@@ -297,20 +379,9 @@
         }
 
         function filterRequests() {
-            const search = document.getElementById("requestSearch").value.toLowerCase();
-            const status = document.getElementById("requestStatusFilter").value;
-            const isAr = document.documentElement.lang === 'ar';
-
-            const filtered = allRequests.filter(r => {
-                const title = (isAr ? r.titleAr : r.titleEn).toLowerCase();
-                const req = r.requesterName.toLowerCase();
-                const sup = r.supplierName.toLowerCase();
-                const matchesSearch = title.includes(search) || req.includes(search) || sup.includes(search);
-                const matchesStatus = !status || r.status === status;
-                return matchesSearch && matchesStatus;
-            });
-
-            renderRequests(filtered);
+            requestsSearch = document.getElementById("requestSearch").value.trim();
+            requestsPage = 1;
+            loadRequests();
         }
 
         function getStatusClass(status) {
@@ -326,15 +397,50 @@
 
         // ───────── Inventory Data Loading & Filter ─────────
         async function loadInventory() {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("inventoryList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> ${isAr ? 'جاري تحميل المخزون...' : 'Loading inventory...'}</td></tr>`;
+            }
+
+            let url = `/api/procurement/inventory/paged?page=${inventoryPage}&pageSize=${inventoryPageSize}`;
+            if (inventorySearch) url += `&search=${encodeURIComponent(inventorySearch)}`;
+
             try {
-                const res = await fetch('/api/procurement/inventory');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allInventory = await res.json();
-                    renderInventory(allInventory);
+                    const data = await res.json();
+                    inventoryTotalPages = data.totalPages || 1;
+                    renderInventory(data.items || []);
+                    document.getElementById('inventoryPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${inventoryTotalPages} (${data.totalCount} صنف)`
+                        : `Page ${data.page} of ${inventoryTotalPages} (${data.totalCount} items)`;
                 }
             } catch (err) {
                 console.error("Error loading inventory:", err);
             }
+        }
+
+        function changeInventoryPageSize() {
+            inventoryPageSize = parseInt(document.getElementById("inventoryPageSizeSelect").value, 10);
+            inventoryPage = 1;
+            loadInventory();
+        }
+
+        function inventoryFirstPage() {
+            if (inventoryPage !== 1) { inventoryPage = 1; loadInventory(); }
+        }
+
+        function inventoryPrevPage() {
+            if (inventoryPage > 1) { inventoryPage--; loadInventory(); }
+        }
+
+        function inventoryNextPage() {
+            if (inventoryPage < inventoryTotalPages) { inventoryPage++; loadInventory(); }
+        }
+
+        function inventoryLastPage() {
+            if (inventoryPage !== inventoryTotalPages) { inventoryPage = inventoryTotalPages; loadInventory(); }
         }
 
         function renderInventory(list) {
@@ -381,16 +487,9 @@
         }
 
         function filterInventory() {
-            const search = document.getElementById("inventorySearch").value.toLowerCase();
-            const isAr = document.documentElement.lang === 'ar';
-
-            const filtered = allInventory.filter(i => {
-                const name = (isAr ? i.itemNameAr : i.itemNameEn).toLowerCase();
-                const cat = i.category.toLowerCase();
-                return name.includes(search) || cat.includes(search);
-            });
-
-            renderInventory(filtered);
+            inventorySearch = document.getElementById("inventorySearch").value.trim();
+            inventoryPage = 1;
+            loadInventory();
         }
 
         // ───────── Request Modal / CRUD ─────────

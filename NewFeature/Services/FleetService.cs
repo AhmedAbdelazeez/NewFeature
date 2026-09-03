@@ -229,6 +229,61 @@ namespace NewFeature.Services
             }).ToList();
         }
 
+        // Backs the Routes management page's table. Materializes once via the existing
+        // repository call, then filters/orders/pages in memory - matching
+        // GetVehiclesPagedAsync's house style above.
+        public async Task<PagedResultDto<RouteDto>> GetRoutesPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var routes = (await _routeRepository.GetAllAsync()).AsEnumerable();
+            var isAr = IsArabic();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                routes = routes.Where(r =>
+                    Contains(r.NameEn, term) ||
+                    Contains(r.NameAr, term) ||
+                    Contains(r.StartLocationEn, term) ||
+                    Contains(r.StartLocationAr, term) ||
+                    Contains(r.EndLocationEn, term) ||
+                    Contains(r.EndLocationAr, term));
+            }
+
+            var ordered = routes.OrderByDescending(r => r.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => new RouteDto
+                {
+                    Id = r.Id,
+                    NameEn = r.NameEn,
+                    NameAr = r.NameAr,
+                    StartLocationEn = r.StartLocationEn,
+                    StartLocationAr = r.StartLocationAr,
+                    EndLocationEn = r.EndLocationEn,
+                    EndLocationAr = r.EndLocationAr,
+                    DistanceKm = r.DistanceKm,
+                    Name = isAr ? r.NameAr : r.NameEn,
+                    StartLocation = isAr ? r.StartLocationAr : r.StartLocationEn,
+                    EndLocation = isAr ? r.EndLocationAr : r.EndLocationEn
+                })
+                .ToList();
+
+            return new PagedResultDto<RouteDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<RouteDto?> GetRouteByIdAsync(int id)
         {
             var r = await _routeRepository.GetByIdAsync(id);
@@ -337,6 +392,48 @@ namespace NewFeature.Services
                 ClientName = t.ClientName,
                 BookingReference = t.BookingReference
             }).ToList();
+        }
+
+        // Paginated + search listing for the Trips scheduling page. Reuses GetAllTripsAsync's
+        // already-mapped, already-lookup-joined list (vehicle plate/route/driver/project names)
+        // and just adds search filtering + Skip/Take on top, matching the in-memory paging
+        // pattern used by GetVehiclesPagedAsync above.
+        public async Task<PagedResultDto<TripDto>> GetTripsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var trips = (await GetAllTripsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                trips = trips.Where(t =>
+                    Contains(t.VehiclePlate, term) ||
+                    Contains(t.RouteName, term) ||
+                    Contains(t.DriverName, term) ||
+                    Contains(t.ProjectName, term) ||
+                    Contains(t.ClientName, term) ||
+                    Contains(t.BookingReference, term) ||
+                    Contains(t.Status.ToString(), term));
+            }
+
+            var ordered = trips.ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PagedResultDto<TripDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<TripDto?> GetTripByIdAsync(int id)

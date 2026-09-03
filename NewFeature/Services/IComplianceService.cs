@@ -8,6 +8,7 @@ namespace NewFeature.Services
     {
         // Department Lookup CRUD
         Task<IEnumerable<DepartmentDto>> GetAllDepartmentsAsync();
+        Task<PagedResultDto<DepartmentDto>> GetDepartmentsPagedAsync(int page, int pageSize, string? search);
         Task<DepartmentDto?> GetDepartmentByIdAsync(int id);
         Task<DepartmentDto> CreateDepartmentAsync(DepartmentDto dto);
         Task<bool> UpdateDepartmentAsync(DepartmentDto dto);
@@ -15,6 +16,7 @@ namespace NewFeature.Services
 
         // Violation Classification Lookup CRUD
         Task<IEnumerable<ViolationClassificationDto>> GetAllClassificationsAsync();
+        Task<PagedResultDto<ViolationClassificationDto>> GetClassificationsPagedAsync(int page, int pageSize, string? search);
         Task<ViolationClassificationDto?> GetClassificationByIdAsync(int id);
         Task<ViolationClassificationDto> CreateClassificationAsync(ViolationClassificationDto dto);
         Task<bool> UpdateClassificationAsync(ViolationClassificationDto dto);
@@ -22,6 +24,7 @@ namespace NewFeature.Services
 
         // Violation CRUD
         Task<IEnumerable<ViolationDto>> GetAllViolationsAsync();
+        Task<PagedResultDto<ViolationDto>> GetViolationsPagedAsync(int page, int pageSize, string? search);
         Task<ViolationDto?> GetViolationByIdAsync(int id);
         Task<ViolationDto> CreateViolationAsync(ViolationDto dto);
         Task<bool> UpdateViolationAsync(ViolationDto dto);
@@ -29,6 +32,7 @@ namespace NewFeature.Services
 
         // Internal Audit CRUD
         Task<IEnumerable<InternalAuditDto>> GetAllAuditsAsync();
+        Task<PagedResultDto<InternalAuditDto>> GetAuditsPagedAsync(int page, int pageSize, string? search);
         Task<InternalAuditDto?> GetAuditByIdAsync(int id);
         Task<InternalAuditDto> CreateAuditAsync(InternalAuditDto dto);
         Task<bool> UpdateAuditAsync(InternalAuditDto dto);
@@ -36,6 +40,7 @@ namespace NewFeature.Services
 
         // Improvement Action CRUD
         Task<IEnumerable<ImprovementActionDto>> GetAllImprovementsAsync();
+        Task<PagedResultDto<ImprovementActionDto>> GetImprovementsPagedAsync(int page, int pageSize, string? search);
         Task<ImprovementActionDto?> GetImprovementByIdAsync(int id);
         Task<ImprovementActionDto> CreateImprovementAsync(ImprovementActionDto dto);
         Task<bool> UpdateImprovementAsync(ImprovementActionDto dto);

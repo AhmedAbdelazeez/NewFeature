@@ -27,11 +27,22 @@
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-12">
+            <div class="col-md-8">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="routeSearch" class="form-control form-control-glass" placeholder="Search routes by name or locations..." onkeyup="filterRoutes()">
+                    <input type="text" id="routeSearch" class="form-control form-control-glass" placeholder="Search routes by name or locations..." onkeyup="handleRouteSearchKeyup(event)">
                 </div>
+            </div>
+            <div class="col-md-2">
+                <select id="routePageSizeSelect" class="form-control form-control-glass" onchange="changeRoutesPageSize()">
+                    <option value="10">10 / page</option>
+                    <option value="20" selected>20 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyRouteSearch()"><span data-i18n="vehicles-btn-search">Search</span></button>
             </div>
         </div>
     </div>
@@ -55,6 +66,15 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+            <span class="text-muted small" id="routesPageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="routesFirstPage()">&laquo; First</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="routesPrevPage()">Previous</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="routesNextPage()">Next</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="routesLastPage()">Last &raquo;</button>
+            </div>
         </div>
     </div>
 </div>
@@ -122,25 +142,38 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         const currentLang = localStorage.getItem('lang') || 'en';
-        let routes = [];
+        let routesCurrentPage = 1;
+        let routesPageSize = 20;
+        let routesSearchTerm = '';
+        let routesTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", function () {
             loadRoutes();
         });
 
         async function loadRoutes() {
+            const tbody = document.getElementById("routesList");
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td></tr>`;
+
+            let url = `/api/routes/paged?page=${routesCurrentPage}&pageSize=${routesPageSize}`;
+            if (routesSearchTerm) url += `&search=${encodeURIComponent(routesSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/routes');
-                if (res.ok) {
-                    routes = await res.json();
-                    renderRoutes();
-                }
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                routesTotalPages = data.totalPages || 1;
+                renderRoutes(data.items || []);
+                document.getElementById('routesPageInfo').innerText =
+                    (currentLang === 'en'
+                        ? `Page ${data.page} of ${routesTotalPages} (${data.totalCount} routes)`
+                        : `صفحة ${data.page} من ${routesTotalPages} (${data.totalCount} مسار)`);
             } catch (err) {
                 console.error(err);
             }
         }
 
-        function renderRoutes() {
+        function renderRoutes(routes) {
             const tbody = document.getElementById("routesList");
             tbody.innerHTML = "";
 
@@ -170,18 +203,36 @@
             });
         }
 
-        function filterRoutes() {
-            const query = document.getElementById("routeSearch").value.toLowerCase();
-            const rows = document.querySelectorAll("#routesList tr");
+        function handleRouteSearchKeyup(event) {
+            if (event.key === 'Enter') applyRouteSearch();
+        }
 
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if (text.includes(query)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
-            });
+        function applyRouteSearch() {
+            routesSearchTerm = document.getElementById("routeSearch").value.trim();
+            routesCurrentPage = 1;
+            loadRoutes();
+        }
+
+        function changeRoutesPageSize() {
+            routesPageSize = parseInt(document.getElementById("routePageSizeSelect").value, 10);
+            routesCurrentPage = 1;
+            loadRoutes();
+        }
+
+        function routesFirstPage() {
+            if (routesCurrentPage !== 1) { routesCurrentPage = 1; loadRoutes(); }
+        }
+
+        function routesPrevPage() {
+            if (routesCurrentPage > 1) { routesCurrentPage--; loadRoutes(); }
+        }
+
+        function routesNextPage() {
+            if (routesCurrentPage < routesTotalPages) { routesCurrentPage++; loadRoutes(); }
+        }
+
+        function routesLastPage() {
+            if (routesCurrentPage !== routesTotalPages) { routesCurrentPage = routesTotalPages; loadRoutes(); }
         }
 
         function resetModalReadOnly(formId) {
@@ -322,6 +373,7 @@
                 alert("An error occurred during bulk upload.");
             } finally {
                 event.target.value = "";
+                routesCurrentPage = 1;
                 loadRoutes();
             }
         }

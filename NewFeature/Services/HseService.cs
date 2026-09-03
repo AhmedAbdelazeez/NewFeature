@@ -78,6 +78,49 @@ namespace NewFeature.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        // Paginated + searchable listing used by the HSE page's Incidents table.
+        public async Task<PagedResultDto<HseIncidentDto>> GetIncidentsPagedAsync(int page, int pageSize, string? search, string? type)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var incidents = (await _context.HseIncidents.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                incidents = incidents.Where(i =>
+                    Contains(i.TitleEn, term) ||
+                    Contains(i.TitleAr, term) ||
+                    Contains(i.DescriptionEn, term) ||
+                    Contains(i.DescriptionAr, term) ||
+                    Contains(i.Location, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                incidents = incidents.Where(i => string.Equals(i.Type, type, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var ordered = incidents.OrderByDescending(i => i.Date).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToIncidentDto)
+                .ToList();
+
+            return new PagedResultDto<HseIncidentDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         #endregion
 
         #region Inspections CRUD
@@ -138,6 +181,42 @@ namespace NewFeature.Services
             _context.HseInspections.Remove(inspection);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Paginated + searchable listing used by the HSE page's Inspections table.
+        public async Task<PagedResultDto<HseInspectionDto>> GetInspectionsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var inspections = (await _context.HseInspections.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                inspections = inspections.Where(i =>
+                    Contains(i.TitleEn, term) ||
+                    Contains(i.TitleAr, term) ||
+                    Contains(i.InspectorName, term));
+            }
+
+            var ordered = inspections.OrderByDescending(i => i.InspectionDate).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToInspectionDto)
+                .ToList();
+
+            return new PagedResultDto<HseInspectionDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
         #endregion
 
@@ -207,6 +286,9 @@ namespace NewFeature.Services
             };
         }
         #endregion
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
 
         #region Mappers
         private static HseIncidentDto MapToIncidentDto(HseIncident i)

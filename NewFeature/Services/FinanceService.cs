@@ -80,6 +80,48 @@ namespace NewFeature.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        // Paginated + searchable listing used by the Finance page's Transactions table.
+        public async Task<PagedResultDto<FinanceTransactionDto>> GetTransactionsPagedAsync(int page, int pageSize, string? search, string? type)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var transactions = (await _context.FinanceTransactions.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                transactions = transactions.Where(t =>
+                    Contains(t.DescriptionEn, term) ||
+                    Contains(t.DescriptionAr, term) ||
+                    Contains(t.CategoryEn, term) ||
+                    Contains(t.CategoryAr, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                transactions = transactions.Where(t => string.Equals(t.Type, type, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var ordered = transactions.OrderByDescending(t => t.Date).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToTransactionDto)
+                .ToList();
+
+            return new PagedResultDto<FinanceTransactionDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         #endregion
 
         #region Budgets CRUD
@@ -136,6 +178,41 @@ namespace NewFeature.Services
             _context.FinanceBudgets.Remove(item);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Paginated + searchable listing used by the Finance page's Budgets table.
+        public async Task<PagedResultDto<FinanceBudgetDto>> GetBudgetsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var budgets = (await _context.FinanceBudgets.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                budgets = budgets.Where(b =>
+                    Contains(b.DepartmentNameEn, term) ||
+                    Contains(b.DepartmentNameAr, term));
+            }
+
+            var ordered = budgets.OrderBy(b => b.DepartmentNameEn).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToBudgetDto)
+                .ToList();
+
+            return new PagedResultDto<FinanceBudgetDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
         #endregion
 
@@ -240,6 +317,9 @@ namespace NewFeature.Services
             };
         }
         #endregion
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
 
         #region Mappers
         private FinanceTransactionDto MapToTransactionDto(FinanceTransaction ft) => new FinanceTransactionDto

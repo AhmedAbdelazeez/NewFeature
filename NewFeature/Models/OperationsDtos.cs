@@ -43,6 +43,21 @@ namespace NewFeature.Models
         public string? BookingReference { get; set; }
     }
 
+    // One row of the official-drivers compliance roster, for the Operations landing page's
+    // browsable table - lets someone visually confirm the uploaded roster is real rather than
+    // only seeing the RegisteredDriversCount KPI.
+    public class OperationsDriverDto
+    {
+        public int Id { get; set; }
+        public string? EmployeeCode { get; set; }
+        public string? IqamaNumber { get; set; }
+        public string ArabicName { get; set; } = string.Empty;
+        public string? EnglishName { get; set; }
+        public string? Nationality { get; set; }
+        public DateTime? LicenseExpiryDate { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class OperationsKpisDto
     {
         public int TotalTrips { get; set; }

@@ -24,6 +24,44 @@ namespace NewFeature.Services
             return goals.Select(MapToGoalDto);
         }
 
+        // Paginated + search listing for the Strategy page's Strategic Goals table (mirrors the
+        // "fetch everything, then filter/order/Skip/Take in memory" pattern used by
+        // FleetService.GetVehiclesPagedAsync). GetAllGoalsAsync above is left untouched.
+        public async Task<PagedResultDto<StrategicGoalDto>> GetGoalsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var goals = (await _context.StrategicGoals.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                goals = goals.Where(g => Contains(g.TitleEn, term) || Contains(g.TitleAr, term) || Contains(g.Status, term));
+            }
+
+            var ordered = goals.OrderByDescending(g => g.Weight).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToGoalDto)
+                .ToList();
+
+            return new PagedResultDto<StrategicGoalDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<StrategicGoalDto?> GetGoalByIdAsync(int id)
         {
             var goal = await _context.StrategicGoals.FindAsync(id);
@@ -81,6 +119,43 @@ namespace NewFeature.Services
         {
             var initiatives = await _context.PmoInitiatives.OrderByDescending(i => i.StartDate).ToListAsync();
             return initiatives.Select(MapToInitiativeDto);
+        }
+
+        // Paginated + search listing for the Strategy page's PMO Initiatives table.
+        public async Task<PagedResultDto<PmoInitiativeDto>> GetInitiativesPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var initiatives = (await _context.PmoInitiatives.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                initiatives = initiatives.Where(i =>
+                    Contains(i.TitleEn, term) ||
+                    Contains(i.TitleAr, term) ||
+                    Contains(i.ManagerName, term) ||
+                    Contains(i.Status, term));
+            }
+
+            var ordered = initiatives.OrderByDescending(i => i.StartDate).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToInitiativeDto)
+                .ToList();
+
+            return new PagedResultDto<PmoInitiativeDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<PmoInitiativeDto?> GetInitiativeByIdAsync(int id)

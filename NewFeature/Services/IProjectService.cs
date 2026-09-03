@@ -7,6 +7,7 @@ namespace NewFeature.Services
     public interface IProjectService
     {
         Task<IEnumerable<ProjectDto>> GetAllProjectsAsync();
+        Task<PagedResultDto<ProjectDto>> GetProjectsPagedAsync(int page, int pageSize, string? search);
         Task<ProjectDto?> GetProjectByIdAsync(int id);
         Task<ProjectDto> CreateProjectAsync(ProjectDto dto);
         Task<bool> UpdateProjectAsync(ProjectDto dto);

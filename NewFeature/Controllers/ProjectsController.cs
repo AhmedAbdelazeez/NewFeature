@@ -24,6 +24,18 @@ namespace NewFeature.Controllers
             return Ok(projects);
         }
 
+        // Paginated + searchable listing used by the Project Management page's table. GetProjects()
+        // above is left untouched since it returns a plain array other callers may still expect.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<ProjectDto>>> GetProjectsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _projectService.GetProjectsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ProjectDto>> GetProject(int id)
         {

@@ -34,10 +34,10 @@
         <div class="tab-pane fade show active" id="contracts-tab-content" role="tabpanel" aria-labelledby="contracts-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="contractSearch" class="form-control form-control-glass" placeholder="البحث في العقود..." onkeyup="filterContracts()">
+                            <input type="text" id="contractSearch" class="form-control form-control-glass" placeholder="البحث في العقود..." onkeyup="handleContractSearchKeyup(event)">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -47,6 +47,14 @@
                             <option value="Pending" data-i18n="opt-status-pending">معلق (Pending)</option>
                             <option value="Renewed" data-i18n="opt-status-renewed">مجدد (Renewed)</option>
                             <option value="Expired" data-i18n="opt-status-expired">منتهي (Expired)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="contractPageSizeSelect" class="form-control form-control-glass" onchange="changeContractPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -73,6 +81,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="contractsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="contractsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="contractsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="contractsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="contractsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -80,10 +97,10 @@
         <div class="tab-pane fade" id="leads-tab-content" role="tabpanel" aria-labelledby="leads-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="leadSearch" class="form-control form-control-glass" placeholder="البحث في العملاء المحتملين..." onkeyup="filterLeads()">
+                            <input type="text" id="leadSearch" class="form-control form-control-glass" placeholder="البحث في العملاء المحتملين..." onkeyup="handleLeadSearchKeyup(event)">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -93,6 +110,14 @@
                             <option value="InProgress" data-i18n="opt-lead-inprogress">قيد التفاوض (In Progress)</option>
                             <option value="Won" data-i18n="opt-lead-won">مكتمل/ناجح (Won)</option>
                             <option value="Lost" data-i18n="opt-lead-lost">خاسر (Lost)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="leadPageSizeSelect" class="form-control form-control-glass" onchange="changeLeadPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -118,6 +143,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="leadsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="leadsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="leadsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="leadsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="leadsLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -257,8 +291,16 @@
 
 @section Scripts {
     <script>
-        let allContracts = [];
-        let allLeads = [];
+        // ───────── Pagination state ─────────
+        let contractsCurrentPage = 1;
+        let contractsPageSize = 20;
+        let contractsSearchTerm = '';
+        let contractsTotalPages = 1;
+
+        let leadsCurrentPage = 1;
+        let leadsPageSize = 20;
+        let leadsSearchTerm = '';
+        let leadsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadContracts();
@@ -267,11 +309,24 @@
 
         // ───────── Contracts CRUD ─────────
         async function loadContracts() {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            const container = document.getElementById("contractsList");
+            container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل العقود...</td></tr>`;
+
+            const status = document.getElementById("contractStatusFilter").value;
+            let url = `/api/commercial/contracts/paged?page=${contractsCurrentPage}&pageSize=${contractsPageSize}`;
+            if (contractsSearchTerm) url += `&search=${encodeURIComponent(contractsSearchTerm)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+
             try {
-                const res = await fetch('/api/commercial/contracts');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allContracts = await res.json();
-                    renderContracts(allContracts);
+                    const data = await res.json();
+                    contractsTotalPages = data.totalPages || 1;
+                    renderContracts(data.items || []);
+                    document.getElementById('contractsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${contractsTotalPages} (${data.totalCount} عقد)`
+                        : `Page ${data.page} of ${contractsTotalPages} (${data.totalCount} contracts)`;
                 }
             } catch (err) {
                 console.error("Error loading contracts:", err);
@@ -314,16 +369,36 @@
             }).join('');
         }
 
-        function filterContracts() {
-            const search = document.getElementById("contractSearch").value.toLowerCase();
-            const status = document.getElementById("contractStatusFilter").value;
+function handleContractSearchKeyup(event) {
+            if (event.key === 'Enter') filterContracts();
+        }
 
-            const filtered = allContracts.filter(c => {
-                const matchesSearch = c.clientNameEn.toLowerCase().includes(search) || c.clientNameAr.toLowerCase().includes(search) || c.contractNumber.toLowerCase().includes(search);
-                const matchesStatus = !status || c.status === status;
-                return matchesSearch && matchesStatus;
-            });
-            renderContracts(filtered);
+        function filterContracts() {
+            contractsSearchTerm = document.getElementById("contractSearch").value.trim();
+            contractsCurrentPage = 1;
+            loadContracts();
+        }
+
+        function changeContractPageSize() {
+            contractsPageSize = parseInt(document.getElementById("contractPageSizeSelect").value, 10);
+            contractsCurrentPage = 1;
+            loadContracts();
+        }
+
+        function contractsFirstPage() {
+            if (contractsCurrentPage !== 1) { contractsCurrentPage = 1; loadContracts(); }
+        }
+
+        function contractsPrevPage() {
+            if (contractsCurrentPage > 1) { contractsCurrentPage--; loadContracts(); }
+        }
+
+        function contractsNextPage() {
+            if (contractsCurrentPage < contractsTotalPages) { contractsCurrentPage++; loadContracts(); }
+        }
+
+        function contractsLastPage() {
+            if (contractsCurrentPage !== contractsTotalPages) { contractsCurrentPage = contractsTotalPages; loadContracts(); }
         }
 
         function openAddContractModal() {
@@ -414,11 +489,24 @@
 
         // ───────── Leads CRUD ─────────
         async function loadLeads() {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            const container = document.getElementById("leadsList");
+            container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل العملاء المحتملين...</td></tr>`;
+
+            const status = document.getElementById("leadStatusFilter").value;
+            let url = `/api/commercial/leads/paged?page=${leadsCurrentPage}&pageSize=${leadsPageSize}`;
+            if (leadsSearchTerm) url += `&search=${encodeURIComponent(leadsSearchTerm)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+
             try {
-                const res = await fetch('/api/commercial/leads');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allLeads = await res.json();
-                    renderLeads(allLeads);
+                    const data = await res.json();
+                    leadsTotalPages = data.totalPages || 1;
+                    renderLeads(data.items || []);
+                    document.getElementById('leadsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${leadsTotalPages} (${data.totalCount} عميل محتمل)`
+                        : `Page ${data.page} of ${leadsTotalPages} (${data.totalCount} leads)`;
                 }
             } catch (err) {
                 console.error("Error loading leads:", err);
@@ -454,16 +542,36 @@
             }).join('');
         }
 
-        function filterLeads() {
-            const search = document.getElementById("leadSearch").value.toLowerCase();
-            const status = document.getElementById("leadStatusFilter").value;
+        function handleLeadSearchKeyup(event) {
+            if (event.key === 'Enter') filterLeads();
+        }
 
-            const filtered = allLeads.filter(l => {
-                const matchesSearch = l.leadName.toLowerCase().includes(search) || l.source.toLowerCase().includes(search);
-                const matchesStatus = !status || l.status === status;
-                return matchesSearch && matchesStatus;
-            });
-            renderLeads(filtered);
+        function filterLeads() {
+            leadsSearchTerm = document.getElementById("leadSearch").value.trim();
+            leadsCurrentPage = 1;
+            loadLeads();
+        }
+
+        function changeLeadPageSize() {
+            leadsPageSize = parseInt(document.getElementById("leadPageSizeSelect").value, 10);
+            leadsCurrentPage = 1;
+            loadLeads();
+        }
+
+        function leadsFirstPage() {
+            if (leadsCurrentPage !== 1) { leadsCurrentPage = 1; loadLeads(); }
+        }
+
+        function leadsPrevPage() {
+            if (leadsCurrentPage > 1) { leadsCurrentPage--; loadLeads(); }
+        }
+
+        function leadsNextPage() {
+            if (leadsCurrentPage < leadsTotalPages) { leadsCurrentPage++; loadLeads(); }
+        }
+
+        function leadsLastPage() {
+            if (leadsCurrentPage !== leadsTotalPages) { leadsCurrentPage = leadsTotalPages; loadLeads(); }
         }
 
         function openAddLeadModal() {

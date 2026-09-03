@@ -36,6 +36,14 @@ namespace NewFeature.Controllers
             return Ok(result);
         }
 
+        [HttpGet("departments/paged")]
+        public async Task<ActionResult<PagedResultDto<DepartmentDto>>> GetDepartmentsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _complianceService.GetDepartmentsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("departments/{id}")]
         public async Task<ActionResult<DepartmentDto>> GetDepartment(int id)
         {
@@ -76,6 +84,14 @@ namespace NewFeature.Controllers
         public async Task<ActionResult<IEnumerable<ViolationClassificationDto>>> GetClassifications()
         {
             var result = await _complianceService.GetAllClassificationsAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("classifications/paged")]
+        public async Task<ActionResult<PagedResultDto<ViolationClassificationDto>>> GetClassificationsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _complianceService.GetClassificationsPagedAsync(page, pageSize, search);
             return Ok(result);
         }
 
@@ -122,6 +138,14 @@ namespace NewFeature.Controllers
             return Ok(result);
         }
 
+        [HttpGet("violations/paged")]
+        public async Task<ActionResult<PagedResultDto<ViolationDto>>> GetViolationsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _complianceService.GetViolationsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("violations/{id}")]
         public async Task<ActionResult<ViolationDto>> GetViolation(int id)
         {
@@ -165,6 +189,14 @@ namespace NewFeature.Controllers
             return Ok(result);
         }
 
+        [HttpGet("audits/paged")]
+        public async Task<ActionResult<PagedResultDto<InternalAuditDto>>> GetAuditsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _complianceService.GetAuditsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("audits/{id}")]
         public async Task<ActionResult<InternalAuditDto>> GetAudit(int id)
         {
@@ -205,6 +237,14 @@ namespace NewFeature.Controllers
         public async Task<ActionResult<IEnumerable<ImprovementActionDto>>> GetImprovements()
         {
             var result = await _complianceService.GetAllImprovementsAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("improvements/paged")]
+        public async Task<ActionResult<PagedResultDto<ImprovementActionDto>>> GetImprovementsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _complianceService.GetImprovementsPagedAsync(page, pageSize, search);
             return Ok(result);
         }
 

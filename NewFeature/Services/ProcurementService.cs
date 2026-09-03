@@ -24,6 +24,54 @@ namespace NewFeature.Services
             return requests.Select(MapToRequestDto);
         }
 
+        // Paginated + search listing for the Procurement page's Requests table (mirrors the
+        // "fetch everything, then filter/order/Skip/Take in memory" pattern used by
+        // FleetService.GetVehiclesPagedAsync). GetAllRequestsAsync above is left untouched.
+        public async Task<PagedResultDto<ProcurementRequestDto>> GetRequestsPagedAsync(int page, int pageSize, string? search, string? status)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var requests = (await _context.ProcurementRequests.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                requests = requests.Where(r =>
+                    Contains(r.TitleEn, term) ||
+                    Contains(r.TitleAr, term) ||
+                    Contains(r.RequesterName, term) ||
+                    Contains(r.SupplierName, term) ||
+                    Contains(r.Status, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                requests = requests.Where(r => r.Status == status);
+            }
+
+            var ordered = requests.OrderByDescending(r => r.RequestDate).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToRequestDto)
+                .ToList();
+
+            return new PagedResultDto<ProcurementRequestDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<ProcurementRequestDto?> GetRequestByIdAsync(int id)
         {
             var req = await _context.ProcurementRequests.FindAsync(id);
@@ -99,6 +147,42 @@ namespace NewFeature.Services
         {
             var items = await _context.InventoryItems.OrderBy(i => i.ItemNameEn).ToListAsync();
             return items.Select(MapToInventoryItemDto);
+        }
+
+        // Paginated + search listing for the Procurement page's Inventory table.
+        public async Task<PagedResultDto<InventoryItemDto>> GetInventoryPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var items = (await _context.InventoryItems.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                items = items.Where(i =>
+                    Contains(i.ItemNameEn, term) ||
+                    Contains(i.ItemNameAr, term) ||
+                    Contains(i.Category, term));
+            }
+
+            var ordered = items.OrderBy(i => i.ItemNameEn).ToList();
+            var totalCount = ordered.Count;
+
+            var pagedItems = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToInventoryItemDto)
+                .ToList();
+
+            return new PagedResultDto<InventoryItemDto>
+            {
+                Items = pagedItems,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<InventoryItemDto?> GetInventoryItemByIdAsync(int id)

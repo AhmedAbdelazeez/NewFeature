@@ -33,9 +33,21 @@
         <!-- Tab 1: Strategic Goals -->
         <div class="tab-pane fade show active" id="goals-tab-content" role="tabpanel" aria-labelledby="goals-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="goalSearch" class="form-control form-control-glass" placeholder="البحث في الأهداف الاستراتيجية..." onkeyup="filterGoals()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="goalSearch" class="form-control form-control-glass" placeholder="البحث في الأهداف الاستراتيجية..." onkeyup="filterGoals()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="goalsPageSizeSelect" class="form-control form-control-glass" onchange="changeGoalsPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -60,15 +72,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="goalsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="goalsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="goalsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="goalsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="goalsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: PMO Initiatives -->
         <div class="tab-pane fade" id="initiatives-tab-content" role="tabpanel" aria-labelledby="initiatives-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="initiativeSearch" class="form-control form-control-glass" placeholder="البحث في المبادرات..." onkeyup="filterInitiatives()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="initiativeSearch" class="form-control form-control-glass" placeholder="البحث في المبادرات..." onkeyup="filterInitiatives()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="initiativesPageSizeSelect" class="form-control form-control-glass" onchange="changeInitiativesPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -95,6 +128,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="initiativesPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="initiativesFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="initiativesPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="initiativesNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="initiativesLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -224,8 +266,15 @@
 
 @section Scripts {
     <script>
-        let allGoals = [];
-        let allInitiatives = [];
+        let goalsPage = 1;
+        let goalsPageSize = 20;
+        let goalsSearch = '';
+        let goalsTotalPages = 1;
+
+        let initiativesPage = 1;
+        let initiativesPageSize = 20;
+        let initiativesSearch = '';
+        let initiativesTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadGoals();
@@ -234,15 +283,50 @@
 
         // ───────── Goals Data Loading & Filter ─────────
         async function loadGoals() {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("goalsList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> ${isAr ? 'جاري تحميل الأهداف...' : 'Loading strategic goals...'}</td></tr>`;
+            }
+
+            let url = `/api/strategy/goals/paged?page=${goalsPage}&pageSize=${goalsPageSize}`;
+            if (goalsSearch) url += `&search=${encodeURIComponent(goalsSearch)}`;
+
             try {
-                const res = await fetch('/api/strategy/goals');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allGoals = await res.json();
-                    renderGoals(allGoals);
+                    const data = await res.json();
+                    goalsTotalPages = data.totalPages || 1;
+                    renderGoals(data.items || []);
+                    document.getElementById('goalsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${goalsTotalPages} (${data.totalCount} هدف)`
+                        : `Page ${data.page} of ${goalsTotalPages} (${data.totalCount} goals)`;
                 }
             } catch (err) {
                 console.error("Error loading strategic goals:", err);
             }
+        }
+
+        function changeGoalsPageSize() {
+            goalsPageSize = parseInt(document.getElementById("goalsPageSizeSelect").value, 10);
+            goalsPage = 1;
+            loadGoals();
+        }
+
+        function goalsFirstPage() {
+            if (goalsPage !== 1) { goalsPage = 1; loadGoals(); }
+        }
+
+        function goalsPrevPage() {
+            if (goalsPage > 1) { goalsPage--; loadGoals(); }
+        }
+
+        function goalsNextPage() {
+            if (goalsPage < goalsTotalPages) { goalsPage++; loadGoals(); }
+        }
+
+        function goalsLastPage() {
+            if (goalsPage !== goalsTotalPages) { goalsPage = goalsTotalPages; loadGoals(); }
         }
 
         function renderGoals(list) {
@@ -287,15 +371,9 @@
         }
 
         function filterGoals() {
-            const search = document.getElementById("goalSearch").value.toLowerCase();
-            const isAr = document.documentElement.lang === 'ar';
-
-            const filtered = allGoals.filter(g => {
-                const title = (isAr ? g.titleAr : g.titleEn).toLowerCase();
-                return title.includes(search);
-            });
-
-            renderGoals(filtered);
+            goalsSearch = document.getElementById("goalSearch").value.trim();
+            goalsPage = 1;
+            loadGoals();
         }
 
         function getGoalStatusClass(status) {
@@ -310,15 +388,50 @@
 
         // ───────── PMO Initiatives Data Loading & Filter ─────────
         async function loadInitiatives() {
+            const isAr = document.documentElement.lang === 'ar';
+            const tbody = document.getElementById("initiativesList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> ${isAr ? 'جاري تحميل مبادرات PMO...' : 'Loading PMO initiatives...'}</td></tr>`;
+            }
+
+            let url = `/api/strategy/initiatives/paged?page=${initiativesPage}&pageSize=${initiativesPageSize}`;
+            if (initiativesSearch) url += `&search=${encodeURIComponent(initiativesSearch)}`;
+
             try {
-                const res = await fetch('/api/strategy/initiatives');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allInitiatives = await res.json();
-                    renderInitiatives(allInitiatives);
+                    const data = await res.json();
+                    initiativesTotalPages = data.totalPages || 1;
+                    renderInitiatives(data.items || []);
+                    document.getElementById('initiativesPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${initiativesTotalPages} (${data.totalCount} مبادرة)`
+                        : `Page ${data.page} of ${initiativesTotalPages} (${data.totalCount} initiatives)`;
                 }
             } catch (err) {
                 console.error("Error loading PMO initiatives:", err);
             }
+        }
+
+        function changeInitiativesPageSize() {
+            initiativesPageSize = parseInt(document.getElementById("initiativesPageSizeSelect").value, 10);
+            initiativesPage = 1;
+            loadInitiatives();
+        }
+
+        function initiativesFirstPage() {
+            if (initiativesPage !== 1) { initiativesPage = 1; loadInitiatives(); }
+        }
+
+        function initiativesPrevPage() {
+            if (initiativesPage > 1) { initiativesPage--; loadInitiatives(); }
+        }
+
+        function initiativesNextPage() {
+            if (initiativesPage < initiativesTotalPages) { initiativesPage++; loadInitiatives(); }
+        }
+
+        function initiativesLastPage() {
+            if (initiativesPage !== initiativesTotalPages) { initiativesPage = initiativesTotalPages; loadInitiatives(); }
         }
 
         function renderInitiatives(list) {
@@ -375,16 +488,9 @@
         }
 
         function filterInitiatives() {
-            const search = document.getElementById("initiativeSearch").value.toLowerCase();
-            const isAr = document.documentElement.lang === 'ar';
-
-            const filtered = allInitiatives.filter(i => {
-                const title = (isAr ? i.titleAr : i.titleEn).toLowerCase();
-                const manager = i.managerName.toLowerCase();
-                return title.includes(search) || manager.includes(search);
-            });
-
-            renderInitiatives(filtered);
+            initiativesSearch = document.getElementById("initiativeSearch").value.trim();
+            initiativesPage = 1;
+            loadInitiatives();
         }
 
         function getInitiativeStatusClass(status) {

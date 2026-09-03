@@ -28,6 +28,19 @@ namespace NewFeature.Controllers
             return Ok(routes);
         }
 
+        // Paginated + searchable listing used by the Routes management page's table.
+        // GetRoutes() above is left untouched in case other callers rely on the full list.
+        [AllowAnonymous]
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<RouteDto>>> GetRoutesPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _fleetService.GetRoutesPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<ActionResult<RouteDto>> GetRoute(int id)

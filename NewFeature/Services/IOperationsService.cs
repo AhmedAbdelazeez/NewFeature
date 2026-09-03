@@ -28,6 +28,10 @@ namespace NewFeature.Services
         // browsable table (mirrors GetVehiclesPagedAsync/maintenance-workorders paging patterns).
         Task<PagedResultDto<OperationsTripDto>> GetTripsPagedAsync(int page, int pageSize, string? search, DateTime? fromDate, DateTime? toDate);
 
+        // Paged, searchable listing of the official-drivers compliance roster, for the Operations
+        // landing page's browsable table.
+        Task<PagedResultDto<OperationsDriverDto>> GetDriversPagedAsync(int page, int pageSize, string? search);
+
         // Bulk Upload
         Task<(int SuccessCount, List<string> Errors)> BulkUploadDailyPlansAsync(System.IO.Stream excelStream);
 

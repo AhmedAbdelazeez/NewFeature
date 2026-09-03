@@ -27,6 +27,18 @@ namespace NewFeature.Controllers
             return Ok(items);
         }
 
+        // Paginated + searchable listing used by the Commercial page's Contracts table.
+        [HttpGet("contracts/paged")]
+        public async Task<ActionResult<PagedResultDto<CommercialContractDto>>> GetContractsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null)
+        {
+            var result = await _commercialService.GetContractsPagedAsync(page, pageSize, search, status);
+            return Ok(result);
+        }
+
         [HttpGet("contracts/{id}")]
         public async Task<ActionResult<CommercialContractDto>> GetContract(int id)
         {
@@ -69,6 +81,18 @@ namespace NewFeature.Controllers
         {
             var items = await _commercialService.GetAllLeadsAsync();
             return Ok(items);
+        }
+
+        // Paginated + searchable listing used by the Commercial page's Leads table.
+        [HttpGet("leads/paged")]
+        public async Task<ActionResult<PagedResultDto<CommercialLeadDto>>> GetLeadsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null)
+        {
+            var result = await _commercialService.GetLeadsPagedAsync(page, pageSize, search, status);
+            return Ok(result);
         }
 
         [HttpGet("leads/{id}")]

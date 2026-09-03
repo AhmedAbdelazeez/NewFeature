@@ -27,6 +27,14 @@ namespace NewFeature.Controllers
             return Ok(bookings);
         }
 
+        [HttpGet("bookings/paged")]
+        public async Task<ActionResult<PagedResultDto<TourismHotelBookingDto>>> GetHotelBookingsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] string? status = null)
+        {
+            var result = await _tourismService.GetHotelBookingsPagedAsync(page, pageSize, search, status);
+            return Ok(result);
+        }
+
         [HttpGet("bookings/{id}")]
         public async Task<ActionResult<TourismHotelBookingDto>> GetHotelBooking(int id)
         {
@@ -66,6 +74,14 @@ namespace NewFeature.Controllers
         {
             var tours = await _tourismService.GetAllToursAsync();
             return Ok(tours);
+        }
+
+        [HttpGet("tours/paged")]
+        public async Task<ActionResult<PagedResultDto<TourismTourDto>>> GetToursPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _tourismService.GetToursPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("tours/{id}")]

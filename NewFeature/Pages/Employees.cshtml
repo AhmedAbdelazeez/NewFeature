@@ -60,11 +60,22 @@
             <!-- Search & Filter Toolbar -->
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-12">
+                    <div class="col-md-8">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="employeeSearch" class="form-control form-control-glass" placeholder="Search employees by name, role, email..." onkeyup="filterEmployees()">
+                            <input type="text" id="employeeSearch" class="form-control form-control-glass" placeholder="Search employees by name, role, email..." onkeyup="handleEmployeeSearchKeyup(event)">
                         </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="employeePageSizeSelect" class="form-control form-control-glass" onchange="changeEmployeesPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" onclick="applyEmployeeSearch()"><span data-i18n="vehicles-btn-search">Search</span></button>
                     </div>
                 </div>
             </div>
@@ -95,6 +106,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="employeesPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="employeesFirstPage()">&laquo; First</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="employeesPrevPage()">Previous</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="employeesNextPage()">Next</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="employeesLastPage()">Last &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -103,11 +123,22 @@
             <!-- Search & Filter Toolbar -->
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-12">
+                    <div class="col-md-8">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="evaluationSearch" class="form-control form-control-glass" placeholder="Search evaluations by employee..." onkeyup="filterEvaluations()">
+                            <input type="text" id="evaluationSearch" class="form-control form-control-glass" placeholder="Search evaluations by employee..." onkeyup="handleEvaluationSearchKeyup(event)">
                         </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="evaluationPageSizeSelect" class="form-control form-control-glass" onchange="changeEvaluationsPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" onclick="applyEvaluationSearch()"><span data-i18n="vehicles-btn-search">Search</span></button>
                     </div>
                 </div>
             </div>
@@ -131,6 +162,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="evaluationsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="evaluationsFirstPage()">&laquo; First</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="evaluationsPrevPage()">Previous</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="evaluationsNextPage()">Next</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="evaluationsLastPage()">Last &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,10 +313,20 @@
 
 @section Scripts {
     <script>
-        let employees = [];
-        let evaluations = [];
         let departments = [];
         let systemUsers = [];
+
+        // Employees table pagination state
+        let employeesCurrentPage = 1;
+        let employeesPageSize = 20;
+        let employeesSearchTerm = '';
+        let employeesTotalPages = 1;
+
+        // Evaluations table pagination state
+        let evaluationsCurrentPage = 1;
+        let evaluationsPageSize = 20;
+        let evaluationsSearchTerm = '';
+        let evaluationsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadDropdowns();
@@ -309,24 +359,41 @@
                         userSelect.innerHTML += `<option value="${u.id}">${u.username} (${u.fullName})</option>`;
                     });
                 }
+
+                // Fetch the full (unpaged) employee list just to populate the evaluation form's
+                // "select employee" dropdown - independent of the paginated roster table below.
+                const empRes = await fetch('/api/employees');
+                if (empRes.ok) {
+                    const allEmployees = await empRes.json();
+                    const evalEmpSelect = document.getElementById("evalEmployeeId");
+                    evalEmpSelect.innerHTML = '<option value="">Select Employee</option>';
+                    allEmployees.forEach(e => {
+                        evalEmpSelect.innerHTML += `<option value="${e.id}">${e.fullName}</option>`;
+                    });
+                }
             } catch (err) {
                 console.error("Error loading dropdowns:", err);
             }
         }
 
         async function loadEmployees() {
-            try {
-                const res = await fetch('/api/employees');
-                if (res.ok) {
-                    employees = await res.json();
-                    renderEmployees(employees);
+            const listContainer = document.getElementById("employeesList");
+            const isAr = document.documentElement.lang === 'ar';
+            listContainer.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading employees...</td></tr>`;
 
-                    // Update employee select list in evaluations form
-                    const evalEmpSelect = document.getElementById("evalEmployeeId");
-                    evalEmpSelect.innerHTML = '<option value="">Select Employee</option>';
-                    employees.forEach(e => {
-                        evalEmpSelect.innerHTML += `<option value="${e.id}">${e.fullName}</option>`;
-                    });
+            let url = `/api/employees/paged?page=${employeesCurrentPage}&pageSize=${employeesPageSize}`;
+            if (employeesSearchTerm) url += `&search=${encodeURIComponent(employeesSearchTerm)}`;
+
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    employeesTotalPages = data.totalPages || 1;
+                    renderEmployees(data.items || []);
+                    document.getElementById('employeesPageInfo').innerText =
+                        (isAr
+                            ? `صفحة ${data.page} من ${employeesTotalPages} (${data.totalCount} موظف)`
+                            : `Page ${data.page} of ${employeesTotalPages} (${data.totalCount} employees)`);
                 }
             } catch (err) {
                 console.error("Error loading employees:", err);
@@ -334,15 +401,92 @@
         }
 
         async function loadEvaluations() {
+            const listContainer = document.getElementById("evaluationsList");
+            const isAr = document.documentElement.lang === 'ar';
+            listContainer.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading evaluations...</td></tr>`;
+
+            let url = `/api/employees/evaluations/paged?page=${evaluationsCurrentPage}&pageSize=${evaluationsPageSize}`;
+            if (evaluationsSearchTerm) url += `&search=${encodeURIComponent(evaluationsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/employees/evaluations');
+                const res = await fetch(url);
                 if (res.ok) {
-                    evaluations = await res.json();
-                    renderEvaluations(evaluations);
+                    const data = await res.json();
+                    evaluationsTotalPages = data.totalPages || 1;
+                    renderEvaluations(data.items || []);
+                    document.getElementById('evaluationsPageInfo').innerText =
+                        (isAr
+                            ? `صفحة ${data.page} من ${evaluationsTotalPages} (${data.totalCount} تقييم)`
+                            : `Page ${data.page} of ${evaluationsTotalPages} (${data.totalCount} evaluations)`);
                 }
             } catch (err) {
                 console.error("Error loading evaluations:", err);
             }
+        }
+
+        // ───────── Search & Pagination controls ─────────
+        function handleEmployeeSearchKeyup(event) {
+            if (event.key === 'Enter') applyEmployeeSearch();
+        }
+
+        function applyEmployeeSearch() {
+            employeesSearchTerm = document.getElementById("employeeSearch").value.trim();
+            employeesCurrentPage = 1;
+            loadEmployees();
+        }
+
+        function changeEmployeesPageSize() {
+            employeesPageSize = parseInt(document.getElementById("employeePageSizeSelect").value, 10);
+            employeesCurrentPage = 1;
+            loadEmployees();
+        }
+
+        function employeesFirstPage() {
+            if (employeesCurrentPage !== 1) { employeesCurrentPage = 1; loadEmployees(); }
+        }
+
+        function employeesPrevPage() {
+            if (employeesCurrentPage > 1) { employeesCurrentPage--; loadEmployees(); }
+        }
+
+        function employeesNextPage() {
+            if (employeesCurrentPage < employeesTotalPages) { employeesCurrentPage++; loadEmployees(); }
+        }
+
+        function employeesLastPage() {
+            if (employeesCurrentPage !== employeesTotalPages) { employeesCurrentPage = employeesTotalPages; loadEmployees(); }
+        }
+
+        function handleEvaluationSearchKeyup(event) {
+            if (event.key === 'Enter') applyEvaluationSearch();
+        }
+
+        function applyEvaluationSearch() {
+            evaluationsSearchTerm = document.getElementById("evaluationSearch").value.trim();
+            evaluationsCurrentPage = 1;
+            loadEvaluations();
+        }
+
+        function changeEvaluationsPageSize() {
+            evaluationsPageSize = parseInt(document.getElementById("evaluationPageSizeSelect").value, 10);
+            evaluationsCurrentPage = 1;
+            loadEvaluations();
+        }
+
+        function evaluationsFirstPage() {
+            if (evaluationsCurrentPage !== 1) { evaluationsCurrentPage = 1; loadEvaluations(); }
+        }
+
+        function evaluationsPrevPage() {
+            if (evaluationsCurrentPage > 1) { evaluationsCurrentPage--; loadEvaluations(); }
+        }
+
+        function evaluationsNextPage() {
+            if (evaluationsCurrentPage < evaluationsTotalPages) { evaluationsCurrentPage++; loadEvaluations(); }
+        }
+
+        function evaluationsLastPage() {
+            if (evaluationsCurrentPage !== evaluationsTotalPages) { evaluationsCurrentPage = evaluationsTotalPages; loadEvaluations(); }
         }
 
         // ───────── Render UI ─────────
@@ -424,28 +568,6 @@
                     </tr>
                 `;
             });
-        }
-
-        // ───────── Search Filters ─────────
-        function filterEmployees() {
-            const query = document.getElementById("employeeSearch").value.toLowerCase();
-            const filtered = employees.filter(e => 
-                e.fullNameEn.toLowerCase().includes(query) || 
-                e.fullNameAr.includes(query) || 
-                e.phoneNumber.includes(query) || 
-                e.role.toLowerCase().includes(query)
-            );
-            renderEmployees(filtered);
-        }
-
-        function filterEvaluations() {
-            const query = document.getElementById("evaluationSearch").value.toLowerCase();
-            const filtered = evaluations.filter(ee => 
-                ee.employeeName.toLowerCase().includes(query) || 
-                ee.notesEn.toLowerCase().includes(query) ||
-                ee.notesAr.includes(query)
-            );
-            renderEvaluations(filtered);
         }
 
         // ───────── Add / Edit Modals ─────────
@@ -685,7 +807,9 @@
             } finally {
                 // Always clear the input so re-picking the same file fires change again.
                 event.target.value = "";
+                employeesCurrentPage = 1;
                 loadEmployees();
+                loadDropdowns();
             }
         }
     </script>

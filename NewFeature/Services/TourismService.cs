@@ -25,6 +25,53 @@ namespace NewFeature.Services
                 .ToListAsync();
         }
 
+        // Paginated + search listing for the Tourism page's Hotel Bookings table (mirrors the
+        // "fetch everything, then filter/order/Skip/Take in memory" pattern used by
+        // FleetService.GetVehiclesPagedAsync). GetAllHotelBookingsAsync above is left untouched.
+        public async Task<PagedResultDto<TourismHotelBookingDto>> GetHotelBookingsPagedAsync(int page, int pageSize, string? search, string? status)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var bookings = (await _context.TourismHotelBookings.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                bookings = bookings.Where(b =>
+                    Contains(b.ClientNameAr, term) ||
+                    Contains(b.ClientNameEn, term) ||
+                    Contains(b.HotelNameAr, term) ||
+                    Contains(b.HotelNameEn, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                bookings = bookings.Where(b => b.Status == status);
+            }
+
+            var ordered = bookings.OrderByDescending(b => b.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToDto)
+                .ToList();
+
+            return new PagedResultDto<TourismHotelBookingDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<TourismHotelBookingDto?> GetHotelBookingByIdAsync(int id)
         {
             var booking = await _context.TourismHotelBookings.FindAsync(id);
@@ -90,6 +137,43 @@ namespace NewFeature.Services
             return await _context.TourismTours
                 .Select(t => MapToDto(t))
                 .ToListAsync();
+        }
+
+        // Paginated + search listing for the Tourism page's Sightseeing Tours table.
+        public async Task<PagedResultDto<TourismTourDto>> GetToursPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var tours = (await _context.TourismTours.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                tours = tours.Where(t =>
+                    Contains(t.TourNameAr, term) ||
+                    Contains(t.TourNameEn, term) ||
+                    Contains(t.GuideNameAr, term) ||
+                    Contains(t.GuideNameEn, term));
+            }
+
+            var ordered = tours.OrderByDescending(t => t.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToDto)
+                .ToList();
+
+            return new PagedResultDto<TourismTourDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<TourismTourDto?> GetTourByIdAsync(int id)

@@ -24,6 +24,18 @@ namespace NewFeature.Controllers
             return Ok(clients);
         }
 
+        // Paginated + searchable listing used by the Clients management page's table.
+        // GetClients() above is left untouched in case other callers rely on the full list.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<ClientDto>>> GetClientsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _clientService.GetClientsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ClientDto>> GetClient(int id)
         {

@@ -62,7 +62,22 @@
 
             <!-- Toolbar Search -->
             <div class="glass-card mb-4 p-3">
-                <input type="text" id="violationSearch" class="form-control form-control-glass" placeholder="Search violations..." onkeyup="filterTable('violationsList', 'violationSearch')">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-8">
+                        <input type="text" id="violationSearch" class="form-control form-control-glass" placeholder="Search violations..." onkeyup="handleViolationSearchKeyup(event)">
+                    </div>
+                    <div class="col-md-2">
+                        <select id="violationPageSizeSelect" class="form-control form-control-glass" onchange="changeViolationPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" onclick="applyViolationSearch()">Search</button>
+                    </div>
+                </div>
             </div>
 
             <div class="glass-card">
@@ -88,6 +103,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="violationPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="violationFirstPage()">&laquo; First</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="violationPrevPage()">Previous</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="violationNextPage()">Next</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="violationLastPage()">Last &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -104,7 +128,22 @@
 
             <!-- Toolbar Search -->
             <div class="glass-card mb-4 p-3">
-                <input type="text" id="auditSearch" class="form-control form-control-glass" placeholder="Search audits..." onkeyup="filterTable('auditsList', 'auditSearch')">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-8">
+                        <input type="text" id="auditSearch" class="form-control form-control-glass" placeholder="Search audits..." onkeyup="handleAuditSearchKeyup(event)">
+                    </div>
+                    <div class="col-md-2">
+                        <select id="auditPageSizeSelect" class="form-control form-control-glass" onchange="changeAuditPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" onclick="applyAuditSearch()">Search</button>
+                    </div>
+                </div>
             </div>
 
             <div class="glass-card">
@@ -128,6 +167,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="auditPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="auditFirstPage()">&laquo; First</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="auditPrevPage()">Previous</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="auditNextPage()">Next</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="auditLastPage()">Last &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -144,7 +192,22 @@
 
             <!-- Toolbar Search -->
             <div class="glass-card mb-4 p-3">
-                <input type="text" id="improvementSearch" class="form-control form-control-glass" placeholder="Search actions..." onkeyup="filterTable('improvementsList', 'improvementSearch')">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-8">
+                        <input type="text" id="improvementSearch" class="form-control form-control-glass" placeholder="Search actions..." onkeyup="handleImprovementSearchKeyup(event)">
+                    </div>
+                    <div class="col-md-2">
+                        <select id="improvementPageSizeSelect" class="form-control form-control-glass" onchange="changeImprovementPageSize()">
+                            <option value="10">10 / page</option>
+                            <option value="20" selected>20 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" onclick="applyImprovementSearch()">Search</button>
+                    </div>
+                </div>
             </div>
 
             <div class="glass-card">
@@ -167,6 +230,15 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="improvementPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="improvementFirstPage()">&laquo; First</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="improvementPrevPage()">Previous</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="improvementNextPage()">Next</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="improvementLastPage()">Last &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -181,6 +253,18 @@
                             <button class="btn btn-neon btn-sm" onclick="openDeptModal()">
                                 <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-dept">Add Dept</span>
                             </button>
+                        </div>
+                        <div class="row align-items-center g-2 mb-3">
+                            <div class="col-8">
+                                <input type="text" id="deptSearch" class="form-control form-control-glass form-control-sm" placeholder="Search departments..." onkeyup="handleDeptSearchKeyup(event)">
+                            </div>
+                            <div class="col-4">
+                                <select id="deptPageSizeSelect" class="form-control form-control-glass form-control-sm" onchange="changeDeptPageSize()">
+                                    <option value="10" selected>10 / page</option>
+                                    <option value="20">20 / page</option>
+                                    <option value="50">50 / page</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table class="table table-glass table-sm text-white align-middle mb-0">
@@ -199,6 +283,15 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center pt-3 flex-wrap gap-2">
+                            <span class="text-muted small" id="deptPageInfo">--</span>
+                            <div>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="deptFirstPage()">&laquo;</button>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="deptPrevPage()">Prev</button>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="deptNextPage()">Next</button>
+                                <button class="btn btn-neon-outline btn-sm" onclick="deptLastPage()">&raquo;</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -210,6 +303,18 @@
                             <button class="btn btn-neon btn-sm" onclick="openClassModal()">
                                 <i class="bi bi-plus-circle me-1"></i> <span data-i18n="compliance-btn-add-class">Add Class</span>
                             </button>
+                        </div>
+                        <div class="row align-items-center g-2 mb-3">
+                            <div class="col-8">
+                                <input type="text" id="classSearch" class="form-control form-control-glass form-control-sm" placeholder="Search classifications..." onkeyup="handleClassSearchKeyup(event)">
+                            </div>
+                            <div class="col-4">
+                                <select id="classPageSizeSelect" class="form-control form-control-glass form-control-sm" onchange="changeClassPageSize()">
+                                    <option value="10" selected>10 / page</option>
+                                    <option value="20">20 / page</option>
+                                    <option value="50">50 / page</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table class="table table-glass table-sm text-white align-middle mb-0">
@@ -226,6 +331,15 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-3 flex-wrap gap-2">
+                            <span class="text-muted small" id="classPageInfo">--</span>
+                            <div>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="classFirstPage()">&laquo;</button>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="classPrevPage()">Prev</button>
+                                <button class="btn btn-neon-outline btn-sm me-1" onclick="classNextPage()">Next</button>
+                                <button class="btn btn-neon-outline btn-sm" onclick="classLastPage()">&raquo;</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -541,15 +655,49 @@
             3: { text: "ملغى", class: "badge-glow-danger" }
         };
 
-        // Global list storage for lookups
+        // Global list storage for lookups (full, unpaged - used to populate the Add/Edit modal
+        // dropdowns, which need every department/classification regardless of the Lookups tab's
+        // current page).
         let departments = [];
         let classifications = [];
+
+        // Per-table pagination state. Each of the 5 tables on this page (Departments,
+        // Classifications, Violations, Internal Audits, Continuous Improvement) pages
+        // independently, so state/functions are prefixed per table to avoid collisions.
+        let deptsPageItems = [];
+        let deptsPage = 1;
+        let deptsPageSize = 10;
+        let deptsSearchTerm = '';
+        let deptsTotalPages = 1;
+
+        let classPageItems = [];
+        let classPage = 1;
+        let classPageSize = 10;
+        let classSearchTerm = '';
+        let classTotalPages = 1;
+
+        let violationsPage = 1;
+        let violationsPageSize = 20;
+        let violationsSearchTerm = '';
+        let violationsTotalPages = 1;
+
+        let auditsPage = 1;
+        let auditsPageSize = 20;
+        let auditsSearchTerm = '';
+        let auditsTotalPages = 1;
+
+        let improvementsPage = 1;
+        let improvementsPageSize = 20;
+        let improvementsSearchTerm = '';
+        let improvementsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", async function () {
             // Load lookups first so they are available for other dropdowns
             await loadLookups();
-            
-            // Load CRUD lists
+
+            // Load CRUD lists (each paged independently)
+            loadDeptsTable();
+            loadClassTable();
             loadViolations();
             loadAudits();
             loadImprovements();
@@ -575,24 +723,14 @@
             return [year, month, day].join('-');
         }
 
-        // Generic search filter
-        function filterTable(tbodyId, searchInputId) {
-            const query = document.getElementById(searchInputId).value.toLowerCase();
-            const rows = document.querySelectorAll(`#${tbodyId} tr`);
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(query) ? "" : "none";
-            });
-        }
-
-        // Load lookups: departments and classifications
+        // Load lookups: departments and classifications (full, unpaged - feeds the modal dropdowns
+        // only; the Lookups tab's own tables are paged separately via loadDeptsTable/loadClassTable).
         async function loadLookups() {
             try {
                 // Fetch Departments
                 let res = await fetch('/api/compliance/departments');
                 if (res.ok) {
                     departments = await res.json();
-                    renderDepts();
                     populateDropdowns("violationDeptId", departments);
                     populateDropdowns("auditDeptId", departments);
                     populateDropdowns("impDeptId", departments);
@@ -602,12 +740,121 @@
                 res = await fetch('/api/compliance/classifications');
                 if (res.ok) {
                     classifications = await res.json();
-                    renderClassifications();
                     populateDropdowns("violationClassId", classifications);
                 }
             } catch (err) {
                 console.error("Error loading lookups:", err);
             }
+        }
+
+        // Paged Departments table (Lookups tab)
+        async function loadDeptsTable() {
+            const tbody = document.getElementById("deptsList");
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted">Loading departments...</td></tr>`;
+
+            let url = `/api/compliance/departments/paged?page=${deptsPage}&pageSize=${deptsPageSize}`;
+            if (deptsSearchTerm) url += `&search=${encodeURIComponent(deptsSearchTerm)}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                deptsPageItems = data.items || [];
+                deptsTotalPages = data.totalPages || 1;
+                renderDepts();
+                document.getElementById('deptPageInfo').innerText = currentLang === 'ar'
+                    ? `صفحة ${data.page} من ${deptsTotalPages} (${data.totalCount})`
+                    : `Page ${data.page} of ${deptsTotalPages} (${data.totalCount})`;
+            } catch (err) {
+                console.error("Error loading departments:", err);
+            }
+        }
+
+        function handleDeptSearchKeyup(event) {
+            if (event.key === 'Enter') applyDeptSearch();
+        }
+
+        function applyDeptSearch() {
+            deptsSearchTerm = document.getElementById("deptSearch").value.trim();
+            deptsPage = 1;
+            loadDeptsTable();
+        }
+
+        function changeDeptPageSize() {
+            deptsPageSize = parseInt(document.getElementById("deptPageSizeSelect").value, 10);
+            deptsPage = 1;
+            loadDeptsTable();
+        }
+
+        function deptFirstPage() {
+            if (deptsPage !== 1) { deptsPage = 1; loadDeptsTable(); }
+        }
+
+        function deptPrevPage() {
+            if (deptsPage > 1) { deptsPage--; loadDeptsTable(); }
+        }
+
+        function deptNextPage() {
+            if (deptsPage < deptsTotalPages) { deptsPage++; loadDeptsTable(); }
+        }
+
+        function deptLastPage() {
+            if (deptsPage !== deptsTotalPages) { deptsPage = deptsTotalPages; loadDeptsTable(); }
+        }
+
+        // Paged Classifications table (Lookups tab)
+        async function loadClassTable() {
+            const tbody = document.getElementById("classificationsList");
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center py-3 text-muted">Loading classifications...</td></tr>`;
+
+            let url = `/api/compliance/classifications/paged?page=${classPage}&pageSize=${classPageSize}`;
+            if (classSearchTerm) url += `&search=${encodeURIComponent(classSearchTerm)}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                classPageItems = data.items || [];
+                classTotalPages = data.totalPages || 1;
+                renderClassifications();
+                document.getElementById('classPageInfo').innerText = currentLang === 'ar'
+                    ? `صفحة ${data.page} من ${classTotalPages} (${data.totalCount})`
+                    : `Page ${data.page} of ${classTotalPages} (${data.totalCount})`;
+            } catch (err) {
+                console.error("Error loading classifications:", err);
+            }
+        }
+
+        function handleClassSearchKeyup(event) {
+            if (event.key === 'Enter') applyClassSearch();
+        }
+
+        function applyClassSearch() {
+            classSearchTerm = document.getElementById("classSearch").value.trim();
+            classPage = 1;
+            loadClassTable();
+        }
+
+        function changeClassPageSize() {
+            classPageSize = parseInt(document.getElementById("classPageSizeSelect").value, 10);
+            classPage = 1;
+            loadClassTable();
+        }
+
+        function classFirstPage() {
+            if (classPage !== 1) { classPage = 1; loadClassTable(); }
+        }
+
+        function classPrevPage() {
+            if (classPage > 1) { classPage--; loadClassTable(); }
+        }
+
+        function classNextPage() {
+            if (classPage < classTotalPages) { classPage++; loadClassTable(); }
+        }
+
+        function classLastPage() {
+            if (classPage !== classTotalPages) { classPage = classTotalPages; loadClassTable(); }
         }
 
         function populateDropdowns(elementId, items) {
@@ -629,11 +876,11 @@
         function renderDepts() {
             const tbody = document.getElementById("deptsList");
             tbody.innerHTML = "";
-            if (departments.length === 0) {
+            if (deptsPageItems.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No departments.</td></tr>`;
                 return;
             }
-            departments.forEach(d => {
+            deptsPageItems.forEach(d => {
                 const badge = d.isCompliant 
                     ? `<span class="badge-glow-success">${currentLang === 'ar' ? 'ملتزم' : 'Compliant'}</span>`
                     : `<span class="badge-glow-danger">${currentLang === 'ar' ? 'غير ملتزم' : 'Non-Compliant'}</span>`;
@@ -654,11 +901,11 @@
         function renderClassifications() {
             const tbody = document.getElementById("classificationsList");
             tbody.innerHTML = "";
-            if (classifications.length === 0) {
+            if (classPageItems.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No classifications.</td></tr>`;
                 return;
             }
-            classifications.forEach(c => {
+            classPageItems.forEach(c => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td><strong>${c.code}</strong></td>
@@ -674,18 +921,24 @@
 
         // Violations CRUD implementation
         async function loadViolations() {
+            const tbody0 = document.getElementById("violationsList");
+            tbody0.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading violations...</td></tr>`;
+
+            let url = `/api/compliance/violations/paged?page=${violationsPage}&pageSize=${violationsPageSize}`;
+            if (violationsSearchTerm) url += `&search=${encodeURIComponent(violationsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/compliance/violations');
+                const res = await fetch(url);
                 if (!res.ok) return;
-                const list = await res.json();
+                const data = await res.json();
+                const list = data.items || [];
+                violationsTotalPages = data.totalPages || 1;
                 const tbody = document.getElementById("violationsList");
                 tbody.innerHTML = "";
 
                 if (list.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No violations found.</td></tr>`;
-                    return;
-                }
-
+                } else {
                 list.forEach(v => {
                     const sev = currentLang === 'ar' ? severityMetaAr[v.severity] : severityMeta[v.severity];
                     const stat = currentLang === 'ar' ? statusMetaAr[v.status] : statusMeta[v.status];
@@ -706,9 +959,46 @@
                     `;
                     tbody.appendChild(tr);
                 });
+                }
+
+                document.getElementById('violationPageInfo').innerText = currentLang === 'ar'
+                    ? `صفحة ${data.page} من ${violationsTotalPages} (${data.totalCount})`
+                    : `Page ${data.page} of ${violationsTotalPages} (${data.totalCount})`;
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        function handleViolationSearchKeyup(event) {
+            if (event.key === 'Enter') applyViolationSearch();
+        }
+
+        function applyViolationSearch() {
+            violationsSearchTerm = document.getElementById("violationSearch").value.trim();
+            violationsPage = 1;
+            loadViolations();
+        }
+
+        function changeViolationPageSize() {
+            violationsPageSize = parseInt(document.getElementById("violationPageSizeSelect").value, 10);
+            violationsPage = 1;
+            loadViolations();
+        }
+
+        function violationFirstPage() {
+            if (violationsPage !== 1) { violationsPage = 1; loadViolations(); }
+        }
+
+        function violationPrevPage() {
+            if (violationsPage > 1) { violationsPage--; loadViolations(); }
+        }
+
+        function violationNextPage() {
+            if (violationsPage < violationsTotalPages) { violationsPage++; loadViolations(); }
+        }
+
+        function violationLastPage() {
+            if (violationsPage !== violationsTotalPages) { violationsPage = violationsTotalPages; loadViolations(); }
         }
 
         function openViolationModal() {
@@ -800,18 +1090,24 @@
 
         // Internal Audits CRUD implementation
         async function loadAudits() {
+            const tbody0 = document.getElementById("auditsList");
+            tbody0.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading internal audits...</td></tr>`;
+
+            let url = `/api/compliance/audits/paged?page=${auditsPage}&pageSize=${auditsPageSize}`;
+            if (auditsSearchTerm) url += `&search=${encodeURIComponent(auditsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/compliance/audits');
+                const res = await fetch(url);
                 if (!res.ok) return;
-                const list = await res.json();
+                const data = await res.json();
+                const list = data.items || [];
+                auditsTotalPages = data.totalPages || 1;
                 const tbody = document.getElementById("auditsList");
                 tbody.innerHTML = "";
 
                 if (list.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No audit reports found.</td></tr>`;
-                    return;
-                }
-
+                } else {
                 list.forEach(a => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
@@ -828,9 +1124,46 @@
                     `;
                     tbody.appendChild(tr);
                 });
+                }
+
+                document.getElementById('auditPageInfo').innerText = currentLang === 'ar'
+                    ? `صفحة ${data.page} من ${auditsTotalPages} (${data.totalCount})`
+                    : `Page ${data.page} of ${auditsTotalPages} (${data.totalCount})`;
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        function handleAuditSearchKeyup(event) {
+            if (event.key === 'Enter') applyAuditSearch();
+        }
+
+        function applyAuditSearch() {
+            auditsSearchTerm = document.getElementById("auditSearch").value.trim();
+            auditsPage = 1;
+            loadAudits();
+        }
+
+        function changeAuditPageSize() {
+            auditsPageSize = parseInt(document.getElementById("auditPageSizeSelect").value, 10);
+            auditsPage = 1;
+            loadAudits();
+        }
+
+        function auditFirstPage() {
+            if (auditsPage !== 1) { auditsPage = 1; loadAudits(); }
+        }
+
+        function auditPrevPage() {
+            if (auditsPage > 1) { auditsPage--; loadAudits(); }
+        }
+
+        function auditNextPage() {
+            if (auditsPage < auditsTotalPages) { auditsPage++; loadAudits(); }
+        }
+
+        function auditLastPage() {
+            if (auditsPage !== auditsTotalPages) { auditsPage = auditsTotalPages; loadAudits(); }
         }
 
         function openAuditModal() {
@@ -908,18 +1241,24 @@
 
         // Continuous Improvements CRUD implementation
         async function loadImprovements() {
+            const tbody0 = document.getElementById("improvementsList");
+            tbody0.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading improvement actions...</td></tr>`;
+
+            let url = `/api/compliance/improvements/paged?page=${improvementsPage}&pageSize=${improvementsPageSize}`;
+            if (improvementsSearchTerm) url += `&search=${encodeURIComponent(improvementsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/compliance/improvements');
+                const res = await fetch(url);
                 if (!res.ok) return;
-                const list = await res.json();
+                const data = await res.json();
+                const list = data.items || [];
+                improvementsTotalPages = data.totalPages || 1;
                 const tbody = document.getElementById("improvementsList");
                 tbody.innerHTML = "";
 
                 if (list.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No improvements registered.</td></tr>`;
-                    return;
-                }
-
+                } else {
                 list.forEach(i => {
                     const statusMetaVal = currentLang === 'ar' ? impStatusMetaAr[i.status] : impStatusMeta[i.status];
                     const tr = document.createElement("tr");
@@ -936,9 +1275,46 @@
                     `;
                     tbody.appendChild(tr);
                 });
+                }
+
+                document.getElementById('improvementPageInfo').innerText = currentLang === 'ar'
+                    ? `صفحة ${data.page} من ${improvementsTotalPages} (${data.totalCount})`
+                    : `Page ${data.page} of ${improvementsTotalPages} (${data.totalCount})`;
             } catch (err) {
                 console.error(err);
             }
+        }
+
+        function handleImprovementSearchKeyup(event) {
+            if (event.key === 'Enter') applyImprovementSearch();
+        }
+
+        function applyImprovementSearch() {
+            improvementsSearchTerm = document.getElementById("improvementSearch").value.trim();
+            improvementsPage = 1;
+            loadImprovements();
+        }
+
+        function changeImprovementPageSize() {
+            improvementsPageSize = parseInt(document.getElementById("improvementPageSizeSelect").value, 10);
+            improvementsPage = 1;
+            loadImprovements();
+        }
+
+        function improvementFirstPage() {
+            if (improvementsPage !== 1) { improvementsPage = 1; loadImprovements(); }
+        }
+
+        function improvementPrevPage() {
+            if (improvementsPage > 1) { improvementsPage--; loadImprovements(); }
+        }
+
+        function improvementNextPage() {
+            if (improvementsPage < improvementsTotalPages) { improvementsPage++; loadImprovements(); }
+        }
+
+        function improvementLastPage() {
+            if (improvementsPage !== improvementsTotalPages) { improvementsPage = improvementsTotalPages; loadImprovements(); }
         }
 
         function openImprovementModal() {
@@ -1047,6 +1423,7 @@
                 if (res.ok) {
                     bootstrap.Modal.getInstance(document.getElementById('deptModal')).hide();
                     await loadLookups();
+                    loadDeptsTable();
                     // Reload dependent lists to refresh names
                     loadViolations();
                     loadAudits();
@@ -1082,6 +1459,7 @@
                 const res = await fetch(`/api/compliance/departments/${id}`, { method: 'DELETE' });
                 if (res.ok) {
                     await loadLookups();
+                    loadDeptsTable();
                 } else {
                     alert("Delete failed. Make sure no audits, violations or actions are linked to this department.");
                 }
@@ -1119,6 +1497,7 @@
                 if (res.ok) {
                     bootstrap.Modal.getInstance(document.getElementById('classModal')).hide();
                     await loadLookups();
+                    loadClassTable();
                     loadViolations();
                 }
             } catch (err) {
@@ -1150,6 +1529,7 @@
                 const res = await fetch(`/api/compliance/classifications/${id}`, { method: 'DELETE' });
                 if (res.ok) {
                     await loadLookups();
+                    loadClassTable();
                     loadViolations();
                 } else {
                     alert("Delete failed. Classification is likely used by violations.");

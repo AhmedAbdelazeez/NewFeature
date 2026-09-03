@@ -34,7 +34,7 @@
         <div class="tab-pane fade show active" id="bookings-tab-content" role="tabpanel" aria-labelledby="bookings-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
                             <input type="text" id="bookingSearch" class="form-control form-control-glass" placeholder="البحث في الحجوزات..." onkeyup="filterBookings()">
@@ -45,6 +45,14 @@
                             <option value="">كل الحالات</option>
                             <option value="Confirmed">Confirmed (مؤكد)</option>
                             <option value="Cancelled">Cancelled (ملغي)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="bookingsPageSizeSelect" class="form-control form-control-glass" onchange="changeBookingsPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -73,15 +81,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="bookingsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="bookingsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="bookingsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="bookingsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="bookingsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: Sightseeing Tours -->
         <div class="tab-pane fade" id="tours-tab-content" role="tabpanel" aria-labelledby="tours-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="tourSearch" class="form-control form-control-glass" placeholder="البحث في الجولات..." onkeyup="filterTours()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="tourSearch" class="form-control form-control-glass" placeholder="البحث في الجولات..." onkeyup="filterTours()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="toursPageSizeSelect" class="form-control form-control-glass" onchange="changeToursPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -105,6 +134,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="toursPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="toursFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="toursPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="toursNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="toursLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -252,8 +290,15 @@
 
 @section Scripts {
     <script>
-        let allBookings = [];
-        let allTours = [];
+        let bookingsPage = 1;
+        let bookingsPageSize = 20;
+        let bookingsSearch = '';
+        let bookingsTotalPages = 1;
+
+        let toursPage = 1;
+        let toursPageSize = 20;
+        let toursSearch = '';
+        let toursTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadBookings();
@@ -262,15 +307,50 @@
 
         // ================= Bookings operations =================
         async function loadBookings() {
+            const tbody = document.getElementById("bookingsList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الحجوزات...</td></tr>`;
+            }
+
+            const status = document.getElementById("bookingStatusFilter").value;
+            let url = `/api/tourism/bookings/paged?page=${bookingsPage}&pageSize=${bookingsPageSize}`;
+            if (bookingsSearch) url += `&search=${encodeURIComponent(bookingsSearch)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+
             try {
-                const res = await fetch("/api/tourism/bookings");
+                const res = await fetch(url);
                 if (res.ok) {
-                    allBookings = await res.json();
-                    renderBookings(allBookings);
+                    const data = await res.json();
+                    bookingsTotalPages = data.totalPages || 1;
+                    renderBookings(data.items || []);
+                    document.getElementById('bookingsPageInfo').innerText =
+                        `صفحة ${data.page} من ${bookingsTotalPages} (${data.totalCount} حجز)`;
                 }
             } catch (err) {
                 console.error("Error loading bookings:", err);
             }
+        }
+
+        function changeBookingsPageSize() {
+            bookingsPageSize = parseInt(document.getElementById("bookingsPageSizeSelect").value, 10);
+            bookingsPage = 1;
+            loadBookings();
+        }
+
+        function bookingsFirstPage() {
+            if (bookingsPage !== 1) { bookingsPage = 1; loadBookings(); }
+        }
+
+        function bookingsPrevPage() {
+            if (bookingsPage > 1) { bookingsPage--; loadBookings(); }
+        }
+
+        function bookingsNextPage() {
+            if (bookingsPage < bookingsTotalPages) { bookingsPage++; loadBookings(); }
+        }
+
+        function bookingsLastPage() {
+            if (bookingsPage !== bookingsTotalPages) { bookingsPage = bookingsTotalPages; loadBookings(); }
         }
 
         function renderBookings(list) {
@@ -309,14 +389,9 @@
         }
 
         function filterBookings() {
-            const query = document.getElementById("bookingSearch").value.toLowerCase();
-            const status = document.getElementById("bookingStatusFilter").value;
-            const filtered = allBookings.filter(b => {
-                const matchQuery = b.clientNameAr.toLowerCase().includes(query) || b.clientNameEn.toLowerCase().includes(query) || b.hotelNameAr.toLowerCase().includes(query) || b.hotelNameEn.toLowerCase().includes(query);
-                const matchStatus = status === "" || b.status === status;
-                return matchQuery && matchStatus;
-            });
-            renderBookings(filtered);
+            bookingsSearch = document.getElementById("bookingSearch").value.trim();
+            bookingsPage = 1;
+            loadBookings();
         }
 
         function openAddBookingModal() {
@@ -406,15 +481,48 @@
 
         // ================= Tours operations =================
         async function loadTours() {
+            const tbody = document.getElementById("toursList");
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الجولات...</td></tr>`;
+            }
+
+            let url = `/api/tourism/tours/paged?page=${toursPage}&pageSize=${toursPageSize}`;
+            if (toursSearch) url += `&search=${encodeURIComponent(toursSearch)}`;
+
             try {
-                const res = await fetch("/api/tourism/tours");
+                const res = await fetch(url);
                 if (res.ok) {
-                    allTours = await res.json();
-                    renderTours(allTours);
+                    const data = await res.json();
+                    toursTotalPages = data.totalPages || 1;
+                    renderTours(data.items || []);
+                    document.getElementById('toursPageInfo').innerText =
+                        `صفحة ${data.page} من ${toursTotalPages} (${data.totalCount} جولة)`;
                 }
             } catch (err) {
                 console.error("Error loading tours:", err);
             }
+        }
+
+        function changeToursPageSize() {
+            toursPageSize = parseInt(document.getElementById("toursPageSizeSelect").value, 10);
+            toursPage = 1;
+            loadTours();
+        }
+
+        function toursFirstPage() {
+            if (toursPage !== 1) { toursPage = 1; loadTours(); }
+        }
+
+        function toursPrevPage() {
+            if (toursPage > 1) { toursPage--; loadTours(); }
+        }
+
+        function toursNextPage() {
+            if (toursPage < toursTotalPages) { toursPage++; loadTours(); }
+        }
+
+        function toursLastPage() {
+            if (toursPage !== toursTotalPages) { toursPage = toursTotalPages; loadTours(); }
         }
 
         function renderTours(list) {
@@ -451,9 +559,9 @@
         }
 
         function filterTours() {
-            const query = document.getElementById("tourSearch").value.toLowerCase();
-            const filtered = allTours.filter(t => t.tourNameAr.toLowerCase().includes(query) || t.tourNameEn.toLowerCase().includes(query) || t.guideNameAr.toLowerCase().includes(query) || t.guideNameEn.toLowerCase().includes(query));
-            renderTours(filtered);
+            toursSearch = document.getElementById("tourSearch").value.trim();
+            toursPage = 1;
+            loadTours();
         }
 
         function openAddTourModal() {

@@ -75,6 +75,75 @@ namespace NewFeature.Services
             }).ToList();
         }
 
+        // Backs the Project Management page's per-project Tasks tab. Same in-memory
+        // page/search/order approach as FleetService.GetVehiclesPagedAsync; projectId is an
+        // optional filter since this tab always scopes tasks to one project.
+        public async Task<PagedResultDto<TaskDto>> GetTasksPagedAsync(int page, int pageSize, string? search, int? projectId)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var tasks = await _taskRepository.GetAllAsync();
+            var projects = await _projectRepository.GetAllAsync();
+            var users = await _userManager.Users.ToListAsync();
+            var isAr = IsArabic();
+
+            var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
+            var userMap = users.ToDictionary(u => u.Id, u => isAr ? u.FullNameAr : u.FullNameEn);
+
+            var dtos = tasks.Select(t => new TaskDto
+            {
+                Id = t.Id,
+                ProjectId = t.ProjectId,
+                ProjectName = projectMap.TryGetValue(t.ProjectId, out var projectName) ? projectName : "Unknown",
+                TitleEn = t.TitleEn,
+                TitleAr = t.TitleAr,
+                DescriptionEn = t.DescriptionEn,
+                DescriptionAr = t.DescriptionAr,
+                StartDate = t.StartDate,
+                DueDate = t.DueDate,
+                EstimatedHours = t.EstimatedHours,
+                Status = t.Status,
+                AssignedToUserId = t.AssignedToUserId,
+                AssignedToUserName = t.AssignedToUserId != null && userMap.TryGetValue(t.AssignedToUserId, out var userName) ? userName : "Unassigned",
+                Title = isAr ? t.TitleAr : t.TitleEn,
+                Description = isAr ? t.DescriptionAr : t.DescriptionEn
+            }).AsEnumerable();
+
+            if (projectId.HasValue)
+            {
+                dtos = dtos.Where(d => d.ProjectId == projectId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                dtos = dtos.Where(d =>
+                    Contains(d.TitleEn, term) ||
+                    Contains(d.TitleAr, term) ||
+                    Contains(d.DescriptionEn, term) ||
+                    Contains(d.DescriptionAr, term) ||
+                    Contains(d.Status.ToString(), term));
+            }
+
+            var ordered = dtos.OrderByDescending(d => d.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<TaskDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<TaskDto?> GetTaskByIdAsync(int id)
         {
             var t = await _taskRepository.GetByIdAsync(id);

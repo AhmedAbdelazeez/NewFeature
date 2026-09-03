@@ -8,6 +8,7 @@ namespace NewFeature.Services
     {
         // Goals
         Task<IEnumerable<StrategicGoalDto>> GetAllGoalsAsync();
+        Task<PagedResultDto<StrategicGoalDto>> GetGoalsPagedAsync(int page, int pageSize, string? search);
         Task<StrategicGoalDto?> GetGoalByIdAsync(int id);
         Task<StrategicGoalDto> CreateGoalAsync(StrategicGoalDto dto);
         Task<bool> UpdateGoalAsync(StrategicGoalDto dto);
@@ -15,6 +16,7 @@ namespace NewFeature.Services
 
         // PMO Initiatives
         Task<IEnumerable<PmoInitiativeDto>> GetAllInitiativesAsync();
+        Task<PagedResultDto<PmoInitiativeDto>> GetInitiativesPagedAsync(int page, int pageSize, string? search);
         Task<PmoInitiativeDto?> GetInitiativeByIdAsync(int id);
         Task<PmoInitiativeDto> CreateInitiativeAsync(PmoInitiativeDto dto);
         Task<bool> UpdateInitiativeAsync(PmoInitiativeDto dto);

@@ -8,6 +8,10 @@ namespace NewFeature.Services
     {
         // Employee CRUD
         Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync();
+        // Paginated + searchable listing for the Employees management page's roster table.
+        // GetAllEmployeesAsync above is left untouched since the Evaluations tab's "select
+        // employee" dropdown and other callers still expect the full unpaginated list.
+        Task<PagedResultDto<EmployeeDto>> GetEmployeesPagedAsync(int page, int pageSize, string? search);
         Task<EmployeeDto?> GetEmployeeByIdAsync(int id);
         Task<EmployeeDto> CreateEmployeeAsync(EmployeeDto dto);
         Task<bool> UpdateEmployeeAsync(EmployeeDto dto);
@@ -15,6 +19,8 @@ namespace NewFeature.Services
 
         // Employee Evaluation CRUD
         Task<IEnumerable<EmployeeEvaluationDto>> GetAllEvaluationsAsync();
+        // Paginated + searchable listing for the Employees page's Evaluations tab table.
+        Task<PagedResultDto<EmployeeEvaluationDto>> GetEvaluationsPagedAsync(int page, int pageSize, string? search);
         Task<EmployeeEvaluationDto?> GetEvaluationByIdAsync(int id);
         Task<EmployeeEvaluationDto> CreateEvaluationAsync(EmployeeEvaluationDto dto);
         Task<bool> UpdateEvaluationAsync(EmployeeEvaluationDto dto);

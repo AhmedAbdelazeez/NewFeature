@@ -68,6 +68,37 @@ namespace NewFeature.Services
             }).ToList();
         }
 
+        // Backs the Operational Audits page's table. Reuses GetAllAuditsAsync (already joins
+        // department names) and pages/searches in memory over the mapped DTOs, consistent with this
+        // codebase's house style (see FleetService.GetVehiclesPagedAsync).
+        public async Task<PagedResultDto<OperationalAuditDto>> GetAuditsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var audits = (await GetAllAuditsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                audits = audits.Where(a =>
+                    Contains(a.TitleEn, term) ||
+                    Contains(a.TitleAr, term) ||
+                    Contains(a.DepartmentName, term) ||
+                    Contains(a.Status.ToString(), term));
+            }
+
+            var ordered = audits.OrderByDescending(a => a.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<OperationalAuditDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<OperationalAuditDto?> GetAuditByIdAsync(int id)
         {
             var a = await _auditRepository.GetByIdAsync(id);

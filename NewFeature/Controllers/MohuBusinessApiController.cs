@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using NewFeature.Models;
 using NewFeature.Services;
@@ -24,6 +25,45 @@ namespace NewFeature.Controllers
         public async Task<ActionResult<List<MohuPilgrimGroupDto>>> GetGroups()
         {
             return Ok(await _service.GetAllPilgrimGroupsAsync());
+        }
+
+        // Paged: the underlying IMohuStandardsService only exposes GetAllPilgrimGroupsAsync()
+        // (no IQueryable/paged overload, and that shared service is owned by another feature),
+        // so - matching the established house pattern (see FleetService.GetVehiclesPagedAsync) -
+        // we materialize once here and search/order/page in memory, keeping this change scoped
+        // to this controller instead of touching the shared standards service.
+        [HttpGet("groups/paged")]
+        public async Task<ActionResult<PagedResultDto<MohuPilgrimGroupDto>>> GetGroupsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var groups = (await _service.GetAllPilgrimGroupsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                groups = groups.Where(g =>
+                    Contains(g.GroupNumber, term) ||
+                    Contains(g.Nationality, term) ||
+                    Contains(g.AgeGroup, term) ||
+                    Contains(g.PackageCategory, term) ||
+                    Contains(g.ArrivalPort, term));
+            }
+
+            var ordered = groups.OrderByDescending(g => g.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new PagedResultDto<MohuPilgrimGroupDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            });
         }
 
         [HttpPost("groups")]
@@ -55,6 +95,39 @@ namespace NewFeature.Controllers
             return Ok(await _service.GetAllFeedbacksAsync());
         }
 
+        [HttpGet("feedbacks/paged")]
+        public async Task<ActionResult<PagedResultDto<MohuFeedbackDto>>> GetFeedbacksPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var feedbacks = (await _service.GetAllFeedbacksAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                feedbacks = feedbacks.Where(f =>
+                    Contains(f.ServiceType, term) ||
+                    Contains(f.ComplaintDetails, term) ||
+                    Contains(f.MohuPilgrimGroupId.ToString(), term) ||
+                    Contains(f.Rating.ToString(), term));
+            }
+
+            var ordered = feedbacks.OrderByDescending(f => f.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new PagedResultDto<MohuFeedbackDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            });
+        }
+
         [HttpPost("feedbacks")]
         public async Task<ActionResult<MohuFeedbackDto>> CreateFeedback([FromBody] MohuFeedbackDto dto)
         {
@@ -84,6 +157,39 @@ namespace NewFeature.Controllers
             return Ok(await _service.GetAllViolationsAsync());
         }
 
+        [HttpGet("violations/paged")]
+        public async Task<ActionResult<PagedResultDto<MohuViolationRecordDto>>> GetViolationsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var violations = (await _service.GetAllViolationsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                violations = violations.Where(v =>
+                    Contains(v.ViolationType, term) ||
+                    Contains(v.IsClosed ? "مغلقة" : "مفتوحة", term) ||
+                    Contains(v.PenaltyAmount.ToString(), term) ||
+                    Contains(v.CommitteeEvaluationScore.ToString(), term));
+            }
+
+            var ordered = violations.OrderByDescending(v => v.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new PagedResultDto<MohuViolationRecordDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            });
+        }
+
         [HttpPost("violations")]
         public async Task<ActionResult<MohuViolationRecordDto>> CreateViolation([FromBody] MohuViolationRecordDto dto)
         {
@@ -111,6 +217,35 @@ namespace NewFeature.Controllers
         public async Task<ActionResult<List<MohuPermitLogDto>>> GetPermits()
         {
             return Ok(await _service.GetAllPermitsAsync());
+        }
+
+        [HttpGet("permits/paged")]
+        public async Task<ActionResult<PagedResultDto<MohuPermitLogDto>>> GetPermitsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var permits = (await _service.GetAllPermitsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                permits = permits.Where(p => Contains(p.PermitNumber, term));
+            }
+
+            var ordered = permits.OrderByDescending(p => p.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new PagedResultDto<MohuPermitLogDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            });
         }
 
         [HttpPost("permits")]
@@ -210,5 +345,8 @@ namespace NewFeature.Controllers
 
             return Ok(new { message = "Seeded 5 Arabic records successfully for all entities." });
         }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }

@@ -240,6 +240,51 @@ namespace NewFeature.Services
                 PageSize = pageSize
             };
         }
+
+        public async Task<PagedResultDto<OperationsDriverDto>> GetDriversPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var query = _context.OfficialDrivers.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(d =>
+                    d.ArabicName.Contains(term) ||
+                    (d.EnglishName != null && d.EnglishName.Contains(term)) ||
+                    (d.EmployeeCode != null && d.EmployeeCode.Contains(term)) ||
+                    (d.IqamaNumber != null && d.IqamaNumber.Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(d => d.ArabicName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(d => new OperationsDriverDto
+                {
+                    Id = d.Id,
+                    EmployeeCode = d.EmployeeCode,
+                    IqamaNumber = d.IqamaNumber,
+                    ArabicName = d.ArabicName,
+                    EnglishName = d.EnglishName,
+                    Nationality = d.Nationality,
+                    LicenseExpiryDate = d.LicenseExpiryDate,
+                    Notes = d.Notes
+                })
+                .ToListAsync();
+
+            return new PagedResultDto<OperationsDriverDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         #endregion
 
         #region Bulk Upload

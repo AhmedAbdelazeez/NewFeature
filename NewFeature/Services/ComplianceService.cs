@@ -59,6 +59,9 @@ namespace NewFeature.Services
             return false;
         }
 
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+
         #region Department Lookup CRUD
         public async Task<IEnumerable<DepartmentDto>> GetAllDepartmentsAsync()
         {
@@ -73,6 +76,33 @@ namespace NewFeature.Services
                 IsCompliant = d.IsCompliant,
                 Name = isAr ? d.NameAr : d.NameEn
             }).ToList();
+        }
+
+        // Backs the Compliance page's Departments lookup table. Reuses GetAllDepartmentsAsync (which
+        // already joins/maps everything needed) and pages/searches in memory over the mapped DTOs -
+        // consistent with this codebase's house style (see FleetService.GetVehiclesPagedAsync).
+        public async Task<PagedResultDto<DepartmentDto>> GetDepartmentsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var departments = (await GetAllDepartmentsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                departments = departments.Where(d =>
+                    Contains(d.Code, term) ||
+                    Contains(d.NameEn, term) ||
+                    Contains(d.NameAr, term));
+            }
+
+            var ordered = departments.OrderByDescending(d => d.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<DepartmentDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
 
         public async Task<DepartmentDto?> GetDepartmentByIdAsync(int id)
@@ -147,6 +177,31 @@ namespace NewFeature.Services
                 Code = c.Code,
                 Name = isAr ? c.NameAr : c.NameEn
             }).ToList();
+        }
+
+        // Backs the Compliance page's Classifications lookup table.
+        public async Task<PagedResultDto<ViolationClassificationDto>> GetClassificationsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var classifications = (await GetAllClassificationsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                classifications = classifications.Where(c =>
+                    Contains(c.Code, term) ||
+                    Contains(c.NameEn, term) ||
+                    Contains(c.NameAr, term));
+            }
+
+            var ordered = classifications.OrderByDescending(c => c.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<ViolationClassificationDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
 
         public async Task<ViolationClassificationDto?> GetClassificationByIdAsync(int id)
@@ -235,6 +290,36 @@ namespace NewFeature.Services
                 Title = isAr ? v.TitleAr : v.TitleEn,
                 Description = isAr ? v.DescriptionAr : v.DescriptionEn
             }).ToList();
+        }
+
+        // Backs the Compliance page's Violations table.
+        public async Task<PagedResultDto<ViolationDto>> GetViolationsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var violations = (await GetAllViolationsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                violations = violations.Where(v =>
+                    Contains(v.TitleEn, term) ||
+                    Contains(v.TitleAr, term) ||
+                    Contains(v.DescriptionEn, term) ||
+                    Contains(v.DescriptionAr, term) ||
+                    Contains(v.DepartmentName, term) ||
+                    Contains(v.ClassificationName, term) ||
+                    Contains(v.Status.ToString(), term) ||
+                    Contains(v.Severity.ToString(), term));
+            }
+
+            var ordered = violations.OrderByDescending(v => v.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<ViolationDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
 
         public async Task<ViolationDto?> GetViolationByIdAsync(int id)
@@ -347,6 +432,31 @@ namespace NewFeature.Services
             }).ToList();
         }
 
+        // Backs the Compliance page's Internal Audits table.
+        public async Task<PagedResultDto<InternalAuditDto>> GetAuditsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var audits = (await GetAllAuditsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                audits = audits.Where(a =>
+                    Contains(a.TitleEn, term) ||
+                    Contains(a.TitleAr, term) ||
+                    Contains(a.DepartmentName, term));
+            }
+
+            var ordered = audits.OrderByDescending(a => a.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<InternalAuditDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
+
         public async Task<InternalAuditDto?> GetAuditByIdAsync(int id)
         {
             var a = await _auditRepository.GetByIdAsync(id);
@@ -442,6 +552,34 @@ namespace NewFeature.Services
                 Title = isAr ? i.TitleAr : i.TitleEn,
                 Description = isAr ? i.DescriptionAr : i.DescriptionEn
             }).ToList();
+        }
+
+        // Backs the Compliance page's Continuous Improvement table.
+        public async Task<PagedResultDto<ImprovementActionDto>> GetImprovementsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var improvements = (await GetAllImprovementsAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                improvements = improvements.Where(i =>
+                    Contains(i.TitleEn, term) ||
+                    Contains(i.TitleAr, term) ||
+                    Contains(i.DescriptionEn, term) ||
+                    Contains(i.DescriptionAr, term) ||
+                    Contains(i.DepartmentName, term) ||
+                    Contains(i.Status.ToString(), term));
+            }
+
+            var ordered = improvements.OrderByDescending(i => i.Id).ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<ImprovementActionDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
 
         public async Task<ImprovementActionDto?> GetImprovementByIdAsync(int id)

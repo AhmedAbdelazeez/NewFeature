@@ -7,6 +7,7 @@ namespace NewFeature.Services
     public interface IOperationalAuditService
     {
         Task<IEnumerable<OperationalAuditDto>> GetAllAuditsAsync();
+        Task<PagedResultDto<OperationalAuditDto>> GetAuditsPagedAsync(int page, int pageSize, string? search);
         Task<OperationalAuditDto?> GetAuditByIdAsync(int id);
         Task<OperationalAuditDto> CreateAuditAsync(OperationalAuditDto dto);
         Task<bool> UpdateAuditAsync(OperationalAuditDto dto);

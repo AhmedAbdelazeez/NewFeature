@@ -82,6 +82,48 @@ namespace NewFeature.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        // Paginated + searchable listing used by the Commercial page's Contracts table.
+        // GetAllContractsAsync above is left untouched in case anything else relies on the full list.
+        public async Task<PagedResultDto<CommercialContractDto>> GetContractsPagedAsync(int page, int pageSize, string? search, string? status)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var contracts = (await _context.CommercialContracts.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                contracts = contracts.Where(c =>
+                    Contains(c.ClientNameEn, term) ||
+                    Contains(c.ClientNameAr, term) ||
+                    Contains(c.ContractNumber, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                contracts = contracts.Where(c => string.Equals(c.Status, status, System.StringComparison.OrdinalIgnoreCase));
+            }
+
+            var ordered = contracts.OrderByDescending(c => c.StartDate).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToContractDto)
+                .ToList();
+
+            return new PagedResultDto<CommercialContractDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         #endregion
 
         #region Leads CRUD
@@ -140,6 +182,46 @@ namespace NewFeature.Services
             _context.CommercialLeads.Remove(item);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Paginated + searchable listing used by the Commercial page's Leads table.
+        public async Task<PagedResultDto<CommercialLeadDto>> GetLeadsPagedAsync(int page, int pageSize, string? search, string? status)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var leads = (await _context.CommercialLeads.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                leads = leads.Where(l =>
+                    Contains(l.LeadName, term) ||
+                    Contains(l.Source, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                leads = leads.Where(l => string.Equals(l.Status, status, System.StringComparison.OrdinalIgnoreCase));
+            }
+
+            var ordered = leads.OrderByDescending(l => l.CreatedAt).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToLeadDto)
+                .ToList();
+
+            return new PagedResultDto<CommercialLeadDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
         #endregion
 
@@ -209,6 +291,9 @@ namespace NewFeature.Services
             };
         }
         #endregion
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
 
         #region Mappers
         private CommercialContractDto MapToContractDto(CommercialContract cc) => new CommercialContractDto

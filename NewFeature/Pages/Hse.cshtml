@@ -34,10 +34,10 @@
         <div class="tab-pane fade show active" id="incidents-tab-content" role="tabpanel" aria-labelledby="incidents-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="incidentSearch" class="form-control form-control-glass" placeholder="البحث في الحوادث..." onkeyup="filterIncidents()">
+                            <input type="text" id="incidentSearch" class="form-control form-control-glass" placeholder="البحث في الحوادث..." onkeyup="handleIncidentSearchKeyup(event)">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -47,6 +47,14 @@
                             <option value="SeriousAccident" data-i18n="opt-type-accident">حادث جسيم (Serious Accident)</option>
                             <option value="NearMiss" data-i18n="opt-type-nearmiss">حادث وشيك (Near-Miss)</option>
                             <option value="Environmental" data-i18n="opt-type-environmental">بيئي (Environmental)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="incidentPageSizeSelect" class="form-control form-control-glass" onchange="changeIncidentPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -72,15 +80,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="incidentsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="incidentsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="incidentsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="incidentsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="incidentsLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: HSE Inspections -->
         <div class="tab-pane fade" id="inspections-tab-content" role="tabpanel" aria-labelledby="inspections-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="inspectionSearch" class="form-control form-control-glass" placeholder="البحث في جولات التفتيش..." onkeyup="filterInspections()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="inspectionSearch" class="form-control form-control-glass" placeholder="البحث في جولات التفتيش..." onkeyup="handleInspectionSearchKeyup(event)">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="inspectionPageSizeSelect" class="form-control form-control-glass" onchange="changeInspectionPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -104,6 +133,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="inspectionsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inspectionsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inspectionsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="inspectionsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="inspectionsLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -249,8 +287,16 @@
 
 @section Scripts {
     <script>
-        let incidents = [];
-        let inspections = [];
+        // ───────── Pagination state ─────────
+        let incidentsCurrentPage = 1;
+        let incidentsPageSize = 20;
+        let incidentsSearchTerm = '';
+        let incidentsTotalPages = 1;
+
+        let inspectionsCurrentPage = 1;
+        let inspectionsPageSize = 20;
+        let inspectionsSearchTerm = '';
+        let inspectionsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadIncidents();
@@ -259,11 +305,24 @@
 
         // ───────── Incidents Fetch & Render ─────────
         async function loadIncidents() {
+            const isAr = document.documentElement.lang === 'ar';
+            const listContainer = document.getElementById("incidentsList");
+            listContainer.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الحوادث...</td></tr>`;
+
+            const type = document.getElementById("incidentTypeFilter").value;
+            let url = `/api/hse/incidents/paged?page=${incidentsCurrentPage}&pageSize=${incidentsPageSize}`;
+            if (incidentsSearchTerm) url += `&search=${encodeURIComponent(incidentsSearchTerm)}`;
+            if (type) url += `&type=${encodeURIComponent(type)}`;
+
             try {
-                const res = await fetch("/api/hse/incidents");
+                const res = await fetch(url);
                 if (res.ok) {
-                    incidents = await res.json();
-                    renderIncidents(incidents);
+                    const data = await res.json();
+                    incidentsTotalPages = data.totalPages || 1;
+                    renderIncidents(data.items || []);
+                    document.getElementById('incidentsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${incidentsTotalPages} (${data.totalCount} حادث)`
+                        : `Page ${data.page} of ${incidentsTotalPages} (${data.totalCount} incidents)`;
                 }
             } catch (err) {
                 console.error("Error loading incidents:", err);
@@ -309,29 +368,56 @@
             });
         }
 
+        function handleIncidentSearchKeyup(event) {
+            if (event.key === 'Enter') filterIncidents();
+        }
+
         function filterIncidents() {
-            const query = document.getElementById("incidentSearch").value.toLowerCase();
-            const typeFilter = document.getElementById("incidentTypeFilter").value;
-            const isAr = document.documentElement.lang === 'ar';
+            incidentsSearchTerm = document.getElementById("incidentSearch").value.trim();
+            incidentsCurrentPage = 1;
+            loadIncidents();
+        }
 
-            const filtered = incidents.filter(i => {
-                const title = isAr ? i.titleAr : i.titleEn;
-                const description = isAr ? i.descriptionAr : i.descriptionEn;
-                const matchesQuery = title.toLowerCase().includes(query) || (description && description.toLowerCase().includes(query));
-                const matchesType = !typeFilter || i.type === typeFilter;
-                return matchesQuery && matchesType;
-            });
+        function changeIncidentPageSize() {
+            incidentsPageSize = parseInt(document.getElementById("incidentPageSizeSelect").value, 10);
+            incidentsCurrentPage = 1;
+            loadIncidents();
+        }
 
-            renderIncidents(filtered);
+        function incidentsFirstPage() {
+            if (incidentsCurrentPage !== 1) { incidentsCurrentPage = 1; loadIncidents(); }
+        }
+
+        function incidentsPrevPage() {
+            if (incidentsCurrentPage > 1) { incidentsCurrentPage--; loadIncidents(); }
+        }
+
+        function incidentsNextPage() {
+            if (incidentsCurrentPage < incidentsTotalPages) { incidentsCurrentPage++; loadIncidents(); }
+        }
+
+        function incidentsLastPage() {
+            if (incidentsCurrentPage !== incidentsTotalPages) { incidentsCurrentPage = incidentsTotalPages; loadIncidents(); }
         }
 
         // ───────── Inspections Fetch & Render ─────────
         async function loadInspections() {
+            const isAr = document.documentElement.lang === 'ar';
+            const listContainer = document.getElementById("inspectionsList");
+            listContainer.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل جولات التفتيش...</td></tr>`;
+
+            let url = `/api/hse/inspections/paged?page=${inspectionsCurrentPage}&pageSize=${inspectionsPageSize}`;
+            if (inspectionsSearchTerm) url += `&search=${encodeURIComponent(inspectionsSearchTerm)}`;
+
             try {
-                const res = await fetch("/api/hse/inspections");
+                const res = await fetch(url);
                 if (res.ok) {
-                    inspections = await res.json();
-                    renderInspections(inspections);
+                    const data = await res.json();
+                    inspectionsTotalPages = data.totalPages || 1;
+                    renderInspections(data.items || []);
+                    document.getElementById('inspectionsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${inspectionsTotalPages} (${data.totalCount} جولة)`
+                        : `Page ${data.page} of ${inspectionsTotalPages} (${data.totalCount} inspections)`;
                 }
             } catch (err) {
                 console.error("Error loading inspections:", err);
@@ -374,14 +460,36 @@
             });
         }
 
+        function handleInspectionSearchKeyup(event) {
+            if (event.key === 'Enter') filterInspections();
+        }
+
         function filterInspections() {
-            const query = document.getElementById("inspectionSearch").value.toLowerCase();
-            const isAr = document.documentElement.lang === 'ar';
-            const filtered = inspections.filter(ins => {
-                const title = isAr ? ins.titleAr : ins.titleEn;
-                return title.toLowerCase().includes(query) || ins.inspectorName.toLowerCase().includes(query);
-            });
-            renderInspections(filtered);
+            inspectionsSearchTerm = document.getElementById("inspectionSearch").value.trim();
+            inspectionsCurrentPage = 1;
+            loadInspections();
+        }
+
+        function changeInspectionPageSize() {
+            inspectionsPageSize = parseInt(document.getElementById("inspectionPageSizeSelect").value, 10);
+            inspectionsCurrentPage = 1;
+            loadInspections();
+        }
+
+        function inspectionsFirstPage() {
+            if (inspectionsCurrentPage !== 1) { inspectionsCurrentPage = 1; loadInspections(); }
+        }
+
+        function inspectionsPrevPage() {
+            if (inspectionsCurrentPage > 1) { inspectionsCurrentPage--; loadInspections(); }
+        }
+
+        function inspectionsNextPage() {
+            if (inspectionsCurrentPage < inspectionsTotalPages) { inspectionsCurrentPage++; loadInspections(); }
+        }
+
+        function inspectionsLastPage() {
+            if (inspectionsCurrentPage !== inspectionsTotalPages) { inspectionsCurrentPage = inspectionsTotalPages; loadInspections(); }
         }
 
         // ───────── Incident Modals / CRUD ─────────

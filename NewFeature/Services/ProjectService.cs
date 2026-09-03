@@ -87,6 +87,67 @@ namespace NewFeature.Services
             }).ToList();
         }
 
+        // Backs the Project Management page's table. Same "materialize then page/search/order in
+        // memory" approach as FleetService.GetVehiclesPagedAsync - IRepository<Project> has no
+        // IQueryable, so this keeps the change scoped here instead of touching the shared
+        // repository abstraction.
+        public async Task<PagedResultDto<ProjectDto>> GetProjectsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var projects = await _projectRepository.GetAllAsync();
+            var clients = await _clientRepository.GetAllAsync();
+            var isAr = IsArabic();
+            var clientMap = clients.ToDictionary(c => c.Id, c => isAr ? c.NameAr : c.NameEn);
+
+            var dtos = projects.Select(p => new ProjectDto
+            {
+                Id = p.Id,
+                ClientId = p.ClientId,
+                ClientName = clientMap.TryGetValue(p.ClientId, out var name) ? name : "Unknown",
+                NameEn = p.NameEn,
+                NameAr = p.NameAr,
+                DescriptionEn = p.DescriptionEn,
+                DescriptionAr = p.DescriptionAr,
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                Status = p.Status,
+                ContractValue = p.ContractValue,
+                RequiredVehiclesCount = p.RequiredVehiclesCount,
+                EstimatedTripsCount = p.EstimatedTripsCount,
+                Name = isAr ? p.NameAr : p.NameEn,
+                Description = isAr ? p.DescriptionAr : p.DescriptionEn
+            }).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                dtos = dtos.Where(d =>
+                    Contains(d.NameEn, term) ||
+                    Contains(d.NameAr, term) ||
+                    Contains(d.ClientName, term) ||
+                    Contains(d.Status.ToString(), term));
+            }
+
+            var ordered = dtos.OrderByDescending(d => d.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<ProjectDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
+
         public async Task<ProjectDto?> GetProjectByIdAsync(int id)
         {
             var p = await _projectRepository.GetByIdAsync(id);

@@ -27,11 +27,22 @@
     <!-- Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-12">
+            <div class="col-md-8">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="projectSearch" class="form-control form-control-glass" placeholder="Search projects by name, client, status..." onkeyup="filterProjects()">
+                    <input type="text" id="projectSearch" class="form-control form-control-glass" placeholder="Search projects by name, client, status..." onkeyup="handleProjectSearchKeyup(event)">
                 </div>
+            </div>
+            <div class="col-md-2">
+                <select id="projectsPageSizeSelect" class="form-control form-control-glass" onchange="changeProjectsPageSize()">
+                    <option value="10">10 / page</option>
+                    <option value="20" selected>20 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyProjectSearch()">Search</button>
             </div>
         </div>
     </div>
@@ -59,6 +70,15 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+            <span class="text-muted small" id="projectsPageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="projectsFirstPage()">&laquo; First</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="projectsPrevPage()">Previous</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="projectsNextPage()">Next</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="projectsLastPage()">Last &raquo;</button>
+            </div>
         </div>
     </div>
 </div>
@@ -348,6 +368,27 @@
                             </button>
                         </div>
 
+                        <!-- Tasks toolbar -->
+                        <div class="row align-items-center g-2 mb-3">
+                            <div class="col-md-7">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                                    <input type="text" id="taskSearch" class="form-control form-control-glass bg-white" placeholder="بحث في المهام..." onkeyup="handleTaskSearchKeyup(event)">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="tasksPageSizeSelect" class="form-control form-control-glass bg-white" onchange="changeTasksPageSize()">
+                                    <option value="10">10 / page</option>
+                                    <option value="20" selected>20 / page</option>
+                                    <option value="50">50 / page</option>
+                                    <option value="100">100 / page</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyTaskSearch()">بحث</button>
+                            </div>
+                        </div>
+
                         <!-- Tasks list table -->
                         <div class="table-responsive" style="max-height: 350px;">
                             <table class="table table-glass table-sm text-slate-800 align-middle mb-0" id="projectTasksTable">
@@ -366,6 +407,15 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 flex-wrap gap-2">
+                            <span class="text-muted small" id="tasksPageInfo">--</span>
+                            <div>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="tasksFirstPage()">&laquo; الأول</button>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="tasksPrevPage()">السابق</button>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="tasksNextPage()">التالي</button>
+                                <button class="btn btn-neon-outline btn-sm" onclick="tasksLastPage()">الأخير &raquo;</button>
+                            </div>
                         </div>
                     </div>
 
@@ -416,6 +466,27 @@
                             </button>
                         </div>
 
+                        <!-- Milestones toolbar -->
+                        <div class="row align-items-center g-2 mb-3">
+                            <div class="col-md-7">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                                    <input type="text" id="milestoneSearch" class="form-control form-control-glass bg-white" placeholder="بحث في المراحل الرئيسية..." onkeyup="handleMilestoneSearchKeyup(event)">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="milestonesPageSizeSelect" class="form-control form-control-glass bg-white" onchange="changeMilestonesPageSize()">
+                                    <option value="10">10 / page</option>
+                                    <option value="20" selected>20 / page</option>
+                                    <option value="50">50 / page</option>
+                                    <option value="100">100 / page</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyMilestoneSearch()">بحث</button>
+                            </div>
+                        </div>
+
                         <!-- Milestones list table -->
                         <div class="table-responsive" style="max-height: 350px;">
                             <table class="table table-glass table-sm text-slate-800 align-middle mb-0" id="projectMilestonesTable">
@@ -434,6 +505,15 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 flex-wrap gap-2">
+                            <span class="text-muted small" id="milestonesPageInfo">--</span>
+                            <div>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="milestonesFirstPage()">&laquo; الأول</button>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="milestonesPrevPage()">السابق</button>
+                                <button class="btn btn-neon-outline btn-sm me-2" onclick="milestonesNextPage()">التالي</button>
+                                <button class="btn btn-neon-outline btn-sm" onclick="milestonesLastPage()">الأخير &raquo;</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -450,6 +530,12 @@
         const currentLang = localStorage.getItem('lang') || 'en';
         let projects = [];
         let clients = [];
+
+        // ================= Projects pagination state =================
+        let projectsCurrentPage = 1;
+        let projectsPageSize = 20;
+        let projectsSearchTerm = '';
+        let projectsTotalPages = 1;
 
         const statusLabels = {
             0: { text: "Planning", class: "badge-glow-info" },
@@ -488,15 +574,59 @@
         }
 
         async function loadProjects() {
+            const tbody = document.getElementById("projectsList");
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading projects...</td></tr>`;
+
+            let url = `/api/projects/paged?page=${projectsCurrentPage}&pageSize=${projectsPageSize}`;
+            if (projectsSearchTerm) url += `&search=${encodeURIComponent(projectsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/projects');
+                const res = await fetch(url);
                 if (res.ok) {
-                    projects = await res.json();
+                    const data = await res.json();
+                    projects = data.items || [];
+                    projectsTotalPages = data.totalPages || 1;
                     renderProjects();
+                    document.getElementById('projectsPageInfo').innerText =
+                        (currentLang === 'en'
+                            ? `Page ${data.page} of ${projectsTotalPages} (${data.totalCount} projects)`
+                            : `صفحة ${data.page} من ${projectsTotalPages} (${data.totalCount} مشروع)`);
                 }
             } catch (err) {
                 console.error("Error loading projects:", err);
             }
+        }
+
+        function handleProjectSearchKeyup(event) {
+            if (event.key === 'Enter') applyProjectSearch();
+        }
+
+        function applyProjectSearch() {
+            projectsSearchTerm = document.getElementById("projectSearch").value.trim();
+            projectsCurrentPage = 1;
+            loadProjects();
+        }
+
+        function changeProjectsPageSize() {
+            projectsPageSize = parseInt(document.getElementById("projectsPageSizeSelect").value, 10);
+            projectsCurrentPage = 1;
+            loadProjects();
+        }
+
+        function projectsFirstPage() {
+            if (projectsCurrentPage !== 1) { projectsCurrentPage = 1; loadProjects(); }
+        }
+
+        function projectsPrevPage() {
+            if (projectsCurrentPage > 1) { projectsCurrentPage--; loadProjects(); }
+        }
+
+        function projectsNextPage() {
+            if (projectsCurrentPage < projectsTotalPages) { projectsCurrentPage++; loadProjects(); }
+        }
+
+        function projectsLastPage() {
+            if (projectsCurrentPage !== projectsTotalPages) { projectsCurrentPage = projectsTotalPages; loadProjects(); }
         }
 
         function renderProjects() {
@@ -537,20 +667,6 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
-            });
-        }
-
-        function filterProjects() {
-            const query = document.getElementById("projectSearch").value.toLowerCase();
-            const rows = document.querySelectorAll("#projectsList tr");
-
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if (text.includes(query)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
             });
         }
 
@@ -720,6 +836,12 @@
         let activeProjectIdForTasks = null;
         let projectTasks = [];
 
+        // Tasks pagination state (scoped to activeProjectIdForTasks)
+        let tasksCurrentPage = 1;
+        let tasksPageSize = 20;
+        let tasksSearchTerm = '';
+        let tasksTotalPages = 1;
+
         function toggleAddTaskForm(show) {
             const form = document.getElementById("addTaskFormContainer");
             const btn = document.getElementById("btnAddTaskTrigger");
@@ -737,23 +859,42 @@
 
         async function openProjectTasksModal(projectId) {
             activeProjectIdForTasks = projectId;
-            const project = projects.find(p => p.id === projectId);
-            const title = project ? (currentLang === 'en' ? project.nameEn : project.nameAr) : '';
-            
-            document.getElementById("tasksModalTitle").querySelector("span").innerText = 
+
+            // Fetch the project directly rather than relying on the local `projects` array, which
+            // only holds the currently loaded page and may not contain this project.
+            let title = '';
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                if (res.ok) {
+                    const project = await res.json();
+                    title = currentLang === 'en' ? project.nameEn : project.nameAr;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            document.getElementById("tasksModalTitle").querySelector("span").innerText =
                 currentLang === 'en' ? `إدارة تفاصيل المشروع: ${title}` : `إدارة تفاصيل المشروع: ${title}`;
-            
+
             translateTaskModal();
             toggleAddTaskForm(false);
             toggleAddMilestoneForm(false);
-            
+
+            // Reset pagination/search state for both tabs each time the modal is opened for a project.
+            tasksCurrentPage = 1;
+            tasksSearchTerm = '';
+            document.getElementById("taskSearch").value = '';
+            milestonesCurrentPage = 1;
+            milestonesSearchTerm = '';
+            document.getElementById("milestoneSearch").value = '';
+
             // Set active tab to Tasks by default
             const tasksTabEl = document.getElementById('tasks-tab');
             const tab = new bootstrap.Tab(tasksTabEl);
             tab.show();
-            
+
             await Promise.all([loadProjectTasks(), loadProjectMilestones()]);
-            
+
             const modal = new bootstrap.Modal(document.getElementById('projectTasksModal'));
             modal.show();
         }
@@ -802,16 +943,56 @@
         }
 
         async function loadProjectTasks() {
+            let url = `/api/tasks/paged?page=${tasksCurrentPage}&pageSize=${tasksPageSize}&projectId=${activeProjectIdForTasks}`;
+            if (tasksSearchTerm) url += `&search=${encodeURIComponent(tasksSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/tasks');
+                const res = await fetch(url);
                 if (res.ok) {
-                    const allTasks = await res.json();
-                    projectTasks = allTasks.filter(t => t.projectId === activeProjectIdForTasks);
+                    const data = await res.json();
+                    projectTasks = data.items || [];
+                    tasksTotalPages = data.totalPages || 1;
                     renderProjectTasks();
+                    document.getElementById('tasksPageInfo').innerText =
+                        (currentLang === 'en'
+                            ? `Page ${data.page} of ${tasksTotalPages} (${data.totalCount} tasks)`
+                            : `صفحة ${data.page} من ${tasksTotalPages} (${data.totalCount} مهمة)`);
                 }
             } catch (err) {
                 console.error("Error loading tasks:", err);
             }
+        }
+
+        function handleTaskSearchKeyup(event) {
+            if (event.key === 'Enter') applyTaskSearch();
+        }
+
+        function applyTaskSearch() {
+            tasksSearchTerm = document.getElementById("taskSearch").value.trim();
+            tasksCurrentPage = 1;
+            loadProjectTasks();
+        }
+
+        function changeTasksPageSize() {
+            tasksPageSize = parseInt(document.getElementById("tasksPageSizeSelect").value, 10);
+            tasksCurrentPage = 1;
+            loadProjectTasks();
+        }
+
+        function tasksFirstPage() {
+            if (tasksCurrentPage !== 1) { tasksCurrentPage = 1; loadProjectTasks(); }
+        }
+
+        function tasksPrevPage() {
+            if (tasksCurrentPage > 1) { tasksCurrentPage--; loadProjectTasks(); }
+        }
+
+        function tasksNextPage() {
+            if (tasksCurrentPage < tasksTotalPages) { tasksCurrentPage++; loadProjectTasks(); }
+        }
+
+        function tasksLastPage() {
+            if (tasksCurrentPage !== tasksTotalPages) { tasksCurrentPage = tasksTotalPages; loadProjectTasks(); }
         }
 
         const taskStatusMeta = {
@@ -958,6 +1139,12 @@
         // ================= Milestones Management Handlers =================
         let projectMilestones = [];
 
+        // Milestones pagination state (scoped to activeProjectIdForTasks)
+        let milestonesCurrentPage = 1;
+        let milestonesPageSize = 20;
+        let milestonesSearchTerm = '';
+        let milestonesTotalPages = 1;
+
         function toggleAddMilestoneForm(show) {
             const form = document.getElementById("addMilestoneFormContainer");
             const btn = document.getElementById("milestones-tab-content").querySelector(".btn-neon");
@@ -974,16 +1161,56 @@
         }
 
         async function loadProjectMilestones() {
+            let url = `/api/milestones/paged?page=${milestonesCurrentPage}&pageSize=${milestonesPageSize}&projectId=${activeProjectIdForTasks}`;
+            if (milestonesSearchTerm) url += `&search=${encodeURIComponent(milestonesSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/milestones');
+                const res = await fetch(url);
                 if (res.ok) {
-                    const allMilestones = await res.json();
-                    projectMilestones = allMilestones.filter(m => m.projectId === activeProjectIdForTasks);
+                    const data = await res.json();
+                    projectMilestones = data.items || [];
+                    milestonesTotalPages = data.totalPages || 1;
                     renderProjectMilestones();
+                    document.getElementById('milestonesPageInfo').innerText =
+                        (currentLang === 'en'
+                            ? `Page ${data.page} of ${milestonesTotalPages} (${data.totalCount} milestones)`
+                            : `صفحة ${data.page} من ${milestonesTotalPages} (${data.totalCount} مرحلة)`);
                 }
             } catch (err) {
                 console.error("Error loading milestones:", err);
             }
+        }
+
+        function handleMilestoneSearchKeyup(event) {
+            if (event.key === 'Enter') applyMilestoneSearch();
+        }
+
+        function applyMilestoneSearch() {
+            milestonesSearchTerm = document.getElementById("milestoneSearch").value.trim();
+            milestonesCurrentPage = 1;
+            loadProjectMilestones();
+        }
+
+        function changeMilestonesPageSize() {
+            milestonesPageSize = parseInt(document.getElementById("milestonesPageSizeSelect").value, 10);
+            milestonesCurrentPage = 1;
+            loadProjectMilestones();
+        }
+
+        function milestonesFirstPage() {
+            if (milestonesCurrentPage !== 1) { milestonesCurrentPage = 1; loadProjectMilestones(); }
+        }
+
+        function milestonesPrevPage() {
+            if (milestonesCurrentPage > 1) { milestonesCurrentPage--; loadProjectMilestones(); }
+        }
+
+        function milestonesNextPage() {
+            if (milestonesCurrentPage < milestonesTotalPages) { milestonesCurrentPage++; loadProjectMilestones(); }
+        }
+
+        function milestonesLastPage() {
+            if (milestonesCurrentPage !== milestonesTotalPages) { milestonesCurrentPage = milestonesTotalPages; loadProjectMilestones(); }
         }
 
         function renderProjectMilestones() {

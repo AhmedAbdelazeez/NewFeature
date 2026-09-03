@@ -93,6 +93,48 @@ namespace NewFeature.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        // Paginated + searchable listing used by the IT page's Tickets table.
+        public async Task<PagedResultDto<ItTicketDto>> GetTicketsPagedAsync(int page, int pageSize, string? search, string? status)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var tickets = (await _context.ItTickets.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                tickets = tickets.Where(t =>
+                    Contains(t.TitleEn, term) ||
+                    Contains(t.TitleAr, term) ||
+                    Contains(t.DescriptionEn, term) ||
+                    Contains(t.DescriptionAr, term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                tickets = tickets.Where(t => string.Equals(t.Status, status, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var ordered = tickets.OrderByDescending(t => t.CreatedAt).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToTicketDto)
+                .ToList();
+
+            return new PagedResultDto<ItTicketDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
         #endregion
 
         #region Systems CRUD
@@ -151,6 +193,41 @@ namespace NewFeature.Services
             _context.ItSystems.Remove(system);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Paginated + searchable listing used by the IT page's Systems table.
+        public async Task<PagedResultDto<ItSystemDto>> GetSystemsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var systems = (await _context.ItSystems.ToListAsync()).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                systems = systems.Where(s =>
+                    Contains(s.NameEn, term) ||
+                    Contains(s.NameAr, term));
+            }
+
+            var ordered = systems.OrderBy(s => s.NameEn).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToSystemDto)
+                .ToList();
+
+            return new PagedResultDto<ItSystemDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
         #endregion
 
@@ -249,6 +326,9 @@ namespace NewFeature.Services
             };
         }
         #endregion
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
 
         #region Mappers
         private static ItTicketDto MapToTicketDto(ItTicket t)

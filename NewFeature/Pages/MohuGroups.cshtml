@@ -18,11 +18,44 @@
     <div class="d-flex justify-content-end mb-3">
         <button class="btn btn-neon btn-sm" onclick="openModal('groupModal')">إضافة فوج جديد</button>
     </div>
+
+    <!-- Toolbar -->
+    <div class="glass-card mb-3 p-3">
+        <div class="row align-items-center g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="groupSearch" class="form-control form-control-glass" placeholder="بحث حسب رقم الفوج، الجنسية، الفئة أو الباقة..." onkeyup="handleSearchKeyup(event)">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select id="pageSizeSelect" class="form-control form-control-glass" onchange="changePageSize()">
+                    <option value="10">10 / صفحة</option>
+                    <option value="20" selected>20 / صفحة</option>
+                    <option value="50">50 / صفحة</option>
+                    <option value="100">100 / صفحة</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applySearch()">بحث</button>
+            </div>
+        </div>
+    </div>
+
     <div class="glass-card table-responsive">
         <table class="table table-glass text-white align-middle">
             <thead><tr><th>رقم الفوج</th><th>الجنسية</th><th>الفئة العمرية</th><th>الباقة</th><th>العدد</th><th class="text-end">الإجراءات</th></tr></thead>
             <tbody id="groupsList"></tbody>
         </table>
+        <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+            <span class="text-muted small" id="pageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="firstPage()">&laquo; الأولى</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="prevPage()">السابق</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="nextPage()">التالي</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="lastPage()">الأخيرة &raquo;</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -62,14 +95,54 @@
 
         let groupsData = [];
         let editingId = null;
+        let currentPage = 1;
+        let pageSize = 20;
+        let searchTerm = '';
+        let totalPages = 1;
 
         async function loadGroups() {
-            const res = await fetch(baseUrl);
+            let url = `${baseUrl}/paged?page=${currentPage}&pageSize=${pageSize}`;
+            if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+
+            const res = await fetch(url);
             if (res.ok) {
-                groupsData = await res.json();
-                document.getElementById('groupsList').innerHTML = groupsData.map(d => `<tr><td>${d.groupNumber}</td><td>${d.nationality}</td><td>${d.ageGroup}</td><td>${d.packageCategory}</td><td>${d.pilgrimCount}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+                const data = await res.json();
+                groupsData = data.items || [];
+                totalPages = data.totalPages || 1;
+                renderGroups(groupsData);
+                document.getElementById('pageInfo').innerText = `صفحة ${data.page} من ${totalPages} (${data.totalCount} فوج)`;
             }
         }
+
+        function renderGroups(list) {
+            const tbody = document.getElementById('groupsList');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">لا توجد سجلات.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(d => `<tr><td>${d.groupNumber}</td><td>${d.nationality}</td><td>${d.ageGroup}</td><td>${d.packageCategory}</td><td>${d.pilgrimCount}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord(${d.id})"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${d.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+        }
+
+        function handleSearchKeyup(event) {
+            if (event.key === 'Enter') applySearch();
+        }
+
+        function applySearch() {
+            searchTerm = document.getElementById('groupSearch').value.trim();
+            currentPage = 1;
+            loadGroups();
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+            currentPage = 1;
+            loadGroups();
+        }
+
+        function firstPage() { if (currentPage !== 1) { currentPage = 1; loadGroups(); } }
+        function prevPage() { if (currentPage > 1) { currentPage--; loadGroups(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; loadGroups(); } }
+        function lastPage() { if (currentPage !== totalPages) { currentPage = totalPages; loadGroups(); } }
         function openModal(modalId) { 
             editingId = null;
             document.getElementById('g_groupNum').value = '';

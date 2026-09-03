@@ -42,6 +42,19 @@ namespace NewFeature.Controllers
             return Ok(kpis);
         }
 
+        // Paginated + searchable listing used by the Employees page's roster table.
+        // GetEmployees() above is left untouched: the Evaluations tab's "select employee"
+        // dropdown fetches the full unpaged list from it.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<EmployeeDto>>> GetEmployeesPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _employeeService.GetEmployeesPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpPost]
         public async Task<ActionResult<EmployeeDto>> CreateEmployee([FromBody] EmployeeDto dto)
         {
@@ -78,6 +91,17 @@ namespace NewFeature.Controllers
         {
             var evaluations = await _employeeService.GetAllEvaluationsAsync();
             return Ok(evaluations);
+        }
+
+        // Paginated + searchable listing used by the Employees page's Evaluations tab table.
+        [HttpGet("evaluations/paged")]
+        public async Task<ActionResult<PagedResultDto<EmployeeEvaluationDto>>> GetEvaluationsPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _employeeService.GetEvaluationsPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("evaluations/{id}")]

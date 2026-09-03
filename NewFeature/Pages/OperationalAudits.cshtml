@@ -18,11 +18,22 @@
     <!-- Search Toolbar -->
     <div class="glass-card mb-4 p-3">
         <div class="row align-items-center g-3">
-            <div class="col-12">
+            <div class="col-md-8">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="auditSearch" class="form-control form-control-glass" placeholder="Search audits by title, department, status..." onkeyup="filterAudits()">
+                    <input type="text" id="auditSearch" class="form-control form-control-glass" placeholder="Search audits by title, department, status..." onkeyup="handleAuditSearchKeyup(event)">
                 </div>
+            </div>
+            <div class="col-md-2">
+                <select id="auditPageSizeSelect" class="form-control form-control-glass" onchange="changeAuditPageSize()">
+                    <option value="10">10 / page</option>
+                    <option value="20" selected>20 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyAuditSearch()"><span data-i18n="vehicles-btn-search">Search</span></button>
             </div>
         </div>
     </div>
@@ -51,6 +62,15 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+            <span class="text-muted small" id="auditPageInfo">--</span>
+            <div>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="auditFirstPage()">&laquo; First</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="auditPrevPage()">Previous</button>
+                <button class="btn btn-neon-outline btn-sm me-2" onclick="auditNextPage()">Next</button>
+                <button class="btn btn-neon-outline btn-sm" onclick="auditLastPage()">Last &raquo;</button>
+            </div>
         </div>
     </div>
 </div>
@@ -142,6 +162,10 @@
         const currentLang = localStorage.getItem('lang') || 'en';
         let audits = [];
         let departments = [];
+        let auditPage = 1;
+        let auditPageSize = 20;
+        let auditSearchTerm = '';
+        let auditTotalPages = 1;
 
         const statusLabels = {
             0: { text: "Planned", class: "badge-glow-info" },
@@ -182,19 +206,63 @@
         }
 
         async function loadAudits() {
+            const tbody = document.getElementById("auditsList");
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading audits...</td></tr>`;
+
+            let url = `/api/operationalaudits/paged?page=${auditPage}&pageSize=${auditPageSize}`;
+            if (auditSearchTerm) url += `&search=${encodeURIComponent(auditSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/operationalaudits', {
+                const res = await fetch(url, {
                     headers: {
                         'Accept-Language': currentLang
                     }
                 });
                 if (res.ok) {
-                    audits = await res.json();
+                    const data = await res.json();
+                    audits = data.items || [];
+                    auditTotalPages = data.totalPages || 1;
                     renderAudits();
+                    document.getElementById('auditPageInfo').innerText =
+                        (currentLang === 'en'
+                            ? `Page ${data.page} of ${auditTotalPages} (${data.totalCount} audits)`
+                            : `صفحة ${data.page} من ${auditTotalPages} (${data.totalCount} تدقيق)`);
                 }
             } catch (err) {
                 console.error("Error loading audits:", err);
             }
+        }
+
+        function handleAuditSearchKeyup(event) {
+            if (event.key === 'Enter') applyAuditSearch();
+        }
+
+        function applyAuditSearch() {
+            auditSearchTerm = document.getElementById("auditSearch").value.trim();
+            auditPage = 1;
+            loadAudits();
+        }
+
+        function changeAuditPageSize() {
+            auditPageSize = parseInt(document.getElementById("auditPageSizeSelect").value, 10);
+            auditPage = 1;
+            loadAudits();
+        }
+
+        function auditFirstPage() {
+            if (auditPage !== 1) { auditPage = 1; loadAudits(); }
+        }
+
+        function auditPrevPage() {
+            if (auditPage > 1) { auditPage--; loadAudits(); }
+        }
+
+        function auditNextPage() {
+            if (auditPage < auditTotalPages) { auditPage++; loadAudits(); }
+        }
+
+        function auditLastPage() {
+            if (auditPage !== auditTotalPages) { auditPage = auditTotalPages; loadAudits(); }
         }
 
         function renderAudits() {
@@ -233,20 +301,6 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
-            });
-        }
-
-        function filterAudits() {
-            const query = document.getElementById("auditSearch").value.toLowerCase();
-            const rows = document.querySelectorAll("#auditsList tr");
-
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if (text.includes(query)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
             });
         }
 

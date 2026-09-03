@@ -61,6 +61,66 @@ namespace NewFeature.Controllers
             return Ok(userDtos);
         }
 
+        // Paginated + searchable listing used by the Users management page's table.
+        // GetUsers() above is left untouched in case other callers rely on the full list.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<UserDto>>> GetUsersPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var users = await _userManager.Users.OrderByDescending(u => u.Id).ToListAsync();
+            var isAr = IsArabic();
+
+            var allDtos = new List<UserDto>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                allDtos.Add(new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.UserName ?? string.Empty,
+                    Email = user.Email ?? string.Empty,
+                    FullNameEn = user.FullNameEn,
+                    FullNameAr = user.FullNameAr,
+                    IsActive = user.IsActive,
+                    Role = roles.FirstOrDefault() ?? "No Role",
+                    FullName = isAr ? user.FullNameAr : user.FullNameEn
+                });
+            }
+
+            IEnumerable<UserDto> filtered = allDtos;
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                filtered = filtered.Where(u =>
+                    Contains(u.Username, term) ||
+                    Contains(u.Email, term) ||
+                    Contains(u.FullNameEn, term) ||
+                    Contains(u.FullNameAr, term) ||
+                    Contains(u.Role, term));
+            }
+
+            var ordered = filtered.ToList();
+            var totalCount = ordered.Count;
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(new PagedResultDto<UserDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            });
+        }
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0;
+
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetUser(string id)
         {

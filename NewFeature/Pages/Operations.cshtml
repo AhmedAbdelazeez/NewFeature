@@ -50,6 +50,16 @@
         </div>
     </div>
 
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4" id="operationsKpis">
+        <div class="col-md-3 col-6">
+            <div class="glass-card p-3 text-center">
+                <div class="text-muted small">السائقين المسجلين (الرسميين)</div>
+                <div class="fs-3 fw-bold" id="kpiRegisteredDrivers">--</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tabs Navigation -->
     <ul class="nav nav-tabs nav-tabs-glass mb-4" id="operationsTabs" role="tabpanel">
         <li class="nav-item">
@@ -60,6 +70,9 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" id="trips-tab" data-bs-toggle="tab" data-bs-target="#trips-tab-content" type="button" role="tab" aria-selected="false" onclick="loadTripsPage(1)">سجل الرحلات الفعلية (Real Trips)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="drivers-tab" data-bs-toggle="tab" data-bs-target="#drivers-tab-content" type="button" role="tab" aria-selected="false" onclick="loadDriversPage(1)">السائقين الرسميين (Official Drivers)</button>
         </li>
     </ul>
 
@@ -207,6 +220,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab 4: Official Drivers roster (from the compliance roster upload) -->
+        <div class="tab-pane fade" id="drivers-tab-content" role="tabpanel" aria-labelledby="drivers-tab">
+            <div class="glass-card mb-4 p-3">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="driverSearch" class="form-control form-control-glass" placeholder="بحث بالاسم أو الرقم الوظيفي أو رقم الإقامة...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-neon w-100" onclick="loadDriversPage(1)">تطبيق البحث</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glass text-white align-middle">
+                        <thead>
+                            <tr>
+                                <th>الرقم الوظيفي</th>
+                                <th>الاسم بالعربي</th>
+                                <th>الاسم بالإنجليزي</th>
+                                <th>رقم الإقامة</th>
+                                <th>الجنسية</th>
+                                <th>تاريخ انتهاء الرخصة</th>
+                                <th>ملاحظات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="driversList">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل السائقين...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3">
+                    <span class="text-muted small" id="driversPageInfo">--</span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="driversPrevPage()">السابق</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="driversNextPage()">التالي</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -329,7 +389,20 @@
         document.addEventListener("DOMContentLoaded", () => {
             loadPlans();
             loadIncidents();
+            loadOperationsKpis();
         });
+
+        async function loadOperationsKpis() {
+            try {
+                const res = await fetch("/api/operations/kpis");
+                if (res.ok) {
+                    const k = await res.json();
+                    document.getElementById("kpiRegisteredDrivers").innerText = k.registeredDriversCount ?? 0;
+                }
+            } catch (err) {
+                console.error("Error loading operations KPIs:", err);
+            }
+        }
 
         // ================= Daily Plans operations =================
         async function loadPlans() {
@@ -637,6 +710,8 @@
             } finally {
                 event.target.value = "";
                 loadPlans();
+                loadOperationsKpis();
+                if (url.includes('bulk-upload-drivers')) loadDriversPage(driversState.page);
             }
         }
 
@@ -688,5 +763,49 @@
 
         function tripsPrevPage() { if (tripsState.page > 1) loadTripsPage(tripsState.page - 1); }
         function tripsNextPage() { loadTripsPage(tripsState.page + 1); }
+
+        // ================= Official Drivers roster (paged) =================
+        const driversState = { page: 1, pageSize: 20 };
+
+        async function loadDriversPage(page) {
+            driversState.page = page;
+            const search = document.getElementById("driverSearch").value.trim();
+
+            let url = `/api/operations/drivers?page=${driversState.page}&pageSize=${driversState.pageSize}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const tbody = document.getElementById("driversList");
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                const data = await res.json();
+
+                if (!data.items || data.items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">لا يوجد سائقين مطابقين</td></tr>';
+                    document.getElementById("driversPageInfo").textContent = "0 من 0";
+                    return;
+                }
+
+                tbody.innerHTML = data.items.map(d => `
+                    <tr>
+                        <td>${d.employeeCode || '--'}</td>
+                        <td>${d.arabicName}</td>
+                        <td>${d.englishName || '--'}</td>
+                        <td>${d.iqamaNumber || '--'}</td>
+                        <td>${d.nationality || '--'}</td>
+                        <td>${d.licenseExpiryDate ? new Date(d.licenseExpiryDate).toLocaleDateString('ar-SA') : '--'}</td>
+                        <td>${d.notes || '--'}</td>
+                    </tr>`).join('');
+
+                document.getElementById("driversPageInfo").textContent =
+                    `صفحة ${data.page} من ${data.totalPages || 1} (${data.totalCount} سائق)`;
+            } catch (err) {
+                console.error("Error loading drivers:", err);
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">تعذر تحميل بيانات السائقين</td></tr>';
+            }
+        }
+
+        function driversPrevPage() { if (driversState.page > 1) loadDriversPage(driversState.page - 1); }
+        function driversNextPage() { loadDriversPage(driversState.page + 1); }
     </script>
 }

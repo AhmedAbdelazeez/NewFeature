@@ -26,6 +26,16 @@ namespace NewFeature.Controllers
             return Ok(audits);
         }
 
+        // Paginated + searchable listing used by the Internal Audit - Operational Analysis page's
+        // table. GetAudits() above is left untouched in case anything else references it.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<OperationalAuditDto>>> GetAuditsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _auditService.GetAuditsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<OperationalAuditDto>> GetAudit(int id)
         {

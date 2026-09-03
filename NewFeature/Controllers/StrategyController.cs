@@ -25,6 +25,14 @@ namespace NewFeature.Controllers
             return Ok(goals);
         }
 
+        [HttpGet("goals/paged")]
+        public async Task<ActionResult<PagedResultDto<StrategicGoalDto>>> GetGoalsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _stratService.GetGoalsPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("goals/{id}")]
         public async Task<IActionResult> GetGoal(int id)
         {
@@ -66,6 +74,14 @@ namespace NewFeature.Controllers
         {
             var initiatives = await _stratService.GetAllInitiativesAsync();
             return Ok(initiatives);
+        }
+
+        [HttpGet("initiatives/paged")]
+        public async Task<ActionResult<PagedResultDto<PmoInitiativeDto>>> GetInitiativesPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _stratService.GetInitiativesPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("initiatives/{id}")]

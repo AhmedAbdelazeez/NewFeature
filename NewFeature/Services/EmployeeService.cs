@@ -33,6 +33,49 @@ namespace NewFeature.Services
             return employees.Select(e => MapToEmployeeDto(e));
         }
 
+        // Backs the Employees management page's roster table. Materializes once via the existing
+        // EF query, then filters/orders/pages in memory - matching the house style used by
+        // FleetService.GetVehiclesPagedAsync elsewhere in this codebase.
+        public async Task<PagedResultDto<EmployeeDto>> GetEmployeesPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var employees = await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.User)
+                .ThenInclude(u => u != null ? u.AssignedTasks : null)
+                .ToListAsync();
+
+            var dtos = employees.Select(e => MapToEmployeeDto(e)).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                dtos = dtos.Where(e =>
+                    Contains(e.FullNameEn, term) ||
+                    Contains(e.FullNameAr, term) ||
+                    Contains(e.PhoneNumber, term) ||
+                    Contains(e.Role, term) ||
+                    Contains(e.DepartmentNameEn, term) ||
+                    Contains(e.DepartmentNameAr, term));
+            }
+
+            var ordered = dtos.OrderByDescending(e => e.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<EmployeeDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<EmployeeDto?> GetEmployeeByIdAsync(int id)
         {
             var employee = await _context.Employees
@@ -110,6 +153,42 @@ namespace NewFeature.Services
                 .ToListAsync();
 
             return evaluations.Select(ee => MapToEvaluationDto(ee));
+        }
+
+        // Backs the Employees page's Evaluations tab table.
+        public async Task<PagedResultDto<EmployeeEvaluationDto>> GetEvaluationsPagedAsync(int page, int pageSize, string? search)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 200) pageSize = 200;
+
+            var evaluations = await _context.EmployeeEvaluations
+                .Include(ee => ee.Employee)
+                .ToListAsync();
+
+            var dtos = evaluations.Select(ee => MapToEvaluationDto(ee)).AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                dtos = dtos.Where(ee =>
+                    Contains(ee.EmployeeName, term) ||
+                    Contains(ee.NotesEn, term) ||
+                    Contains(ee.NotesAr, term));
+            }
+
+            var ordered = dtos.OrderByDescending(ee => ee.Id).ToList();
+            var totalCount = ordered.Count;
+
+            var items = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new PagedResultDto<EmployeeEvaluationDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<EmployeeEvaluationDto?> GetEvaluationByIdAsync(int id)
@@ -259,6 +338,9 @@ namespace NewFeature.Services
             };
         }
         #endregion
+
+        private static bool Contains(string? haystack, string term) =>
+            !string.IsNullOrEmpty(haystack) && haystack.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
 
         #region Mappers
         private static EmployeeDto MapToEmployeeDto(Employee e)

@@ -24,6 +24,20 @@ namespace NewFeature.Controllers
             return Ok(tasks);
         }
 
+        // Paginated + searchable listing used by the Project Management page's per-project Tasks
+        // tab. GetTasks() above is left untouched since it returns a plain array other callers may
+        // still expect. projectId lets the Tasks tab keep scoping to the currently open project.
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResultDto<TaskDto>>> GetTasksPaged(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] int? projectId = null)
+        {
+            var result = await _taskService.GetTasksPagedAsync(page, pageSize, search, projectId);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskDto>> GetTask(int id)
         {

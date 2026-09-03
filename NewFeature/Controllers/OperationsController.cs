@@ -184,6 +184,18 @@ namespace NewFeature.Controllers
             var result = await _operationsService.GetTripsPagedAsync(page, pageSize, search, fromDate, toDate);
             return Ok(result);
         }
+
+        // Paged, searchable listing of the official-drivers compliance roster - lets the Operations
+        // page show a real browsable table of who was imported, instead of only the headcount KPI.
+        [HttpGet("drivers")]
+        public async Task<ActionResult<PagedResultDto<OperationsDriverDto>>> GetDrivers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
+        {
+            var result = await _operationsService.GetDriversPagedAsync(page, pageSize, search);
+            return Ok(result);
+        }
         #endregion
     }
 }

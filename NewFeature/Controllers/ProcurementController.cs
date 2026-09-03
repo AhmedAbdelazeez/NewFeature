@@ -25,6 +25,14 @@ namespace NewFeature.Controllers
             return Ok(requests);
         }
 
+        [HttpGet("requests/paged")]
+        public async Task<ActionResult<PagedResultDto<ProcurementRequestDto>>> GetRequestsPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] string? status = null)
+        {
+            var result = await _procService.GetRequestsPagedAsync(page, pageSize, search, status);
+            return Ok(result);
+        }
+
         [HttpGet("requests/{id}")]
         public async Task<IActionResult> GetRequest(int id)
         {
@@ -66,6 +74,14 @@ namespace NewFeature.Controllers
         {
             var items = await _procService.GetAllInventoryItemsAsync();
             return Ok(items);
+        }
+
+        [HttpGet("inventory/paged")]
+        public async Task<ActionResult<PagedResultDto<InventoryItemDto>>> GetInventoryPaged(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        {
+            var result = await _procService.GetInventoryPagedAsync(page, pageSize, search);
+            return Ok(result);
         }
 
         [HttpGet("inventory/{id}")]

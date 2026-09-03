@@ -23,6 +23,9 @@ namespace NewFeature.Services
         // Routes (single-record CRUD only - bulk upload and KPIs moved to IRouteOperationsService
         // as its own isolated module; see RouteOperationsService.cs)
         Task<IEnumerable<RouteDto>> GetAllRoutesAsync();
+        // Paginated + searchable listing for the Routes management page's table.
+        // GetAllRoutesAsync above is left untouched in case other callers rely on the full list.
+        Task<PagedResultDto<RouteDto>> GetRoutesPagedAsync(int page, int pageSize, string? search);
         Task<RouteDto?> GetRouteByIdAsync(int id);
         Task<RouteDto> CreateRouteAsync(RouteDto dto);
         Task<bool> UpdateRouteAsync(RouteDto dto);
@@ -30,6 +33,10 @@ namespace NewFeature.Services
 
         // Trips
         Task<IEnumerable<TripDto>> GetAllTripsAsync();
+        // Paginated + search listing for the Trips scheduling page (mirrors GetVehiclesPagedAsync's
+        // pattern above). GetAllTripsAsync is left untouched since other consumers may still expect
+        // the full unpaginated list.
+        Task<PagedResultDto<TripDto>> GetTripsPagedAsync(int page, int pageSize, string? search);
         Task<TripDto?> GetTripByIdAsync(int id);
         Task<TripDto> CreateTripAsync(TripDto dto);
         Task<bool> UpdateTripAsync(TripDto dto);

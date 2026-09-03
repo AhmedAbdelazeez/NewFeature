@@ -41,10 +41,10 @@
         <div class="tab-pane fade show active" id="tx-tab-content" role="tabpanel" aria-labelledby="tx-tab">
             <div class="glass-card mb-4 p-3">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="txSearch" class="form-control form-control-glass" placeholder="البحث في العمليات المالية..." onkeyup="filterTransactions()">
+                            <input type="text" id="txSearch" class="form-control form-control-glass" placeholder="البحث في العمليات المالية..." onkeyup="handleTxSearchKeyup(event)">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -55,6 +55,14 @@
                             <option value="Asset" data-i18n="opt-type-asset">أصول (Asset)</option>
                             <option value="Liability" data-i18n="opt-type-liability">التزامات (Liability)</option>
                             <option value="Receivables" data-i18n="opt-type-receivables">ذمم مدينة (Receivables)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="txPageSizeSelect" class="form-control form-control-glass" onchange="changeTxPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
                         </select>
                     </div>
                 </div>
@@ -81,15 +89,36 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="txPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="txFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="txPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="txNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="txLastPage()">الأخيرة &raquo;</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Tab 2: Budgets -->
         <div class="tab-pane fade" id="budgets-tab-content" role="tabpanel" aria-labelledby="budgets-tab">
             <div class="glass-card mb-4 p-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="budgetSearch" class="form-control form-control-glass" placeholder="البحث في ميزانيات الأقسام..." onkeyup="filterBudgets()">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="budgetSearch" class="form-control form-control-glass" placeholder="البحث في ميزانيات الأقسام..." onkeyup="handleBudgetSearchKeyup(event)">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="budgetPageSizeSelect" class="form-control form-control-glass" onchange="changeBudgetPageSize()">
+                            <option value="10">10 / صفحة</option>
+                            <option value="20" selected>20 / صفحة</option>
+                            <option value="50">50 / صفحة</option>
+                            <option value="100">100 / صفحة</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -112,6 +141,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
+                    <span class="text-muted small" id="budgetsPageInfo">--</span>
+                    <div>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="budgetsFirstPage()">&laquo; الأولى</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="budgetsPrevPage()">السابق</button>
+                        <button class="btn btn-neon-outline btn-sm me-2" onclick="budgetsNextPage()">التالي</button>
+                        <button class="btn btn-neon-outline btn-sm" onclick="budgetsLastPage()">الأخيرة &raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -222,8 +260,16 @@
 
 @section Scripts {
     <script>
-        let allTransactions = [];
-        let allBudgets = [];
+        // ───────── Pagination state ─────────
+        let txCurrentPage = 1;
+        let txPageSize = 20;
+        let txSearchTerm = '';
+        let txTotalPages = 1;
+
+        let budgetsCurrentPage = 1;
+        let budgetsPageSize = 20;
+        let budgetsSearchTerm = '';
+        let budgetsTotalPages = 1;
 
         document.addEventListener("DOMContentLoaded", () => {
             loadTransactions();
@@ -232,11 +278,24 @@
 
         // ───────── Transactions CRUD ─────────
         async function loadTransactions() {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            const container = document.getElementById("txList");
+            container.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل الحركات المالية...</td></tr>`;
+
+            const type = document.getElementById("txTypeFilter").value;
+            let url = `/api/finance/transactions/paged?page=${txCurrentPage}&pageSize=${txPageSize}`;
+            if (txSearchTerm) url += `&search=${encodeURIComponent(txSearchTerm)}`;
+            if (type) url += `&type=${encodeURIComponent(type)}`;
+
             try {
-                const res = await fetch('/api/finance/transactions');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allTransactions = await res.json();
-                    renderTransactions(allTransactions);
+                    const data = await res.json();
+                    txTotalPages = data.totalPages || 1;
+                    renderTransactions(data.items || []);
+                    document.getElementById('txPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${txTotalPages} (${data.totalCount} حركة)`
+                        : `Page ${data.page} of ${txTotalPages} (${data.totalCount} transactions)`;
                 }
             } catch (err) {
                 console.error("Error loading transactions:", err);
@@ -274,16 +333,36 @@
             }).join('');
         }
 
-        function filterTransactions() {
-            const search = document.getElementById("txSearch").value.toLowerCase();
-            const type = document.getElementById("txTypeFilter").value;
+        function handleTxSearchKeyup(event) {
+            if (event.key === 'Enter') filterTransactions();
+        }
 
-            const filtered = allTransactions.filter(t => {
-                const matchesSearch = t.descriptionEn.toLowerCase().includes(search) || t.descriptionAr.toLowerCase().includes(search) || t.categoryEn.toLowerCase().includes(search) || t.categoryAr.toLowerCase().includes(search);
-                const matchesType = !type || t.type === type;
-                return matchesSearch && matchesType;
-            });
-            renderTransactions(filtered);
+        function filterTransactions() {
+            txSearchTerm = document.getElementById("txSearch").value.trim();
+            txCurrentPage = 1;
+            loadTransactions();
+        }
+
+        function changeTxPageSize() {
+            txPageSize = parseInt(document.getElementById("txPageSizeSelect").value, 10);
+            txCurrentPage = 1;
+            loadTransactions();
+        }
+
+        function txFirstPage() {
+            if (txCurrentPage !== 1) { txCurrentPage = 1; loadTransactions(); }
+        }
+
+        function txPrevPage() {
+            if (txCurrentPage > 1) { txCurrentPage--; loadTransactions(); }
+        }
+
+        function txNextPage() {
+            if (txCurrentPage < txTotalPages) { txCurrentPage++; loadTransactions(); }
+        }
+
+        function txLastPage() {
+            if (txCurrentPage !== txTotalPages) { txCurrentPage = txTotalPages; loadTransactions(); }
         }
 
         function openAddTransactionModal() {
@@ -364,11 +443,22 @@
 
         // ───────── Budgets CRUD ─────────
         async function loadBudgets() {
+            const isAr = (localStorage.getItem('lang') || 'en') === 'ar';
+            const container = document.getElementById("budgetsList");
+            container.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> جاري تحميل ميزانيات الأقسام...</td></tr>`;
+
+            let url = `/api/finance/budgets/paged?page=${budgetsCurrentPage}&pageSize=${budgetsPageSize}`;
+            if (budgetsSearchTerm) url += `&search=${encodeURIComponent(budgetsSearchTerm)}`;
+
             try {
-                const res = await fetch('/api/finance/budgets');
+                const res = await fetch(url);
                 if (res.ok) {
-                    allBudgets = await res.json();
-                    renderBudgets(allBudgets);
+                    const data = await res.json();
+                    budgetsTotalPages = data.totalPages || 1;
+                    renderBudgets(data.items || []);
+                    document.getElementById('budgetsPageInfo').innerText = isAr
+                        ? `صفحة ${data.page} من ${budgetsTotalPages} (${data.totalCount} ميزانية)`
+                        : `Page ${data.page} of ${budgetsTotalPages} (${data.totalCount} budgets)`;
                 }
             } catch (err) {
                 console.error("Error loading budgets:", err);
@@ -404,10 +494,36 @@
             }).join('');
         }
 
+        function handleBudgetSearchKeyup(event) {
+            if (event.key === 'Enter') filterBudgets();
+        }
+
         function filterBudgets() {
-            const search = document.getElementById("budgetSearch").value.toLowerCase();
-            const filtered = allBudgets.filter(b => b.departmentNameEn.toLowerCase().includes(search) || b.departmentNameAr.toLowerCase().includes(search));
-            renderBudgets(filtered);
+            budgetsSearchTerm = document.getElementById("budgetSearch").value.trim();
+            budgetsCurrentPage = 1;
+            loadBudgets();
+        }
+
+        function changeBudgetPageSize() {
+            budgetsPageSize = parseInt(document.getElementById("budgetPageSizeSelect").value, 10);
+            budgetsCurrentPage = 1;
+            loadBudgets();
+        }
+
+        function budgetsFirstPage() {
+            if (budgetsCurrentPage !== 1) { budgetsCurrentPage = 1; loadBudgets(); }
+        }
+
+        function budgetsPrevPage() {
+            if (budgetsCurrentPage > 1) { budgetsCurrentPage--; loadBudgets(); }
+        }
+
+        function budgetsNextPage() {
+            if (budgetsCurrentPage < budgetsTotalPages) { budgetsCurrentPage++; loadBudgets(); }
+        }
+
+        function budgetsLastPage() {
+            if (budgetsCurrentPage !== budgetsTotalPages) { budgetsCurrentPage = budgetsTotalPages; loadBudgets(); }
         }
 
         function openAddBudgetModal() {
