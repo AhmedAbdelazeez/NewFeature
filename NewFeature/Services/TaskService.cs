@@ -92,7 +92,9 @@ namespace NewFeature.Services
             var projectMap = projects.ToDictionary(p => p.Id, p => isAr ? p.NameAr : p.NameEn);
             var userMap = users.ToDictionary(u => u.Id, u => isAr ? u.FullNameAr : u.FullNameEn);
 
+
             var dtos = tasks.Select(t => new TaskDto
+
             {
                 Id = t.Id,
                 ProjectId = t.ProjectId,

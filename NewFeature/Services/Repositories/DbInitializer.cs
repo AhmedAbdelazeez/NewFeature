@@ -25,7 +25,7 @@ namespace NewFeature.Services.Repositories
                 }
             }
 
-            var adminEmail = "admin@company.com";
+            var adminEmail = "admin@rawahil.com.sa";
             var defaultAdmin = await userManager.FindByEmailAsync(adminEmail);
             if (defaultAdmin == null)
             {
@@ -39,7 +39,7 @@ namespace NewFeature.Services.Repositories
                     EmailConfirmed = true
                 };
 
-                var createPowerUser = await userManager.CreateAsync(adminUser, "Admin@123");
+                var createPowerUser = await userManager.CreateAsync(adminUser, "Rawahil@123");
                 if (createPowerUser.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Admin");
@@ -195,8 +195,14 @@ namespace NewFeature.Services.Repositories
             }
             context.SaveChanges();
 
-            // Seed Users based on Departments
-            var allDepartments = context.Departments.ToList();
+            // Seed one login user per department that's actually live in this deployment
+            // (Clients, Projects/PMO, Fleet, Compliance, HR, Operations, Sales) - the other
+            // seeded departments (Finance, IT, HSE, Procurement, Strategy, Commercial, Tourism,
+            // Operational Audit, Maintenance, Storage, Vehicles, Routes, Trips, Task Management)
+            // are hidden from navigation for now, so they don't get a login account.
+            // Combined with the single Admin user above, this yields exactly 8 seeded users.
+            string[] liveDepartmentCodes = { "HR", "OPS", "FLEET", "COMP", "PMO", "SALES", "CR" };
+            var allDepartments = context.Departments.Where(d => liveDepartmentCodes.Contains(d.Code)).ToList();
             foreach (var dept in allDepartments)
             {
                 var roleName = dept.Code;
@@ -205,7 +211,7 @@ namespace NewFeature.Services.Repositories
                     await roleManager.CreateAsync(new IdentityRole(roleName));
                 }
 
-                var userEmail = $"{roleName.ToLower()}@company.com";
+                var userEmail = $"{roleName.ToLower()}@rawahil.com.sa";
                 if (await userManager.FindByEmailAsync(userEmail) == null)
                 {
                     var deptUser = new ApplicationUser
@@ -218,39 +224,10 @@ namespace NewFeature.Services.Repositories
                         EmailConfirmed = true,
                         DepartmentId = dept.Id
                     };
-                    var result = await userManager.CreateAsync(deptUser, "Password@123");
+                    var result = await userManager.CreateAsync(deptUser, "Rawahil@123");
                     if (result.Succeeded)
                     {
                         await userManager.AddToRoleAsync(deptUser, roleName);
-                    }
-                }
-            }
-
-            // Seed CEO and Administrator roles and users
-            string[] extraRoles = { "CEO", "Administrator" };
-            foreach (var roleName in extraRoles)
-            {
-                if (!await roleManager.RoleExistsAsync(roleName))
-                {
-                    await roleManager.CreateAsync(new IdentityRole(roleName));
-                }
-
-                var userEmail = $"{roleName.ToLower()}@company.com";
-                if (await userManager.FindByEmailAsync(userEmail) == null)
-                {
-                    var extraUser = new ApplicationUser
-                    {
-                        UserName = userEmail,
-                        Email = userEmail,
-                        FullNameEn = $"{roleName} User",
-                        FullNameAr = $"مستخدم {roleName}",
-                        IsActive = true,
-                        EmailConfirmed = true
-                    };
-                    var result = await userManager.CreateAsync(extraUser, "Password@123");
-                    if (result.Succeeded)
-                    {
-                        await userManager.AddToRoleAsync(extraUser, roleName);
                     }
                 }
             }
@@ -553,7 +530,7 @@ namespace NewFeature.Services.Repositories
                 var itDept = context.Departments.First(d => d.Code == "IT");
                 var compDept = context.Departments.First(d => d.Code == "COMP");
 
-                var adminUser = context.Users.FirstOrDefault(u => u.Email == "admin@company.com");
+                var adminUser = context.Users.FirstOrDefault(u => u.Email == "admin@rawahil.com.sa");
 
                 var employees = new List<Employee>
                 {

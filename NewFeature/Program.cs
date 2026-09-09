@@ -121,11 +121,11 @@ using (var scope = app.Services.CreateScope())
             .Wait();
 
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = userManager.FindByEmailAsync("admin@company.com").Result;
+        var user = userManager.FindByEmailAsync("admin@rawahil.com.sa").Result;
         if (user != null)
         {
-            user.UserName = "admin@company.com";
-            user.NormalizedUserName = "ADMIN@COMPANY.COM";
+            user.UserName = "admin@rawahil.com.sa";
+            user.NormalizedUserName = "ADMIN@RAWAHIL.COM.SA";
             user.EmailConfirmed = true;
             user.IsActive = true;
             userManager.UpdateAsync(user).Wait();
@@ -134,26 +134,26 @@ using (var scope = app.Services.CreateScope())
             userManager.ResetAccessFailedCountAsync(user).Wait();
 
             var token = userManager.GeneratePasswordResetTokenAsync(user).Result;
-            var resetResult = userManager.ResetPasswordAsync(user, token, "Admin@123").Result;
+            var resetResult = userManager.ResetPasswordAsync(user, token, "Rawahil@123").Result;
             var roles = userManager.GetRolesAsync(user).Result;
-            Console.WriteLine($"User admin@company.com exists! Password reset: {resetResult.Succeeded}. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
+            Console.WriteLine($"User admin@rawahil.com.sa exists! Password reset: {resetResult.Succeeded}. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
         }
         else
         {
             var adminUser = new ApplicationUser
             {
-                UserName = "admin@company.com",
-                Email = "admin@company.com",
+                UserName = "admin@rawahil.com.sa",
+                Email = "admin@rawahil.com.sa",
                 FullNameEn = "System Admin",
                 FullNameAr = "مدير النظام",
                 IsActive = true,
                 EmailConfirmed = true
             };
-            var result = userManager.CreateAsync(adminUser, "Admin@123").Result;
+            var result = userManager.CreateAsync(adminUser, "Rawahil@123").Result;
             if (result.Succeeded)
             {
                 userManager.AddToRoleAsync(adminUser, "Admin").Wait();
-                Console.WriteLine("Forced seed Succeeded! User admin@company.com created.");
+                Console.WriteLine("Forced seed Succeeded! User admin@rawahil.com.sa created.");
             }
             else
             {
