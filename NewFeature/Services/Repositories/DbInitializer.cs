@@ -39,9 +39,11 @@ namespace NewFeature.Services.Repositories
                     EmailConfirmed = true
                 };
 
-                var createPowerUser = await userManager.CreateAsync(adminUser, "Rawahil@123");
+                var adminPassword = SeedPassword.Generate();
+                var createPowerUser = await userManager.CreateAsync(adminUser, adminPassword);
                 if (createPowerUser.Succeeded)
                 {
+                    Console.WriteLine($"Seeded {adminEmail} with initial password: {adminPassword}");
                     await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
             }
@@ -196,12 +198,13 @@ namespace NewFeature.Services.Repositories
             context.SaveChanges();
 
             // Seed one login user per department that's actually live in this deployment
-            // (Clients, Projects/PMO, Fleet, Compliance, HR, Operations, Sales) - the other
-            // seeded departments (Finance, IT, HSE, Procurement, Strategy, Commercial, Tourism,
-            // Operational Audit, Maintenance, Storage, Vehicles, Routes, Trips, Task Management)
-            // are hidden from navigation for now, so they don't get a login account.
-            // Combined with the single Admin user above, this yields exactly 8 seeded users.
-            string[] liveDepartmentCodes = { "HR", "OPS", "FLEET", "COMP", "PMO", "SALES", "CR" };
+            // (Clients, Projects/PMO, Fleet, Compliance, HR, Operations, Sales, Finance,
+            // Maintenance) - the other seeded departments (IT, HSE, Procurement, Strategy,
+            // Commercial, Tourism, Operational Audit, Storage, Vehicles, Routes, Trips, Task
+            // Management) are hidden from navigation for now, so they don't get a login account.
+            // Combined with the single Admin user above, this yields exactly 10 seeded users.
+            // Existing users are never touched - only a missing one is created.
+            string[] liveDepartmentCodes = { "HR", "OPS", "FLEET", "COMP", "PMO", "SALES", "CR", "FIN", "MAINT" };
             var allDepartments = context.Departments.Where(d => liveDepartmentCodes.Contains(d.Code)).ToList();
             foreach (var dept in allDepartments)
             {
@@ -224,9 +227,11 @@ namespace NewFeature.Services.Repositories
                         EmailConfirmed = true,
                         DepartmentId = dept.Id
                     };
-                    var result = await userManager.CreateAsync(deptUser, "Rawahil@123");
+                    var deptPassword = SeedPassword.Generate();
+                    var result = await userManager.CreateAsync(deptUser, deptPassword);
                     if (result.Succeeded)
                     {
+                        Console.WriteLine($"Seeded {userEmail} with initial password: {deptPassword}");
                         await userManager.AddToRoleAsync(deptUser, roleName);
                     }
                 }
@@ -1151,7 +1156,7 @@ namespace NewFeature.Services.Repositories
                         IsActive = true,
                         EmailConfirmed = true
                     };
-                    var result = await userManager.CreateAsync(driverUser, "Driver@123");
+                    var result = await userManager.CreateAsync(driverUser, SeedPassword.Generate());
                     if (result.Succeeded)
                     {
                         await userManager.AddToRoleAsync(driverUser, "Driver");

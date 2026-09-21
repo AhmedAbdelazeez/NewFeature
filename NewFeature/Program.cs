@@ -12,11 +12,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 6;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
+    // Every new or changed password must be at least 12 characters and mix upper case, lower case,
+    // digits and symbols. Existing passwords keep working until they are next changed.
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 12;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequiredUniqueChars = 6;
+
+    // Repeated wrong passwords lock the account for 15 minutes.
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders()
@@ -133,10 +140,10 @@ using (var scope = app.Services.CreateScope())
             userManager.SetLockoutEndDateAsync(user, null).Wait();
             userManager.ResetAccessFailedCountAsync(user).Wait();
 
-            var token = userManager.GeneratePasswordResetTokenAsync(user).Result;
-            var resetResult = userManager.ResetPasswordAsync(user, token, "Rawahil@123").Result;
+            // The password is deliberately NOT touched here. This block used to reset it to a
+            // hard-coded value on every start, which silently undid any password change.
             var roles = userManager.GetRolesAsync(user).Result;
-            Console.WriteLine($"User admin@rawahil.com.sa exists! Password reset: {resetResult.Succeeded}. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
+            Console.WriteLine($"User admin@rawahil.com.sa exists. Email confirmed: {user.EmailConfirmed}, Lockout cleared. Username: {user.UserName}, Active: {user.IsActive}, Roles: {string.Join(", ", roles)}");
         }
         else
         {
@@ -149,11 +156,12 @@ using (var scope = app.Services.CreateScope())
                 IsActive = true,
                 EmailConfirmed = true
             };
-            var result = userManager.CreateAsync(adminUser, "Rawahil@123").Result;
+            var initialPassword = NewFeature.Services.Repositories.SeedPassword.Generate();
+            var result = userManager.CreateAsync(adminUser, initialPassword).Result;
             if (result.Succeeded)
             {
                 userManager.AddToRoleAsync(adminUser, "Admin").Wait();
-                Console.WriteLine("Forced seed Succeeded! User admin@rawahil.com.sa created.");
+                Console.WriteLine($"Forced seed Succeeded! User admin@rawahil.com.sa created with initial password: {initialPassword}");
             }
             else
             {
