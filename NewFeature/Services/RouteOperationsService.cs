@@ -40,13 +40,16 @@ namespace NewFeature.Services
                     HeaderAliases = new[] { "route name (english)", "route name (en)", "english name", "name (english)" } },
                 new() { Key = "NameAr", DisplayName = "Route Name (Arabic)", Required = true,
                     HeaderAliases = new[] { "route name (arabic)", "route name (ar)", "arabic name", "name (arabic)", "اسم المسار" } },
-                new() { Key = "StartLocationEn", DisplayName = "Start Location (English)", Required = true,
+                // Start/End location is not always known when a route is first entered (e.g. an
+                // employee-shuttle or on-demand route defined only by name and distance), so these
+                // four columns are optional both as a header and per-row.
+                new() { Key = "StartLocationEn",
                     HeaderAliases = new[] { "start location (english)", "start location (en)", "start (english)", "english start" } },
-                new() { Key = "StartLocationAr", DisplayName = "Start Location (Arabic)", Required = true,
+                new() { Key = "StartLocationAr",
                     HeaderAliases = new[] { "start location (arabic)", "start location (ar)", "start (arabic)", "arabic start", "بداية" } },
-                new() { Key = "EndLocationEn", DisplayName = "End Location (English)", Required = true,
+                new() { Key = "EndLocationEn",
                     HeaderAliases = new[] { "end location (english)", "end location (en)", "end (english)", "english end" } },
-                new() { Key = "EndLocationAr", DisplayName = "End Location (Arabic)", Required = true,
+                new() { Key = "EndLocationAr",
                     HeaderAliases = new[] { "end location (arabic)", "end location (ar)", "end (arabic)", "arabic end", "نهاية" } },
                 new() { Key = "DistanceKm", DisplayName = "Distance (KM)", Required = true,
                     HeaderAliases = new[] { "distance (km)", "distance", "المسافة" } },
@@ -77,27 +80,21 @@ namespace NewFeature.Services
                 if (nameAr.Length > 150)
                     return ExcelRowOutcomeResult.Skipped("Route Name (Arabic) cannot exceed 150 characters.", "Route Name (Arabic)");
 
+                // Start/End location is optional - blank is a legitimate "not yet known" value, not
+                // an error. Only validate length when something was actually entered.
                 var startEn = ctx.GetString("StartLocationEn");
-                if (string.IsNullOrEmpty(startEn))
-                    return ExcelRowOutcomeResult.Skipped("Start Location (English) is required.", "Start Location (English)");
                 if (startEn.Length > 200)
                     return ExcelRowOutcomeResult.Skipped("Start Location (English) cannot exceed 200 characters.", "Start Location (English)");
 
                 var startAr = ctx.GetString("StartLocationAr");
-                if (string.IsNullOrEmpty(startAr))
-                    return ExcelRowOutcomeResult.Skipped("Start Location (Arabic) is required.", "Start Location (Arabic)");
                 if (startAr.Length > 200)
                     return ExcelRowOutcomeResult.Skipped("Start Location (Arabic) cannot exceed 200 characters.", "Start Location (Arabic)");
 
                 var endEn = ctx.GetString("EndLocationEn");
-                if (string.IsNullOrEmpty(endEn))
-                    return ExcelRowOutcomeResult.Skipped("End Location (English) is required.", "End Location (English)");
                 if (endEn.Length > 200)
                     return ExcelRowOutcomeResult.Skipped("End Location (English) cannot exceed 200 characters.", "End Location (English)");
 
                 var endAr = ctx.GetString("EndLocationAr");
-                if (string.IsNullOrEmpty(endAr))
-                    return ExcelRowOutcomeResult.Skipped("End Location (Arabic) is required.", "End Location (Arabic)");
                 if (endAr.Length > 200)
                     return ExcelRowOutcomeResult.Skipped("End Location (Arabic) cannot exceed 200 characters.", "End Location (Arabic)");
 
@@ -107,8 +104,10 @@ namespace NewFeature.Services
                 if (distance <= 0 || distance > 100000)
                     return ExcelRowOutcomeResult.Skipped("Distance (KM) must be greater than 0 and at most 100000.", "Distance (KM)");
 
-                // A route cannot start and end at the same place.
-                if (string.Equals(startEn.Trim(), endEn.Trim(), System.StringComparison.OrdinalIgnoreCase))
+                // A route cannot start and end at the same place - but only when both are actually
+                // filled in (a route with no start/end recorded yet obviously isn't a same-place error).
+                if (startEn.Length > 0 && endEn.Length > 0 &&
+                    string.Equals(startEn.Trim(), endEn.Trim(), System.StringComparison.OrdinalIgnoreCase))
                     return ExcelRowOutcomeResult.Skipped("Start Location and End Location cannot be the same.", "End Location (English)");
 
                 // Route Name (English) is the business key: an existing route name is updated in

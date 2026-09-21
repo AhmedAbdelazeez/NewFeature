@@ -164,8 +164,17 @@ namespace NewFeature.Services
                     if (!string.IsNullOrEmpty(val)) headers[val] = i;
                 }
 
-                int nameArCol = FindColumn(headers, "اسم الصنف", "الصنف بالعربي", "الصنف", "item name ar", "name ar");
-                int nameEnCol = FindColumn(headers, "item name", "name en", "الصنف بالانجليزي", "english name");
+                // Arabic/English aliases must be checked with the "(arabic)"/"(english)" qualifier
+                // first - the approved template's headers are "Item Name (Arabic)" and "Item Name
+                // (English)", and both contain the generic substring "item name". Without the
+                // qualifier, a plain "item name" search matches whichever of the two columns comes
+                // first in the header row (Arabic), so the English column never gets located and
+                // every English-only row (no Arabic name filled in) is silently skipped further
+                // down as "blank".
+                int nameArCol = FindColumn(headers, "item name (arabic)", "name (arabic)", "arabic name",
+                    "اسم الصنف", "الصنف بالعربي", "الصنف", "item name ar", "name ar");
+                int nameEnCol = FindColumn(headers, "item name (english)", "name (english)", "english name",
+                    "الصنف بالانجليزي", "item name", "name en");
                 int categoryCol = FindColumn(headers, "الفئة", "التصنيف", "category");
                 int quantityCol = FindColumn(headers, "الكمية", "quantity", "qty");
                 int reorderCol = FindColumn(headers, "حد الطلب", "الحد الأدنى", "reorder");
@@ -200,8 +209,9 @@ namespace NewFeature.Services
                         if (dateCol != -1)
                         {
                             var dateStr = row.Cell(dateCol).GetString().Trim();
-                            if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var parsedDate))
-                                auditDate = parsedDate;
+                            var parsedDate = FlexibleDateParser.Parse(dateStr);
+                            if (parsedDate != null)
+                                auditDate = parsedDate.Value;
                         }
 
                         // Update existing item with the same Arabic name if present, otherwise create new

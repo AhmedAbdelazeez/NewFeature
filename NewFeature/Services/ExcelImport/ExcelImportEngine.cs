@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ClosedXML.Excel;
 using Microsoft.Extensions.Logging;
 using NewFeature.Models;
+using NewFeature.Services;
 
 namespace NewFeature.Services.ExcelImport
 {
@@ -70,21 +71,51 @@ namespace NewFeature.Services.ExcelImport
             if (cell.DataType == XLDataType.DateTime && cell.TryGetValue<DateTime>(out var typed))
                 return typed;
 
+            // Accepts Gregorian or Hijri dates, in any of the usual written formats - see
+            // FlexibleDateParser for the calendar-detection rules.
+            return FlexibleDateParser.Parse(cell.GetString());
+        }
+
+        // Reads a clock time out of a cell that may hold a real Excel time (a fraction of a day),
+        // a full date/time, or free text typed by hand ("7:30", "07:30 ص", "19:45"). Returns null
+        // when the cell is blank or unreadable, so the caller decides whether that is fatal.
+        public TimeSpan? GetTime(string key)
+        {
+            if (!_columnMap.TryGetValue(key, out var col)) return null;
+            var cell = _row.Cell(col);
+
+            if (cell.DataType == XLDataType.DateTime && cell.TryGetValue<DateTime>(out var asDateTime))
+                return asDateTime.TimeOfDay;
+
+            // A bare time in Excel is stored as a number: the fraction of a 24-hour day.
+            if (cell.DataType == XLDataType.Number && cell.TryGetValue<double>(out var asNumber))
+            {
+                var fraction = asNumber - Math.Floor(asNumber);
+                return TimeSpan.FromDays(fraction);
+            }
+
             var raw = Normalize(cell.GetString());
             if (string.IsNullOrEmpty(raw)) return null;
 
-            if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)) return parsed;
-            if (DateTime.TryParse(raw, out parsed)) return parsed;
+            // Arabic AM/PM markers never parse with the invariant culture - fold them first.
+            bool isPm = raw.Contains("م") || raw.IndexOf("pm", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isAm = raw.Contains("ص") || raw.IndexOf("am", StringComparison.OrdinalIgnoreCase) >= 0;
+            var cleaned = new string(raw.Where(c => char.IsDigit(c) || c == ':').ToArray());
+            if (string.IsNullOrEmpty(cleaned)) return null;
 
-            // Excel stores dates as day serial numbers; a cell formatted as General shows the raw
-            // serial instead of a date string.
-            if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var serial)
-                && serial > 0 && serial < 2958466)
+            if (!TimeSpan.TryParse(cleaned, CultureInfo.InvariantCulture, out var parsed))
             {
-                try { return DateTime.FromOADate(serial); } catch (ArgumentException) { return null; }
+                // "7" / "0730" style entries.
+                if (!int.TryParse(cleaned, NumberStyles.Integer, CultureInfo.InvariantCulture, out var digits)) return null;
+                parsed = digits <= 23
+                    ? TimeSpan.FromHours(digits)
+                    : new TimeSpan(digits / 100, digits % 100, 0);
             }
 
-            return null;
+            if (parsed.TotalHours >= 24) return null;
+            if (isPm && parsed.Hours < 12) parsed = parsed.Add(TimeSpan.FromHours(12));
+            if (isAm && parsed.Hours == 12) parsed = parsed.Subtract(TimeSpan.FromHours(12));
+            return parsed;
         }
 
         public decimal? GetDecimal(string key)
@@ -162,18 +193,41 @@ namespace NewFeature.Services.ExcelImport
             {
                 logger.LogError(ex, "Failed to open uploaded workbook for template {Template}.", template.TemplateName);
                 result.Success = false;
-                result.Message = "The uploaded file could not be read as an Excel workbook. Please make sure it is a valid .xlsx or .xls file.";
+                result.Message = "تعذّرت قراءة الملف المرفوع كملف إكسل. تأكد من أنه ملف .xlsx أو .xls صالح وغير تالف.";
                 return result;
             }
 
             using (workbook)
             {
-                var worksheet = workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
+                if (workbook.Worksheets.Count == 0)
                 {
                     result.Success = false;
-                    result.Message = "The uploaded Excel file has no worksheets.";
+                    result.Message = "الملف المرفوع لا يحتوي على أي ورقة عمل.";
                     return result;
+                }
+
+                // A definition that names its sheet must find that sheet; anything else reads the
+                // first one, which is what every single-sheet department template relies on.
+                IXLWorksheet? worksheet;
+                if (template.SheetNameAliases.Length > 0)
+                {
+                    worksheet = workbook.Worksheets.FirstOrDefault(ws =>
+                        template.SheetNameAliases.Any(alias =>
+                            ws.Name.Trim().IndexOf(alias, StringComparison.OrdinalIgnoreCase) >= 0));
+
+                    if (worksheet == null)
+                    {
+                        var sheetLabel = string.IsNullOrEmpty(template.SheetDisplayName)
+                            ? template.SheetNameAliases[0]
+                            : template.SheetDisplayName;
+                        result.Success = false;
+                        result.Message = $"الملف المرفوع لا يحتوي على ورقة \"{sheetLabel}\". يرجى استخدام {template.TemplateName} المعتمد كما هو دون حذف أي ورقة منه.";
+                        return result;
+                    }
+                }
+                else
+                {
+                    worksheet = workbook.Worksheets.First();
                 }
 
                 var headerRow = worksheet.Row(1);
@@ -181,7 +235,7 @@ namespace NewFeature.Services.ExcelImport
                 if (lastHeaderCell == null)
                 {
                     result.Success = false;
-                    result.Message = "The uploaded Excel file has no header row.";
+                    result.Message = "الورقة المرفوعة لا تحتوي على صف عناوين في السطر الأول.";
                     return result;
                 }
 
@@ -193,13 +247,37 @@ namespace NewFeature.Services.ExcelImport
                     if (!string.IsNullOrEmpty(text)) rawHeaders.Add((text, i));
                 }
 
-                // Match each template column against the actual header text by keyword/alias.
+                // Match each template column against the actual header text, exact names first and
+                // keyword/alias second. The exact pass is what lets a real sheet carry headers that
+                // are prefixes of one another - "Direction" beside "Direction Name", "Location"
+                // beside "From Location"/"To Location" - without every one of them matching every
+                // other by substring and being reported as a duplicated column. Whatever the exact
+                // pass claims is then off-limits to the looser pass, so the keyword fallback can
+                // never steal a column that already belongs to another field.
                 var columnMap = new Dictionary<string, int>();
                 var duplicateColumns = new List<string>();
+                var claimedColumns = new HashSet<int>();
+
                 foreach (var col in template.Columns)
                 {
+                    var exact = rawHeaders
+                        .Where(h => col.HeaderAliases.Any(alias => string.Equals(h.Text, alias.Trim(), StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    if (exact.Count > 0)
+                    {
+                        columnMap[col.Key] = exact[0].Column;
+                        claimedColumns.Add(exact[0].Column);
+                    }
+                }
+
+                foreach (var col in template.Columns)
+                {
+                    if (columnMap.ContainsKey(col.Key)) continue;
+
                     var matches = rawHeaders
-                        .Where(h => col.HeaderAliases.Any(alias => h.Text.IndexOf(alias, StringComparison.OrdinalIgnoreCase) >= 0))
+                        .Where(h => !claimedColumns.Contains(h.Column))
+                        .Where(h => col.HeaderAliases.Any(alias => h.Text.IndexOf(alias.Trim(), StringComparison.OrdinalIgnoreCase) >= 0))
                         .ToList();
 
                     if (matches.Count > 1)
@@ -209,13 +287,14 @@ namespace NewFeature.Services.ExcelImport
                     if (matches.Count > 0)
                     {
                         columnMap[col.Key] = matches[0].Column;
+                        claimedColumns.Add(matches[0].Column);
                     }
                 }
 
                 if (duplicateColumns.Any())
                 {
                     result.Success = false;
-                    result.Message = $"Invalid Excel template for {template.TemplateName}. The following column(s) appear more than once in the header row: {string.Join(", ", duplicateColumns)}. Please use the approved {template.TemplateName} template.";
+                    result.Message = $"صف العناوين يحتوي على تكرار للأعمدة التالية: {string.Join("، ", duplicateColumns)}. يرجى استخدام {template.TemplateName} المعتمد دون تعديل صف العناوين.";
                     return result;
                 }
 
@@ -224,7 +303,7 @@ namespace NewFeature.Services.ExcelImport
                 {
                     var identityCol = template.GetColumn(template.IdentityColumnKey);
                     result.Success = false;
-                    result.Message = $"Invalid Excel template. The required column \"{identityCol?.DisplayName ?? template.IdentityColumnKey}\" is missing. Please use the approved {template.TemplateName} template.";
+                    result.Message = $"النموذج غير صحيح: لم يتم العثور على العمود الأساسي \"{identityCol?.DisplayName ?? template.IdentityColumnKey}\". يرجى استخدام {template.TemplateName} المعتمد.";
                     return result;
                 }
 
@@ -236,7 +315,7 @@ namespace NewFeature.Services.ExcelImport
                 if (missingRequired.Any())
                 {
                     result.Success = false;
-                    result.Message = $"Invalid Excel template for {template.TemplateName}. The following required column(s) are missing: {string.Join(", ", missingRequired)}. Please use the approved {template.TemplateName} template.";
+                    result.Message = $"الأعمدة الإلزامية التالية غير موجودة في صف العناوين: {string.Join("، ", missingRequired)}. يرجى استخدام {template.TemplateName} المعتمد.";
                     return result;
                 }
 
@@ -271,7 +350,7 @@ namespace NewFeature.Services.ExcelImport
                                 {
                                     RowNumber = context.RowNumber,
                                     Column = outcome.ErrorColumn,
-                                    Message = outcome.ErrorMessage ?? "This row could not be imported."
+                                    Message = outcome.ErrorMessage ?? "تعذّر استيراد هذا الصف."
                                 });
                                 break;
                         }
@@ -285,7 +364,7 @@ namespace NewFeature.Services.ExcelImport
                         result.Errors.Add(new ExcelRowErrorDto
                         {
                             RowNumber = context.RowNumber,
-                            Message = "This row could not be processed due to an unexpected error and was skipped."
+                            Message = "تعذّرت معالجة هذا الصف بسبب خطأ غير متوقع، وتم تجاهله."
                         });
                     }
                 }
@@ -302,14 +381,14 @@ namespace NewFeature.Services.ExcelImport
                 {
                     logger.LogError(ex, "Failed to save a {Template} import batch.", template.TemplateName);
                     result.Success = false;
-                    result.Message = "The file was validated and processed, but the results could not be saved. Please try again or contact support.";
+                    result.Message = "تمت قراءة الملف والتحقق منه، لكن تعذّر حفظ النتائج. يرجى إعادة المحاولة أو التواصل مع الدعم الفني.";
                     return result;
                 }
 
                 result.Success = true;
                 result.Message = result.Errors.Any()
-                    ? $"Excel file processed with {result.SkippedRows} skipped row(s). See details below."
-                    : "Excel file processed successfully.";
+                    ? $"تمت معالجة الملف مع تجاهل {result.SkippedRows} صف. التفاصيل بالأسفل."
+                    : "تمت معالجة الملف بنجاح.";
                 return result;
             }
         }

@@ -732,14 +732,8 @@ namespace NewFeature.Services
             var raw = RtlMarksRegex.Replace(cell.GetString(), string.Empty).Trim();
             if (raw.Length == 0) return null;
 
-            string[] formats = { "dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd" };
-            if (DateTime.TryParseExact(raw, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact))
-                return exact;
-
-            if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
-                return parsed;
-
-            return null;
+            // Accepts Gregorian or Hijri dates, in any of the usual written formats.
+            return FlexibleDateParser.Parse(raw);
         }
 
         private static TimeSpan? ParseCellTime(IXLWorksheet ws, int row, int col)

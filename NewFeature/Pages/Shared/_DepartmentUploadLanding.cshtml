@@ -1,0 +1,70 @@
+@model NewFeature.Pages.Shared.DepartmentUploadLanding
+@*
+    The whole ERP page of a department: download the approved template, upload it filled in.
+    The page then shows the department's records (index + add/edit/delete) below this block. No KPI
+    cards here - the KPIs computed from the data live on the executive dashboard. The upload result (rows added / updated / rejected, with the row, column and reason
+    of each rejection) is rendered by the shared reporter in /js/excel-upload.js.
+*@
+
+<div class="py-4">
+    <div class="mb-4">
+        <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">
+            <i class="bi @Model.Icon me-2"></i>@Model.Title
+        </h1>
+        <p class="text-muted fs-6 mb-0">@Model.Subtitle</p>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Step 1: download -->
+        <div class="col-md-6">
+            <div class="glass-card p-4 h-100 d-flex flex-column">
+                <div class="text-muted small fw-bold mb-2">الخطوة 1</div>
+                <h5 class="fw-bold mb-2">تحميل النموذج المعتمد</h5>
+                <p class="text-muted small flex-grow-1">
+                    حمّل النموذج وعبّئ البيانات فيه دون تغيير أسماء الأعمدة أو أسماء الأوراق.
+                    الأعمدة الإلزامية مظللة باللون الأحمر.
+                </p>
+                <a class="btn btn-neon-outline align-self-start" href="@Model.TemplateUrl" download>
+                    <i class="bi bi-download me-1"></i> تحميل النموذج
+                </a>
+            </div>
+        </div>
+
+        <!-- Step 2: upload -->
+        <div class="col-md-6">
+            <div class="glass-card p-4 h-100 d-flex flex-column">
+                <div class="text-muted small fw-bold mb-2">الخطوة 2</div>
+                <h5 class="fw-bold mb-2">رفع الملف بعد التعبئة</h5>
+                <p class="text-muted small flex-grow-1">
+                    يتم التحقق من كل صف؛ الصفوف السليمة تُحفظ، والصفوف غير الصحيحة تظهر مع رقم الصف والعمود وسبب الرفض.
+                    إعادة رفع نفس الملف بعد التصحيح تُحدّث البيانات ولا تكررها.
+                </p>
+
+                @if (Model.AskForBranch)
+                {
+                    <label for="uploadBranchName" class="form-label small text-muted mb-1">اسم الورشة / الفرع</label>
+                    <input type="text" id="uploadBranchName" class="form-control form-control-glass mb-3" value="الورشة المركزية">
+                }
+
+                <input type="file" id="departmentUploadFile" class="d-none" accept=".xlsx,.xls"
+                       onchange="departmentUpload(event)">
+                <button class="btn btn-neon align-self-start" onclick="document.getElementById('departmentUploadFile').click()">
+                    <i class="bi bi-file-earmark-excel me-1"></i> رفع ملف إكسل
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function departmentUpload(event) {
+        let url = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UploadUrl));
+        const branch = document.getElementById('uploadBranchName');
+        if (branch) {
+            url += (url.indexOf('?') >= 0 ? '&' : '?') + 'branchName=' + encodeURIComponent(branch.value || 'الورشة المركزية');
+        }
+        // Every records table on the page is refreshed with whatever the file changed.
+        rawahelExcelUpload(event, url, () => window.RawahelCrud && RawahelCrud.reloadAll());
+    }
+</script>

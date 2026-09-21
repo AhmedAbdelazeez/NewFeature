@@ -6,8 +6,10 @@ namespace NewFeature.Models
     public class MaintenanceWorkOrderDto
     {
         public int Id { get; set; }
+        public string? WorkOrderNumber { get; set; }
         public int VehicleId { get; set; }
         public string VehiclePlate { get; set; } = string.Empty;
+        public string? BusNumber { get; set; }
         public DateTime Date { get; set; }
         public int Odometer { get; set; }
         public string BreakdownDescription { get; set; } = string.Empty;
@@ -17,6 +19,9 @@ namespace NewFeature.Models
         public string? BreakdownLocation { get; set; }
         public string SupervisorName { get; set; } = string.Empty;
         public string TechnicianName { get; set; } = string.Empty;
+        public string? TechnicianName2 { get; set; }
+        public string? TechnicianName3 { get; set; }
+        public string? TechnicianName4 { get; set; }
         public WorkOrderStatus Status { get; set; }
         public string Remarks { get; set; } = string.Empty;
         public List<SparePartConsumptionDto> ConsumedParts { get; set; } = new List<SparePartConsumptionDto>();
@@ -32,31 +37,37 @@ namespace NewFeature.Models
         public int? InventoryItemId { get; set; }
     }
 
+    // Eight indicators, every one of them answerable from the approved "Internal work orders"
+    // sheet alone (work-order number, bus, odometer, fault, in/out date and hour, up to four
+    // technicians, status, supervisor, notes). Spare-parts cost and breakdown-location share were
+    // dropped: the approved sheet carries neither a parts column nor a location column, so both
+    // could only ever have reported figures no uploaded file actually supports.
     public class MaintenanceKpisDto
     {
-        public double MeanTimeToRepairHours { get; set; } // MTTR
-        public int TotalBreakdowns { get; set; }
-        public double FleetAvailabilityRate { get; set; } // %
-        public decimal TotalSparePartsCost { get; set; }
-        public double ActiveBusesRate { get; set; } // %
-        public double MaintenanceBacklogRate { get; set; } // %
-        public List<BusBreakdownFrequencyDto> TopFrequentBreakdowns { get; set; } = new List<BusBreakdownFrequencyDto>();
+        public int TotalWorkOrders { get; set; }
+        public int CompletedWorkOrders { get; set; }
+        public double CompletionRatePercent { get; set; }
+        public double MeanTimeToRepairHours { get; set; } // MTTR, from date+hour in to date+hour out
+        public int WaitingPartsCount { get; set; }        // "متوقف علي قطع غيار"
+        public int InProgressCount { get; set; }          // "جاري العمل"
+        public double MaintenanceBacklogRate { get; set; } // % of work orders not yet closed
+        public int VehiclesServicedCount { get; set; }    // distinct buses that entered the workshop
+        public int ActiveTechniciansCount { get; set; }   // distinct technicians named across all four slots
 
-        // How much repair work each breakdown location represents (from the on-site branch
-        // reports' "موقع العطل" column). Only includes work orders where a location was recorded.
-        public List<BreakdownLocationFrequencyDto> TopBreakdownLocations { get; set; } = new List<BreakdownLocationFrequencyDto>();
+        // Not shown on the Maintenance department's own cards, because the approved work-orders
+        // sheet carries neither a whole-fleet view nor a parts column. They stay on this DTO
+        // because the Fleet department's cards legitimately need them, and they are computed from
+        // the Vehicles and SparePartConsumptions tables those other modules maintain.
+        public double FleetAvailabilityRate { get; set; }
+        public decimal TotalSparePartsCost { get; set; }
+
+        public List<BusBreakdownFrequencyDto> TopFrequentBreakdowns { get; set; } = new List<BusBreakdownFrequencyDto>();
     }
 
     public class BusBreakdownFrequencyDto
     {
         public string VehiclePlate { get; set; } = string.Empty;
+        public string? BusNumber { get; set; }
         public int BreakdownCount { get; set; }
-    }
-
-    public class BreakdownLocationFrequencyDto
-    {
-        public string Location { get; set; } = string.Empty;
-        public int BreakdownCount { get; set; }
-        public double SharePercentage { get; set; } // % of all located breakdowns this location represents
     }
 }

@@ -1,424 +1,76 @@
 @page
 @model NewFeature.Pages.MaintenanceModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
 @{
-    ViewData["Title"] = "Fleet Management - Maintenance";
+    ViewData["Title"] = "إدارة الصيانة - رفع البيانات";
 }
 
-<div class="py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="glow-text"><i class="bi bi-tools me-2"></i> <span data-i18n="maint-title">Maintenance</span></h1>
-            <p class="text-muted mb-0" data-i18n="maint-subtitle">Workshop work orders, breakdown logs, and spare parts consumption</p>
-        </div>
-        <div>
-            <input type="text" id="branchName" class="form-control form-control-glass d-inline-block me-2" style="width: 220px;" placeholder="Branch / Workshop name" value="الورشة المركزية">
-            <a class="btn btn-outline-secondary me-2" href="/templates/Maintenance_Template.xlsx" download>
-                <i class="bi bi-download"></i> Download Template
-            </a>
-            <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event)">
-            <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
-                <i class="bi bi-file-earmark-excel"></i> <span data-i18n="maint-btn-bulk">Bulk Upload</span>
-            </button>
-            <button class="btn btn-neon" onclick="openAddModal()">
-                <i class="bi bi-plus-circle me-1"></i> <span data-i18n="maint-btn-add">Add Work Order</span>
-            </button>
-        </div>
-    </div>
+@* Maintenance in the ERP is data entry only: the approved "Internal work orders" template. Every
+   KPI computed from it is shown on the executive dashboard. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "إدارة الصيانة",
+        Subtitle = "رفع سجل أوامر العمل الداخلية للورشة. المؤشرات المحسوبة منه تظهر في لوحة المؤشرات التنفيذية.",
+        Icon = "bi-tools",
+        TemplateUrl = "/api/maintenance/template",
+        UploadUrl = "/api/maintenance/bulk-upload",
+        AskForBranch = true,
+        Sheets = new[] { DepartmentTemplates.Maintenance }
+    };
+}
+<partial name="_DepartmentUploadLanding" model="landing" />
 
-    <!-- KPI Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="maint-kpi-mttr">MTTR (hrs)</div>
-                <div class="fs-3 fw-bold" id="kpiMttr">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="maint-kpi-breakdowns">Total Breakdowns</div>
-                <div class="fs-3 fw-bold" id="kpiBreakdowns">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="maint-kpi-availability">Fleet Availability</div>
-                <div class="fs-3 fw-bold" id="kpiAvailability">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="maint-kpi-cost">Parts Cost</div>
-                <div class="fs-3 fw-bold" id="kpiPartsCost">--</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toolbar: date filter -->
-    <div class="glass-card mb-4 p-3">
-        <div class="row align-items-center g-3">
-            <div class="col-md-4">
-                <label class="form-label small text-muted mb-1" data-i18n="maint-lbl-from">From Date</label>
-                <input type="date" id="filterFrom" class="form-control form-control-glass">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small text-muted mb-1" data-i18n="maint-lbl-to">To Date</label>
-                <input type="date" id="filterTo" class="form-control form-control-glass">
-            </div>
-            <div class="col-md-4 d-flex gap-2 align-items-end">
-                <button class="btn btn-neon-outline btn-sm w-100" onclick="applyFilter()"><span data-i18n="maint-btn-filter">Apply</span></button>
-                <button class="btn btn-neon-outline btn-sm w-100" onclick="resetFilter()"><span data-i18n="maint-btn-reset">Reset</span></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Work Orders List -->
-    <div class="glass-card">
-        <div class="table-responsive">
-            <table class="table table-glass text-white align-middle">
-                <thead>
-                    <tr>
-                        <th data-i18n="maint-th-plate">Vehicle Plate</th>
-                        <th data-i18n="maint-th-date">Date</th>
-                        <th data-i18n="maint-th-odometer">Odometer</th>
-                        <th data-i18n="maint-th-desc">Breakdown</th>
-                        <th data-i18n="maint-th-tech">Technician</th>
-                        <th data-i18n="maint-th-status">Status</th>
-                        <th data-i18n="maint-th-actions" class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersList">
-                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading work orders...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center p-3">
-            <span class="text-muted small" id="pageInfo">--</span>
-            <div>
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="prevPage()" data-i18n="maint-btn-prev">Previous</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="nextPage()" data-i18n="maint-btn-next">Next</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="text-center mt-5">
-        <a href="/Fleet" class="btn btn-neon-outline">
-            <i class="bi bi-arrow-left me-1"></i> <span data-i18n="btn-back-fleet">Back to Fleet</span>
-        </a>
-    </div>
-</div>
-
-<!-- Add/Edit Work Order Modal -->
-<div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content modal-content-glass">
-            <div class="modal-header modal-header-glass">
-                <h5 class="modal-title glow-text" id="modalTitle" data-i18n="maint-btn-add">Add Work Order</h5>
-                <button type="button" class="close-btn-glass" data-bs-dismiss="modal" aria-label="Close">&times;</button>
-            </div>
-            <form id="orderForm" onsubmit="saveOrder(event)">
-                <div class="modal-body p-4">
-                    <input type="hidden" id="orderId">
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-th-plate">Vehicle</label>
-                            <select id="vehicleId" class="form-control form-control-glass" required></select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-th-date">Date</label>
-                            <input type="date" id="date" class="form-control form-control-glass" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-th-odometer">Odometer</label>
-                            <input type="number" id="odometer" class="form-control form-control-glass" min="0" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-lbl-branch">Branch / Location</label>
-                            <input type="text" id="branchLocation" class="form-control form-control-glass" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label" data-i18n="maint-th-desc">Breakdown Description</label>
-                        <textarea id="breakdownDescription" class="form-control form-control-glass" required></textarea>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-lbl-timein">Time In</label>
-                            <input type="datetime-local" id="timeIn" class="form-control form-control-glass" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-lbl-timeout">Time Out</label>
-                            <input type="datetime-local" id="timeOut" class="form-control form-control-glass">
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-th-tech">Technician</label>
-                            <input type="text" id="technicianName" class="form-control form-control-glass" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-lbl-supervisor">Supervisor</label>
-                            <input type="text" id="supervisorName" class="form-control form-control-glass" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-th-status">Status</label>
-                            <select id="status" class="form-control form-control-glass" required>
-                                <option value="0" data-i18n="maint-status-pending">Pending</option>
-                                <option value="1" data-i18n="maint-status-analysis">In Analysis</option>
-                                <option value="2" data-i18n="maint-status-parts">Waiting Parts</option>
-                                <option value="3" data-i18n="maint-status-completed">Completed</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" data-i18n="maint-lbl-remarks">Remarks</label>
-                            <input type="text" id="remarks" class="form-control form-control-glass">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer modal-footer-glass">
-                    <button type="button" class="btn btn-neon-outline" data-bs-dismiss="modal" data-i18n="btn-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-neon" data-i18n="btn-save">Save Work Order</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<!-- Records: the uploaded work orders, with add / edit / delete -->
+<div class="mb-5">
+    <h5 class="fw-bold mb-3"><i class="bi bi-table me-2"></i>سجل أوامر العمل الداخلية</h5>
+    <div id="crud-workorders"></div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
     <script>
-        const currentLang = localStorage.getItem('lang') || 'en';
-        let currentPage = 1;
-        const pageSize = 10;
-        let fromDate = '';
-        let toDate = '';
-        let vehiclesCache = [];
-        let currentOrderParts = []; // preserves existing consumed parts when editing (avoids wiping them on save)
-
-        const statusMeta = { 0: "Pending", 1: "In Analysis", 2: "Waiting Parts", 3: "Completed" };
-        const statusMetaAr = { 0: "معلق", 1: "قيد التحليل", 2: "بانتظار قطع الغيار", 3: "مكتمل" };
-
-        document.addEventListener("DOMContentLoaded", function () {
-            loadVehiclesForSelect();
-            loadKpis();
-            loadOrders();
-        });
-
-        async function loadVehiclesForSelect() {
-            try {
-                const res = await fetch('/api/vehicles');
-                if (res.ok) {
-                    vehiclesCache = await res.json();
-                    const sel = document.getElementById('vehicleId');
-                    sel.innerHTML = vehiclesCache.map(v => `<option value="${v.id}">${v.licensePlate}</option>`).join('');
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadKpis() {
-            try {
-                const res = await fetch('/api/maintenance/kpis');
-                if (res.ok) {
-                    const k = await res.json();
-                    document.getElementById('kpiMttr').innerText = (k.meanTimeToRepairHours ?? 0).toFixed(1);
-                    document.getElementById('kpiBreakdowns').innerText = k.totalBreakdowns ?? 0;
-                    document.getElementById('kpiAvailability').innerText = (k.fleetAvailabilityRate ?? 0).toFixed(1) + '%';
-                    document.getElementById('kpiPartsCost').innerText = (k.totalSparePartsCost ?? 0).toLocaleString();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadOrders() {
-            const tbody = document.getElementById("ordersList");
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading...</td></tr>`;
-
-            let url = `/api/maintenance/workorders/paged?page=${currentPage}&pageSize=${pageSize}`;
-            if (fromDate) url += `&fromDate=${fromDate}`;
-            if (toDate) url += `&toDate=${toDate}`;
-
-            try {
-                const res = await fetch(url);
-                if (!res.ok) return;
-                const data = await res.json();
-                renderOrders(data.items || []);
-                document.getElementById('pageInfo').innerText =
-                    `Page ${data.page} of ${data.totalPages || 1} (${data.totalCount} records)`;
-            } catch (err) { console.error(err); }
-        }
-
-        function renderOrders(orders) {
-            const tbody = document.getElementById("ordersList");
-            tbody.innerHTML = "";
-
-            if (orders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No work orders found.</td></tr>`;
-                return;
-            }
-
-            orders.forEach(o => {
-                const statusText = currentLang === 'en' ? statusMeta[o.status] : statusMetaAr[o.status];
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td><strong>${o.vehiclePlate}</strong></td>
-                    <td>${new Date(o.date).toLocaleDateString()}</td>
-                    <td>${o.odometer}</td>
-                    <td>${o.breakdownDescription}</td>
-                    <td>${o.technicianName}</td>
-                    <td>${statusText}</td>
-                    <td class="text-end">
-                        <button class="btn btn-neon-outline btn-sm me-2" onclick="editOrder(${o.id})"><i class="bi bi-pencil-square"></i></button>
-                        <button class="btn btn-neon-danger btn-sm" onclick="deleteOrder(${o.id})"><i class="bi bi-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+        (function () {
+            const f = RawahelCrud.format;
+            // WorkOrderStatus: 0 Pending (older rows only), 1 InAnalysis, 2 WaitingParts, 3 Completed.
+            const statusLabels = { 0: 'معلق', 1: 'جاري العمل', 2: 'متوقف علي قطع غيار', 3: 'تم الانتهاء' };
+            RawahelCrud.mount({
+                el: '#crud-workorders',
+                itemName: 'أمر عمل',
+                listUrl: '/api/maintenance/workorders/paged',
+                createUrl: '/api/maintenance',
+                itemUrl: id => '/api/maintenance/' + id,
+                dateFilter: true,
+                searchPlaceholder: 'بحث برقم أمر العمل أو رقم الحافلة أو العطل أو الفني أو المشرف...',
+                columns: [
+                    { key: 'workOrderNumber', label: 'رقم أمر العمل', format: v => '<strong>' + f.esc(v || '--') + '</strong>' },
+                    { key: 'busNumber', label: 'رقم الحافلة', format: (v, r) => f.esc(v || r.vehiclePlate) },
+                    { key: 'timeIn', label: 'الدخول', format: v => f.dateTime(v) },
+                    { key: 'timeOut', label: 'الخروج', format: v => f.dateTime(v) },
+                    { key: 'odometer', label: 'العداد', format: v => f.number(v, 0) },
+                    { key: 'breakdownDescription', label: 'وصف العطل' },
+                    { key: 'technicianName', label: 'الفنيون', format: (v, r) => f.esc([r.technicianName, r.technicianName2, r.technicianName3, r.technicianName4].filter(Boolean).join('، ') || '--') },
+                    { key: 'status', label: 'الحالة', format: v => f.esc(statusLabels[v] || '--') },
+                    { key: 'supervisorName', label: 'المشرف' }
+                ],
+                fields: [
+                    { key: 'workOrderNumber', label: 'رقم امر العمل', required: true, col: 4 },
+                    { key: 'busNumber', label: 'رقم الحافلة', required: true, col: 4 },
+                    { key: 'odometer', label: 'عداد كم الحالي', type: 'number', col: 4 },
+                    { key: 'breakdownDescription', label: 'وصف العطل', type: 'textarea', required: true, col: 12 },
+                    { key: 'timeIn', label: 'تاريخ وساعة الدخول', type: 'datetime', required: true, col: 6 },
+                    { key: 'timeOut', label: 'تاريخ وساعة الخروج', type: 'datetime', col: 6 },
+                    { key: 'technicianName', label: 'اسم الفنى 1', required: true, col: 6 },
+                    { key: 'technicianName2', label: 'اسم الفنى 2', col: 6 },
+                    { key: 'technicianName3', label: 'اسم الفنى 3', col: 6 },
+                    { key: 'technicianName4', label: 'اسم الفنى 4', col: 6 },
+                    { key: 'status', label: 'حالة', type: 'select-int', required: true, col: 4, default: 1,
+                      options: [{ value: 3, label: 'تم الانتهاء' }, { value: 1, label: 'جاري العمل' }, { value: 2, label: 'متوقف علي قطع غيار' }] },
+                    { key: 'supervisorName', label: 'اسم المشرف', col: 4 },
+                    { key: 'branchLocation', label: 'الورشة / الفرع', col: 4, default: 'الورشة المركزية' },
+                    { key: 'remarks', label: 'ملاحظات', type: 'textarea', col: 12 }
+                ]
             });
-        }
-
-        function applyFilter() {
-            fromDate = document.getElementById('filterFrom').value;
-            toDate = document.getElementById('filterTo').value;
-            currentPage = 1;
-            loadOrders();
-        }
-
-        function resetFilter() {
-            document.getElementById('filterFrom').value = '';
-            document.getElementById('filterTo').value = '';
-            fromDate = ''; toDate = '';
-            currentPage = 1;
-            loadOrders();
-        }
-
-        function prevPage() { if (currentPage > 1) { currentPage--; loadOrders(); } }
-        function nextPage() { currentPage++; loadOrders(); }
-
-        function openAddModal() {
-            document.getElementById("orderForm").reset();
-            document.getElementById("orderId").value = "";
-            currentOrderParts = [];
-            document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Add Work Order" : "إضافة أمر صيانة";
-            new bootstrap.Modal(document.getElementById('orderModal')).show();
-        }
-
-        async function editOrder(id) {
-            try {
-                const res = await fetch(`/api/maintenance/${id}`);
-                if (res.ok) {
-                    const o = await res.json();
-                    document.getElementById("orderId").value = o.id;
-                    document.getElementById("vehicleId").value = o.vehicleId;
-                    document.getElementById("date").value = o.date.substring(0, 10);
-                    document.getElementById("odometer").value = o.odometer;
-                    document.getElementById("branchLocation").value = o.branchLocation;
-                    document.getElementById("breakdownDescription").value = o.breakdownDescription;
-                    document.getElementById("timeIn").value = o.timeIn.substring(0, 16);
-                    document.getElementById("timeOut").value = o.timeOut ? o.timeOut.substring(0, 16) : '';
-                    document.getElementById("technicianName").value = o.technicianName;
-                    document.getElementById("supervisorName").value = o.supervisorName;
-                    document.getElementById("status").value = o.status;
-                    document.getElementById("remarks").value = o.remarks;
-                    currentOrderParts = o.consumedParts || [];
-                    document.getElementById("modalTitle").innerText = currentLang === 'en' ? "Edit Work Order" : "تعديل أمر الصيانة";
-                    new bootstrap.Modal(document.getElementById('orderModal')).show();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        async function saveOrder(e) {
-            e.preventDefault();
-            const id = document.getElementById("orderId").value;
-            const timeOutVal = document.getElementById("timeOut").value;
-            const dto = {
-                id: id ? parseInt(id) : 0,
-                vehicleId: parseInt(document.getElementById("vehicleId").value),
-                date: document.getElementById("date").value,
-                odometer: parseInt(document.getElementById("odometer").value),
-                branchLocation: document.getElementById("branchLocation").value,
-                breakdownDescription: document.getElementById("breakdownDescription").value,
-                timeIn: document.getElementById("timeIn").value,
-                timeOut: timeOutVal || null,
-                technicianName: document.getElementById("technicianName").value,
-                supervisorName: document.getElementById("supervisorName").value,
-                status: parseInt(document.getElementById("status").value),
-                remarks: document.getElementById("remarks").value || '',
-                consumedParts: currentOrderParts
-            };
-
-            const method = id ? 'PUT' : 'POST';
-            const url = id ? `/api/maintenance/${id}` : '/api/maintenance';
-
-            try {
-                const res = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dto)
-                });
-                if (res.ok) {
-                    bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
-                    loadOrders();
-                    loadKpis();
-                } else {
-                    alert("Error saving work order.");
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        async function deleteOrder(id) {
-            const confirmMsg = currentLang === 'en' ? "Delete this work order?" : "هل أنت متأكد من حذف أمر الصيانة؟";
-            if (!confirm(confirmMsg)) return;
-            try {
-                const res = await fetch(`/api/maintenance/${id}`, { method: 'DELETE' });
-                if (res.ok) { loadOrders(); loadKpis(); }
-                else { alert("Failed to delete work order."); }
-            } catch (err) { console.error(err); }
-        }
-
-        async function handleBulkUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const branch = document.getElementById('branchName').value || 'الورشة المركزية';
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const tbody = document.getElementById("ordersList");
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Uploading...</td></tr>`;
-
-                const res = await fetch(`/api/maintenance/bulk-upload?branchName=${encodeURIComponent(branch)}`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    const result = await res.json();
-                    let msg = currentLang === 'en' ? `Successfully imported ${result.successCount} records.` : `تم استيراد ${result.successCount} سجل بنجاح.`;
-                    if (result.errors && result.errors.length > 0) {
-                        msg += "\nErrors:\n" + result.errors.slice(0, 5).join('\n');
-                        if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more errors.`;
-                    }
-                    alert(msg);
-                } else {
-                    const text = await res.text();
-                    alert("Bulk upload failed: " + text);
-                }
-            } catch (err) {
-                console.error(err);
-                alert("An error occurred during bulk upload.");
-            } finally {
-                event.target.value = "";
-                loadOrders();
-                loadKpis();
-            }
-        }
+        })();
     </script>
 }

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NewFeature.Models;
 using NewFeature.Services.Repositories;
-using ClosedXML.Excel;
+using NewFeature.Services.ExcelImport;
 
 namespace NewFeature.Services
 {
@@ -36,97 +36,41 @@ namespace NewFeature.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<MaintenanceWorkOrderDto>> GetAllWorkOrdersAsync()
-        {
-            var orders = await _workOrderRepository.GetAllAsync();
-            var vehicles = await _vehicleRepository.GetAllAsync();
-            var parts = await _partRepository.GetAllAsync();
 
-            var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v.LicensePlate);
-
-            return orders.OrderByDescending(o => o.Date).Select(o => new MaintenanceWorkOrderDto
-            {
-                Id = o.Id,
-                VehicleId = o.VehicleId,
-                VehiclePlate = vehicleMap.TryGetValue(o.VehicleId, out var plate) ? plate : "Unknown",
-                Date = o.Date,
-                Odometer = o.Odometer,
-                BreakdownDescription = o.BreakdownDescription,
-                TimeIn = o.TimeIn,
-                TimeOut = o.TimeOut,
-                BranchLocation = o.BranchLocation,
-                BreakdownLocation = o.BreakdownLocation,
-                SupervisorName = o.SupervisorName,
-                TechnicianName = o.TechnicianName,
-                Status = o.Status,
-                Remarks = o.Remarks,
-                ConsumedParts = parts.Where(p => p.MaintenanceWorkOrderId == o.Id).Select(p => new SparePartConsumptionDto
-                {
-                    Id = p.Id,
-                    MaintenanceWorkOrderId = p.MaintenanceWorkOrderId,
-                    PartName = p.PartName,
-                    Quantity = p.Quantity,
-                    UnitPrice = p.UnitPrice,
-                    InventoryItemId = p.InventoryItemId
-                }).ToList()
-            }).ToList();
-        }
-
-        public async Task<PagedResultDto<MaintenanceWorkOrderDto>> GetWorkOrdersPagedAsync(int page, int pageSize, DateTime? fromDate, DateTime? toDate)
+        #region Work orders: index + CRUD (the Maintenance page)
+        // Paged, date-filterable and searchable. The executive dashboard's work-orders table reads
+        // this same endpoint (without a search term), so its shape is unchanged.
+        public async Task<PagedResultDto<MaintenanceWorkOrderDto>> GetWorkOrdersPagedAsync(
+            int page, int pageSize, DateTime? fromDate, DateTime? toDate, string? search = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 200) pageSize = 200;
 
-            var allOrders = (await _workOrderRepository.GetAllAsync()).AsEnumerable();
+            var query = _context.MaintenanceWorkOrders.AsNoTracking().Include(o => o.Vehicle).AsQueryable();
+            if (fromDate.HasValue) query = query.Where(o => o.Date >= fromDate.Value.Date);
+            if (toDate.HasValue) query = query.Where(o => o.Date < toDate.Value.Date.AddDays(1));
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(o =>
+                    (o.WorkOrderNumber != null && o.WorkOrderNumber.Contains(term)) ||
+                    o.BreakdownDescription.Contains(term) ||
+                    o.TechnicianName.Contains(term) ||
+                    o.SupervisorName.Contains(term) ||
+                    (o.Vehicle != null && ((o.Vehicle.BusNumber != null && o.Vehicle.BusNumber.Contains(term)) || o.Vehicle.LicensePlate.Contains(term))));
+            }
 
-            if (fromDate.HasValue)
-                allOrders = allOrders.Where(o => o.Date >= fromDate.Value.Date);
-            if (toDate.HasValue)
-                allOrders = allOrders.Where(o => o.Date < toDate.Value.Date.AddDays(1));
-
-            var filteredOrders = allOrders.OrderByDescending(o => o.Date).ToList();
-            var totalCount = filteredOrders.Count;
-
-            var pagedOrders = filteredOrders
+            var totalCount = await query.CountAsync();
+            var orders = await query
+                .OrderByDescending(o => o.Date).ThenByDescending(o => o.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList();
-
-            var vehicles = await _vehicleRepository.GetAllAsync();
-            var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v.LicensePlate);
-            var parts = await _partRepository.GetAllAsync();
-
-            var items = pagedOrders.Select(o => new MaintenanceWorkOrderDto
-            {
-                Id = o.Id,
-                VehicleId = o.VehicleId,
-                VehiclePlate = vehicleMap.TryGetValue(o.VehicleId, out var plate) ? plate : "Unknown",
-                Date = o.Date,
-                Odometer = o.Odometer,
-                BreakdownDescription = o.BreakdownDescription,
-                TimeIn = o.TimeIn,
-                TimeOut = o.TimeOut,
-                BranchLocation = o.BranchLocation,
-                BreakdownLocation = o.BreakdownLocation,
-                SupervisorName = o.SupervisorName,
-                TechnicianName = o.TechnicianName,
-                Status = o.Status,
-                Remarks = o.Remarks,
-                ConsumedParts = parts.Where(p => p.MaintenanceWorkOrderId == o.Id).Select(p => new SparePartConsumptionDto
-                {
-                    Id = p.Id,
-                    MaintenanceWorkOrderId = p.MaintenanceWorkOrderId,
-                    PartName = p.PartName,
-                    Quantity = p.Quantity,
-                    UnitPrice = p.UnitPrice,
-                    InventoryItemId = p.InventoryItemId
-                }).ToList()
-            }).ToList();
+                .ToListAsync();
 
             return new PagedResultDto<MaintenanceWorkOrderDto>
             {
-                Items = items,
+                Items = orders.Select(ToDto).ToList(),
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize
@@ -135,152 +79,168 @@ namespace NewFeature.Services
 
         public async Task<MaintenanceWorkOrderDto?> GetWorkOrderByIdAsync(int id)
         {
-            var o = await _workOrderRepository.GetByIdAsync(id);
-            if (o == null) return null;
-
-            var vehicle = await _vehicleRepository.GetByIdAsync(o.VehicleId);
-            var parts = (await _partRepository.GetAllAsync()).Where(p => p.MaintenanceWorkOrderId == id).ToList();
-
-            return new MaintenanceWorkOrderDto
-            {
-                Id = o.Id,
-                VehicleId = o.VehicleId,
-                VehiclePlate = vehicle?.LicensePlate ?? "Unknown",
-                Date = o.Date,
-                Odometer = o.Odometer,
-                BreakdownDescription = o.BreakdownDescription,
-                TimeIn = o.TimeIn,
-                TimeOut = o.TimeOut,
-                BranchLocation = o.BranchLocation,
-                BreakdownLocation = o.BreakdownLocation,
-                SupervisorName = o.SupervisorName,
-                TechnicianName = o.TechnicianName,
-                Status = o.Status,
-                Remarks = o.Remarks,
-                ConsumedParts = parts.Select(p => new SparePartConsumptionDto
-                {
-                    Id = p.Id,
-                    MaintenanceWorkOrderId = p.MaintenanceWorkOrderId,
-                    PartName = p.PartName,
-                    Quantity = p.Quantity,
-                    UnitPrice = p.UnitPrice,
-                    InventoryItemId = p.InventoryItemId
-                }).ToList()
-            };
+            var order = await _context.MaintenanceWorkOrders.AsNoTracking()
+                .Include(o => o.Vehicle)
+                .FirstOrDefaultAsync(o => o.Id == id);
+            return order == null ? null : ToDto(order);
         }
 
-        public async Task<MaintenanceWorkOrderDto> CreateWorkOrderAsync(MaintenanceWorkOrderDto dto)
+        public async Task<CrudResult<MaintenanceWorkOrderDto>> CreateWorkOrderAsync(MaintenanceWorkOrderDto dto)
         {
-            var o = new MaintenanceWorkOrder
-            {
-                VehicleId = dto.VehicleId,
-                Date = dto.Date,
-                Odometer = dto.Odometer,
-                BreakdownDescription = dto.BreakdownDescription,
-                TimeIn = dto.TimeIn,
-                TimeOut = dto.TimeOut,
-                BranchLocation = dto.BranchLocation,
-                BreakdownLocation = dto.BreakdownLocation,
-                SupervisorName = dto.SupervisorName,
-                TechnicianName = dto.TechnicianName,
-                Status = dto.Status,
-                Remarks = dto.Remarks
-            };
+            var errors = Validate(dto);
+            if (errors.Count == 0 && await WorkOrderNumberTakenAsync(dto.WorkOrderNumber!, excludeId: null))
+                errors.Add("workOrderNumber", DuplicateNumberMessage);
+            if (errors.Count > 0) return CrudResult<MaintenanceWorkOrderDto>.Invalid(errors);
 
-            await _workOrderRepository.AddAsync(o);
-            await _workOrderRepository.SaveChangesAsync();
+            var vehicles = await _context.Vehicles.ToListAsync();
+            var order = new MaintenanceWorkOrder();
+            Apply(dto, order, ResolveVehicle(vehicles, dto.BusNumber!.Trim()));
+            _context.MaintenanceWorkOrders.Add(order);
+            await _context.SaveChangesAsync();
 
-            dto.Id = o.Id;
-
-            if (dto.ConsumedParts != null && dto.ConsumedParts.Any())
-            {
-                foreach (var p in dto.ConsumedParts)
-                {
-                    var part = new SparePartConsumption
-                    {
-                        MaintenanceWorkOrderId = o.Id,
-                        PartName = p.PartName,
-                        Quantity = p.Quantity,
-                        UnitPrice = p.UnitPrice,
-                        InventoryItemId = p.InventoryItemId
-                    };
-                    await _partRepository.AddAsync(part);
-                }
-                await _partRepository.SaveChangesAsync();
-            }
-
-            return dto;
+            return CrudResult<MaintenanceWorkOrderDto>.Ok(ToDto(order));
         }
 
-        public async Task<bool> UpdateWorkOrderAsync(MaintenanceWorkOrderDto dto)
+        public async Task<CrudResult<MaintenanceWorkOrderDto>> UpdateWorkOrderAsync(int id, MaintenanceWorkOrderDto dto)
         {
-            var o = await _workOrderRepository.GetByIdAsync(dto.Id);
-            if (o == null) return false;
+            var order = await _context.MaintenanceWorkOrders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order == null) return CrudResult<MaintenanceWorkOrderDto>.Missing();
 
-            o.VehicleId = dto.VehicleId;
-            o.Date = dto.Date;
-            o.Odometer = dto.Odometer;
-            o.BreakdownDescription = dto.BreakdownDescription;
-            o.TimeIn = dto.TimeIn;
-            o.TimeOut = dto.TimeOut;
-            o.BranchLocation = dto.BranchLocation;
-            o.BreakdownLocation = dto.BreakdownLocation;
-            o.SupervisorName = dto.SupervisorName;
-            o.TechnicianName = dto.TechnicianName;
-            o.Status = dto.Status;
-            o.Remarks = dto.Remarks;
+            var errors = Validate(dto);
+            if (errors.Count == 0 && await WorkOrderNumberTakenAsync(dto.WorkOrderNumber!, excludeId: id))
+                errors.Add("workOrderNumber", DuplicateNumberMessage);
+            if (errors.Count > 0) return CrudResult<MaintenanceWorkOrderDto>.Invalid(errors);
 
-            await _workOrderRepository.UpdateAsync(o);
+            var vehicles = await _context.Vehicles.ToListAsync();
+            Apply(dto, order, ResolveVehicle(vehicles, dto.BusNumber!.Trim()));
+            await _context.SaveChangesAsync();
 
-            // Simple parts reconciliation: delete old parts, insert new
-            var existingParts = (await _partRepository.GetAllAsync()).Where(p => p.MaintenanceWorkOrderId == o.Id).ToList();
-            foreach (var p in existingParts)
-            {
-                await _partRepository.DeleteAsync(p);
-            }
-
-            if (dto.ConsumedParts != null && dto.ConsumedParts.Any())
-            {
-                foreach (var p in dto.ConsumedParts)
-                {
-                    var part = new SparePartConsumption
-                    {
-                        MaintenanceWorkOrderId = o.Id,
-                        PartName = p.PartName,
-                        Quantity = p.Quantity,
-                        UnitPrice = p.UnitPrice,
-                        InventoryItemId = p.InventoryItemId
-                    };
-                    await _partRepository.AddAsync(part);
-                }
-            }
-
-            await _workOrderRepository.SaveChangesAsync();
-            return true;
+            return CrudResult<MaintenanceWorkOrderDto>.Ok(ToDto(order));
         }
 
         public async Task<bool> DeleteWorkOrderAsync(int id)
         {
-            var o = await _workOrderRepository.GetByIdAsync(id);
-            if (o == null) return false;
+            var order = await _context.MaintenanceWorkOrders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order == null) return false;
 
-            await _workOrderRepository.DeleteAsync(o);
-            await _workOrderRepository.SaveChangesAsync();
+            // Parts recorded against the order by older uploads go with it.
+            var parts = await _context.SparePartConsumptions.Where(p => p.MaintenanceWorkOrderId == id).ToListAsync();
+            _context.SparePartConsumptions.RemoveRange(parts);
+            _context.MaintenanceWorkOrders.Remove(order);
+            await _context.SaveChangesAsync();
             return true;
         }
 
+        private const string DuplicateNumberMessage = "رقم أمر العمل مسجل مسبقاً لأمر عمل آخر.";
+
+        private Task<bool> WorkOrderNumberTakenAsync(string number, int? excludeId)
+        {
+            var value = number.Trim();
+            return _context.MaintenanceWorkOrders.AnyAsync(o =>
+                o.WorkOrderNumber == value && (excludeId == null || o.Id != excludeId));
+        }
+
+        // The single rule set for a work order. The Excel import runs every row through it and the
+        // page's add/edit form does the same, so both entry paths accept exactly the same data.
+        // Field names are the DTO's camelCase property names, which is what the page's form uses.
+        private static List<FieldErrorDto> Validate(MaintenanceWorkOrderDto dto)
+        {
+            var errors = new List<FieldErrorDto>();
+
+            if (string.IsNullOrWhiteSpace(dto.WorkOrderNumber)) errors.Add("workOrderNumber", "رقم أمر العمل مطلوب.");
+            if (string.IsNullOrWhiteSpace(dto.BusNumber)) errors.Add("busNumber", "رقم الحافلة مطلوب.");
+            if (string.IsNullOrWhiteSpace(dto.BreakdownDescription)) errors.Add("breakdownDescription", "وصف العطل مطلوب.");
+            if (dto.TimeIn == default)
+                errors.Add("timeIn", "تاريخ الدخول غير مقروء. استخدم الصيغة يوم/شهر/سنة.");
+            if (string.IsNullOrWhiteSpace(dto.TechnicianName)) errors.Add("technicianName", "اسم الفني 1 مطلوب.");
+            if (!Enum.IsDefined(typeof(WorkOrderStatus), dto.Status))
+                errors.Add("status", "الحالة يجب أن تكون \"تم الانتهاء\" أو \"جاري العمل\" أو \"متوقف علي قطع غيار\".");
+
+            if (dto.TimeIn != default && dto.TimeOut.HasValue && dto.TimeOut.Value < dto.TimeIn)
+                errors.Add("timeOut", "تاريخ/ساعة الخروج تسبق تاريخ/ساعة الدخول.");
+            if (dto.Status == WorkOrderStatus.Completed && dto.TimeOut == null)
+                errors.Add("timeOut", "أمر عمل بحالة \"تم الانتهاء\" يجب أن يحتوي على تاريخ أو ساعة خروج.");
+
+            if (dto.Odometer < 0 || dto.Odometer > 5000000)
+                errors.Add("odometer", "قراءة العداد يجب أن تكون بين 0 و 5,000,000.");
+
+            return errors;
+        }
+
+        private static void Apply(MaintenanceWorkOrderDto dto, MaintenanceWorkOrder order, Vehicle vehicle)
+        {
+            order.WorkOrderNumber = Truncate(dto.WorkOrderNumber!.Trim(), 50);
+            order.Vehicle = vehicle;
+            if (vehicle.Id > 0) order.VehicleId = vehicle.Id;
+            order.Date = dto.TimeIn.Date;
+            order.TimeIn = dto.TimeIn;
+            order.TimeOut = dto.TimeOut;
+            order.Odometer = dto.Odometer;
+            order.BreakdownDescription = Truncate(dto.BreakdownDescription.Trim(), 500);
+            order.BranchLocation = Truncate(string.IsNullOrWhiteSpace(dto.BranchLocation) ? "الورشة المركزية" : dto.BranchLocation.Trim(), 100);
+            order.SupervisorName = Truncate((dto.SupervisorName ?? string.Empty).Trim(), 150);
+            order.TechnicianName = Truncate(dto.TechnicianName.Trim(), 150);
+            order.TechnicianName2 = TruncateOrNull(dto.TechnicianName2, 150);
+            order.TechnicianName3 = TruncateOrNull(dto.TechnicianName3, 150);
+            order.TechnicianName4 = TruncateOrNull(dto.TechnicianName4, 150);
+            order.Status = dto.Status;
+            order.Remarks = Truncate((dto.Remarks ?? string.Empty).Trim(), 500);
+        }
+
+        private static MaintenanceWorkOrderDto ToDto(MaintenanceWorkOrder o) => new()
+        {
+            Id = o.Id,
+            WorkOrderNumber = o.WorkOrderNumber,
+            VehicleId = o.VehicleId,
+            VehiclePlate = o.Vehicle?.LicensePlate ?? "Unknown",
+            BusNumber = o.Vehicle?.BusNumber,
+            Date = o.Date,
+            Odometer = o.Odometer,
+            BreakdownDescription = o.BreakdownDescription,
+            TimeIn = o.TimeIn,
+            TimeOut = o.TimeOut,
+            BranchLocation = o.BranchLocation,
+            BreakdownLocation = o.BreakdownLocation,
+            SupervisorName = o.SupervisorName,
+            TechnicianName = o.TechnicianName,
+            TechnicianName2 = o.TechnicianName2,
+            TechnicianName3 = o.TechnicianName3,
+            TechnicianName4 = o.TechnicianName4,
+            Status = o.Status,
+            Remarks = o.Remarks
+        };
+        #endregion
+
+        #region KPIs
+        // Eight indicators, every one of them read straight off the approved "Internal work orders"
+        // sheet. Nothing here consults the Vehicles table for a fleet-wide availability figure any
+        // more: the workshop sheet only knows about buses that entered the workshop, so a
+        // whole-fleet percentage derived from it was never a number the upload could support.
         public async Task<MaintenanceKpisDto> GetMaintenanceKpisAsync()
         {
-            var orders = await _workOrderRepository.GetAllAsync();
-            var parts = await _partRepository.GetAllAsync();
-            var vehicles = await _vehicleRepository.GetAllAsync();
+            var orders = (await _workOrderRepository.GetAllAsync()).ToList();
+            var vehicles = (await _vehicleRepository.GetAllAsync()).ToList();
+            var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v);
 
-            var completedOrders = orders.Where(o => o.Status == WorkOrderStatus.Completed && o.TimeOut.HasValue).ToList();
-            
-            // Guard against bad data (e.g. a bulk-uploaded row with a missing/garbled Time Out that
-            // parses to a wildly wrong date) skewing the average — cap at 30 days per repair.
+            int totalWorkOrders = orders.Count;
+            int completedWorkOrders = orders.Count(o => o.Status == WorkOrderStatus.Completed);
+            int waitingParts = orders.Count(o => o.Status == WorkOrderStatus.WaitingParts);
+            int inProgress = orders.Count(o => o.Status == WorkOrderStatus.InAnalysis || o.Status == WorkOrderStatus.Pending);
+            int openWorkOrders = totalWorkOrders - completedWorkOrders;
+
+            double completionRate = totalWorkOrders > 0
+                ? (double)completedWorkOrders / totalWorkOrders * 100.0
+                : 0;
+
+            double backlogRate = totalWorkOrders > 0
+                ? (double)openWorkOrders / totalWorkOrders * 100.0
+                : 0;
+
+            // Guard against bad data (e.g. an exit hour typed into the wrong column, producing a
+            // negative or wildly long repair) skewing the average - cap at 30 days per repair.
             double mttr = 0;
-            var validDurations = completedOrders
+            var validDurations = orders
+                .Where(o => o.Status == WorkOrderStatus.Completed && o.TimeOut.HasValue)
                 .Select(o => (o.TimeOut!.Value - o.TimeIn).TotalHours)
                 .Where(h => h >= 0 && h <= 720)
                 .ToList();
@@ -289,275 +249,214 @@ namespace NewFeature.Services
                 mttr = validDurations.Average();
             }
 
-            int totalBreakdowns = orders.Count();
+            int vehiclesServiced = orders.Select(o => o.VehicleId).Distinct().Count();
 
-            int activeMaintenanceCount = orders.Count(o => o.Status == WorkOrderStatus.Pending || 
-                                                           o.Status == WorkOrderStatus.InAnalysis || 
-                                                           o.Status == WorkOrderStatus.WaitingParts);
-
-            int totalVehiclesCount = vehicles.Count();
-            double fleetAvailability = 100;
-            if (totalVehiclesCount > 0)
+            // A work order can name up to four technicians; the headcount is how many distinct
+            // people appear across all four slots, not how many rows were filled in.
+            var technicians = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var o in orders)
             {
-                fleetAvailability = ((double)(totalVehiclesCount - activeMaintenanceCount) / totalVehiclesCount) * 100;
+                AddTechnician(technicians, o.TechnicianName);
+                AddTechnician(technicians, o.TechnicianName2);
+                AddTechnician(technicians, o.TechnicianName3);
+                AddTechnician(technicians, o.TechnicianName4);
             }
 
-            decimal totalPartsCost = parts.Sum(p => (decimal)p.Quantity * p.UnitPrice);
-
-            double backlogRate = 0;
-            if (totalBreakdowns > 0)
-            {
-                backlogRate = ((double)activeMaintenanceCount / totalBreakdowns) * 100;
-            }
-
-            var vehicleMap = vehicles.ToDictionary(v => v.Id, v => v.LicensePlate);
             var freqBreakdowns = orders.GroupBy(o => o.VehicleId)
                 .Select(g => new BusBreakdownFrequencyDto
                 {
-                    VehiclePlate = vehicleMap.TryGetValue(g.Key, out var plate) ? plate : $"Bus #{g.Key}",
+                    VehiclePlate = vehicleMap.TryGetValue(g.Key, out var v) ? v.LicensePlate : $"Bus #{g.Key}",
+                    BusNumber = vehicleMap.TryGetValue(g.Key, out var v2) ? v2.BusNumber : null,
                     BreakdownCount = g.Count()
-                })
-                .OrderByDescending(f => f.BreakdownCount)
-                .Take(5)
-                .ToList();
-
-            // Repairs by breakdown location ("موقع العطل" from the on-site branch reports).
-            // Only work orders that actually have a location recorded are counted, since the
-            // central-workshop sheet doesn't have this column at all.
-            var locatedOrders = orders.Where(o => !string.IsNullOrWhiteSpace(o.BreakdownLocation)).ToList();
-            var totalLocated = locatedOrders.Count;
-            var topLocations = locatedOrders
-                .GroupBy(o => o.BreakdownLocation!.Trim())
-                .Select(g => new BreakdownLocationFrequencyDto
-                {
-                    Location = g.Key,
-                    BreakdownCount = g.Count(),
-                    SharePercentage = totalLocated > 0 ? Math.Round((double)g.Count() / totalLocated * 100.0, 1) : 0
                 })
                 .OrderByDescending(f => f.BreakdownCount)
                 .Take(10)
                 .ToList();
 
+            // Fleet-wide figures, kept for the Fleet department's own cards. Availability is a
+            // whole-fleet number, so it is computed against the Vehicles register rather than
+            // against the buses that happen to appear in the workshop sheet.
+            int openAgainstFleet = orders.Count(o => o.Status != WorkOrderStatus.Completed);
+            double fleetAvailability = vehicles.Count > 0
+                ? Math.Max(0, (double)(vehicles.Count - openAgainstFleet) / vehicles.Count) * 100.0
+                : 100.0;
+
+            var parts = await _partRepository.GetAllAsync();
+            decimal totalPartsCost = parts.Sum(p => p.Quantity * p.UnitPrice);
+
             return new MaintenanceKpisDto
             {
-                MeanTimeToRepairHours = Math.Round(mttr, 2),
-                TotalBreakdowns = totalBreakdowns,
                 FleetAvailabilityRate = Math.Round(fleetAvailability, 2),
                 TotalSparePartsCost = totalPartsCost,
-                ActiveBusesRate = Math.Round(100.0 - fleetAvailability, 2), // % in maintenance or active
-                MaintenanceBacklogRate = Math.Round(backlogRate, 2),
-                TopFrequentBreakdowns = freqBreakdowns,
-                TopBreakdownLocations = topLocations
+                TotalWorkOrders = totalWorkOrders,
+                CompletedWorkOrders = completedWorkOrders,
+                CompletionRatePercent = Math.Round(completionRate, 1),
+                MeanTimeToRepairHours = Math.Round(mttr, 2),
+                WaitingPartsCount = waitingParts,
+                InProgressCount = inProgress,
+                MaintenanceBacklogRate = Math.Round(backlogRate, 1),
+                VehiclesServicedCount = vehiclesServiced,
+                ActiveTechniciansCount = technicians.Count,
+                TopFrequentBreakdowns = freqBreakdowns
             };
         }
 
-        public async Task<(int SuccessCount, List<string> Errors)> BulkUploadWorkshopLogsAsync(Stream excelStream, string branchName)
+        private static void AddTechnician(HashSet<string> set, string? name)
         {
-            var errors = new List<string>();
-            int successCount = 0;
-
-            try
-            {
-                using var workbook = new XLWorkbook(excelStream);
-                var worksheet = workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null) return (0, new List<string> { "Excel file is empty." });
-
-                var firstRow = worksheet.Row(1);
-                var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 1; i <= firstRow.LastCellUsed().Address.ColumnNumber; i++)
-                {
-                    var val = firstRow.Cell(i).GetString().Trim();
-                    if (!string.IsNullOrEmpty(val))
-                    {
-                        headers[val] = i;
-                    }
-                }
-
-                int busCol = FindColumn(headers, "حافلة", "حافغلة", "bus");
-                int dateCol = FindColumn(headers, "التاريخ", "date");
-                int odometerCol = FindColumn(headers, "عداد", "odometer", "km");
-                int descCol = FindColumn(headers, "عطل", "description");
-                int timeInCol = FindColumn(headers, "ساعة الدخول", "وقت حدوث العطل", "time in");
-                int timeOutCol = FindColumn(headers, "ساعة الخروج", "وقت  الانتهاء", "time out");
-                int techCol = FindColumn(headers, "الفنى", "technician");
-                int statusCol = FindColumn(headers, "حالة", "status");
-                int supervisorCol = FindColumn(headers, "المشرف", "supervisor");
-                int remarksCol = FindColumn(headers, "ملاحظات", "ملاحظة", "remarks");
-                int partsCol = FindColumn(headers, "القطع", "parts");
-                int locationCol = FindColumn(headers, "موقع العطل", "موقع", "location");
-
-                // The bus/plate column is what identifies this as a maintenance workshop log at
-                // all - if it can't be found by header keyword, refuse the file instead of
-                // silently reading whatever happens to be in column 1 (which produces garbage
-                // work orders if the wrong sheet gets uploaded here by mistake).
-                if (busCol == -1)
-                {
-                    errors.Add("This file doesn't look like a Maintenance/Workshop sheet - no column matching \"Bus\" / \"الحافلة\" was found in the header row. Please check you uploaded the right file.");
-                    return (0, errors);
-                }
-                if (dateCol == -1) dateCol = 2;
-                if (odometerCol == -1) odometerCol = 3;
-                if (descCol == -1) descCol = 4;
-                if (timeInCol == -1) timeInCol = 5;
-                if (timeOutCol == -1) timeOutCol = 6;
-                if (techCol == -1) techCol = 7;
-                if (statusCol == -1) statusCol = 8;
-                if (supervisorCol == -1) supervisorCol = 9;
-                if (remarksCol == -1) remarksCol = 10;
-
-                var rows = worksheet.RowsUsed().Skip(1); // Skip header row
-                var dbVehicles = await _vehicleRepository.GetAllAsync();
-
-                foreach (var row in rows)
-                {
-                    try
-                    {
-                        var vehicleVal = row.Cell(busCol).GetString().Trim(); // رقم الحافلة
-                        if (string.IsNullOrEmpty(vehicleVal)) continue;
-
-                        // Try to find vehicle. This column is the short internal bus number (e.g.
-                        // "547"), not the license plate, so match against Vehicle.BusNumber first -
-                        // falling back to a plate substring match only for older data that has no
-                        // BusNumber on file.
-                        var vehicle = dbVehicles.FirstOrDefault(v => v.BusNumber == vehicleVal)
-                                      ?? dbVehicles.FirstOrDefault(v => v.LicensePlate.Contains(vehicleVal) ||
-                                                                        v.LicensePlate.Replace(" ", "").Contains(vehicleVal));
-                        if (vehicle == null)
-                        {
-                            // Create temporary vehicle placeholder so the work order seeds successfully
-                            vehicle = new Vehicle
-                            {
-                                LicensePlate = "أ د ي " + vehicleVal,
-                                Make = "Yutong",
-                                Model = "Placeholder",
-                                Year = 2020,
-                                Capacity = 49,
-                                Status = VehicleStatus.Available
-                            };
-                            await _vehicleRepository.AddAsync(vehicle);
-                            await _vehicleRepository.SaveChangesAsync();
-                            // Refresh dbVehicles list
-                            dbVehicles = await _vehicleRepository.GetAllAsync();
-                        }
-
-                        // Parse date
-                        var dateStr = row.Cell(dateCol).GetString();
-                        DateTime.TryParse(dateStr, out DateTime date);
-                        if (date == default) date = DateTime.UtcNow;
-
-                        // Parse odometer
-                        var odoStr = row.Cell(odometerCol).GetString();
-                        int.TryParse(odoStr, out int odometer);
-
-                        // Parse description
-                        var description = row.Cell(descCol).GetString().Trim();
-                        if (string.IsNullOrEmpty(description)) description = "صيانة دورية";
-
-                        // Time In / Out
-                        var timeInStr = timeInCol != -1 ? row.Cell(timeInCol).GetString().Trim() : string.Empty;
-                        var timeOutStr = timeOutCol != -1 ? row.Cell(timeOutCol).GetString().Trim() : string.Empty;
-                        
-                        DateTime timeIn = date;
-                        if (!string.IsNullOrEmpty(timeInStr) && TimeSpan.TryParse(timeInStr, out TimeSpan tsIn))
-                        {
-                            timeIn = date.Date + tsIn;
-                        }
-                        else
-                        {
-                            timeIn = date.Date.AddHours(9); // Default 9 AM
-                        }
-
-                        DateTime? timeOut = null;
-                        if (!string.IsNullOrEmpty(timeOutStr) && TimeSpan.TryParse(timeOutStr, out TimeSpan tsOut))
-                        {
-                            timeOut = date.Date + tsOut;
-                        }
-                        else
-                        {
-                            timeOut = timeIn.AddHours(2); // Default 2 hours duration
-                        }
-
-                        // Technician & Supervisor
-                        var technicianName = techCol != -1 ? row.Cell(techCol).GetString().Trim() : string.Empty;
-                        var supervisorName = supervisorCol != -1 ? row.Cell(supervisorCol).GetString().Trim() : string.Empty;
-
-                        // Repair status
-                        var statusStr = statusCol != -1 ? row.Cell(statusCol).GetString().Trim() : string.Empty;
-                        var status = WorkOrderStatus.Completed;
-                        if (statusStr.Contains("معلق") || statusStr.Contains("قطع") || statusStr.Contains("متوقف"))
-                        {
-                            status = WorkOrderStatus.WaitingParts;
-                        }
-
-                        var remarks = remarksCol != -1 ? row.Cell(remarksCol).GetString().Trim() : string.Empty;
-                        var breakdownLocation = locationCol != -1 ? row.Cell(locationCol).GetString().Trim() : null;
-                        if (string.IsNullOrWhiteSpace(breakdownLocation)) breakdownLocation = null;
-
-                        var order = new MaintenanceWorkOrder
-                        {
-                            VehicleId = vehicle.Id,
-                            Date = date,
-                            Odometer = odometer,
-                            BreakdownDescription = description,
-                            TimeIn = timeIn,
-                            TimeOut = timeOut,
-                            BranchLocation = branchName,
-                            BreakdownLocation = breakdownLocation,
-                            SupervisorName = supervisorName,
-                            TechnicianName = technicianName,
-                            Status = status,
-                            Remarks = remarks
-                        };
-
-                        await _workOrderRepository.AddAsync(order);
-                        await _workOrderRepository.SaveChangesAsync();
-
-                        // Check for spare parts consumed column
-                        if (partsCol != -1)
-                        {
-                            var sparePartsVal = row.Cell(partsCol).GetString().Trim();
-                            if (!string.IsNullOrEmpty(sparePartsVal) && sparePartsVal != "لا يوجد" && sparePartsVal != "صرف")
-                            {
-                                // Create spare part consumption record
-                                var part = new SparePartConsumption
-                                {
-                                    MaintenanceWorkOrderId = order.Id,
-                                    PartName = sparePartsVal,
-                                    Quantity = 1,
-                                    UnitPrice = sparePartsVal.Contains("مرايه") ? 150 : 350 // Mock values
-                                };
-                                await _partRepository.AddAsync(part);
-                                await _partRepository.SaveChangesAsync();
-                            }
-                        }
-
-                        successCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"Row {row.RowNumber()}: {ex.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"Error reading file: {ex.Message}");
-            }
-
-            if (successCount > 0)
-                await Repositories.DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "MaintenanceWorkOrders", "SparePartConsumptions");
-
-            return (successCount, errors);
+            if (!string.IsNullOrWhiteSpace(name)) set.Add(name.Trim());
         }
 
-        private int FindColumn(Dictionary<string, int> headers, params string[] searchTerms)
+        #endregion
+
+        #region Bulk upload (the approved "Internal work orders" template)
+        // Excel column each DTO field is reported against when an import row is rejected.
+        private static readonly Dictionary<string, string> ImportColumnFor = new()
         {
-            foreach (var term in searchTerms)
-            {
-                var match = headers.Keys.FirstOrDefault(k => k.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (match != null) return headers[match];
-            }
-            return -1;
+            ["workOrderNumber"] = "رقم امر العمل", ["busNumber"] = "رقم الحافلة",
+            ["breakdownDescription"] = "وصف العطل", ["timeIn"] = "التاريخ الدخول",
+            ["technicianName"] = "اسم الفنى 1", ["status"] = "حالة", ["timeOut"] = "تاريخ الخروج",
+            ["odometer"] = "عداد كم الحالي"
+        };
+
+        // The work-order number identifies a row, so re-uploading a corrected month updates the
+        // same work orders instead of appending a second copy of them.
+        public async Task<ExcelImportResultDto> BulkUploadWorkOrdersAsync(Stream excelStream, string branchName)
+        {
+            // Loaded once and grown in memory as placeholder vehicles are created below. A workshop
+            // log can carry thousands of rows, so a DB round trip per row would make a large upload
+            // take minutes; everything below is only tracked, and the engine commits the whole
+            // batch in a single save at the end.
+            var vehicles = await _context.Vehicles.ToListAsync();
+            var existingOrders = await _context.MaintenanceWorkOrders.ToListAsync();
+
+            var result = await ExcelImportEngine.RunAsync(
+                excelStream,
+                DepartmentTemplates.Maintenance,
+                async row =>
+                {
+                    var dateIn = row.GetDate(DepartmentTemplates.MaintenanceDateIn);
+
+                    // Exit is only recorded when the sheet actually records one: an open work order
+                    // must not be given a made-up exit time, because MTTR is averaged over these.
+                    DateTime? timeOut = null;
+                    var dateOut = row.GetDate(DepartmentTemplates.MaintenanceDateOut);
+                    var hourOut = row.GetTime(DepartmentTemplates.MaintenanceTimeOut);
+                    if (dateOut != null) timeOut = dateOut.Value.Date + (hourOut ?? TimeSpan.Zero);
+                    else if (hourOut != null && dateIn != null) timeOut = dateIn.Value.Date + hourOut.Value; // same day
+
+                    var statusText = row.GetString(DepartmentTemplates.MaintenanceStatus);
+                    var status = ParseWorkOrderStatus(statusText);
+
+                    var dto = new MaintenanceWorkOrderDto
+                    {
+                        WorkOrderNumber = row.GetString(DepartmentTemplates.MaintenanceWorkOrderNumber),
+                        BusNumber = row.GetString(DepartmentTemplates.MaintenanceBusNumber),
+                        Odometer = row.GetInt(DepartmentTemplates.MaintenanceOdometer) ?? 0,
+                        BreakdownDescription = row.GetString(DepartmentTemplates.MaintenanceBreakdownDescription),
+                        // A blank entry hour leaves the work order at midnight rather than inventing a shift start.
+                        TimeIn = dateIn == null ? default : dateIn.Value.Date + (row.GetTime(DepartmentTemplates.MaintenanceTimeIn) ?? TimeSpan.Zero),
+                        TimeOut = timeOut,
+                        BranchLocation = branchName,
+                        TechnicianName = row.GetString(DepartmentTemplates.MaintenanceTechnician1),
+                        TechnicianName2 = row.GetString(DepartmentTemplates.MaintenanceTechnician2),
+                        TechnicianName3 = row.GetString(DepartmentTemplates.MaintenanceTechnician3),
+                        TechnicianName4 = row.GetString(DepartmentTemplates.MaintenanceTechnician4),
+                        // An unreadable status is carried as an out-of-range value so the shared
+                        // validator reports it with the same message the form shows.
+                        Status = status ?? (WorkOrderStatus)(-1),
+                        SupervisorName = row.GetString(DepartmentTemplates.MaintenanceSupervisor),
+                        Remarks = row.GetString(DepartmentTemplates.MaintenanceNotes)
+                    };
+
+                    var errors = Validate(dto);
+                    if (errors.Count > 0)
+                        return ExcelRowOutcomeResult.Skipped(errors.Joined(), ImportColumnFor.GetValueOrDefault(errors[0].Field));
+
+                    var number = dto.WorkOrderNumber!.Trim();
+                    var order = existingOrders.FirstOrDefault(o =>
+                        !string.IsNullOrEmpty(o.WorkOrderNumber) &&
+                        string.Equals(o.WorkOrderNumber, number, StringComparison.OrdinalIgnoreCase));
+
+                    bool isNew = order == null;
+                    order ??= new MaintenanceWorkOrder();
+                    Apply(dto, order, ResolveVehicle(vehicles, dto.BusNumber!.Trim()));
+
+                    if (isNew)
+                    {
+                        _context.MaintenanceWorkOrders.Add(order);
+                        existingOrders.Add(order);
+                        await System.Threading.Tasks.Task.CompletedTask;
+                        return ExcelRowOutcomeResult.Inserted();
+                    }
+
+                    return ExcelRowOutcomeResult.Updated();
+                },
+                () => _context.SaveChangesAsync(),
+                _logger);
+
+            if (result.Success && (result.InsertedRows > 0 || result.UpdatedRows > 0))
+                await Repositories.DbMaintenanceHelper.RefreshStatisticsAsync(_context, _logger, "MaintenanceWorkOrders", "Vehicles");
+
+            return result;
         }
+
+        // The bus column is the short internal bus number (e.g. "2002"), not a license plate, so
+        // it is matched against Vehicle.BusNumber first and only falls back to a plate substring
+        // for older records that never had a BusNumber. A bus the fleet register has never heard
+        // of gets a placeholder so the work order still saves: LicensePlate is capped at 20 chars
+        // and unique in the DB, while BusNumber (30 chars, not unique) keeps the untruncated value
+        // so a later row with the same label matches this same placeholder instead of colliding.
+        private static Vehicle ResolveVehicle(List<Vehicle> vehicles, string busNumber)
+        {
+            var vehicle = vehicles.FirstOrDefault(v => v.BusNumber == busNumber)
+                          ?? vehicles.FirstOrDefault(v => v.LicensePlate.Contains(busNumber) ||
+                                                          v.LicensePlate.Replace(" ", "").Contains(busNumber));
+            if (vehicle != null) return vehicle;
+
+            vehicle = new Vehicle
+            {
+                BusNumber = Truncate(busNumber, 30),
+                LicensePlate = Truncate("أ د ي " + busNumber, 20),
+                Make = "Yutong",
+                Model = "Placeholder",
+                Year = 2020,
+                Capacity = 49,
+                Status = VehicleStatus.Available
+            };
+            vehicles.Add(vehicle);
+            return vehicle;
+        }
+
+        // The approved sheet's status column is a three-value dropdown. Anything outside it is a
+        // data-entry mistake and is reported back per-row rather than being silently bucketed.
+        private static WorkOrderStatus? ParseWorkOrderStatus(string? raw)
+        {
+            var value = (raw ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(value)) return null;
+
+            if (value.Contains("انتهاء") || value.Contains("مكتمل") || value.Contains("منتهي") ||
+                value.IndexOf("complete", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("done", StringComparison.OrdinalIgnoreCase) >= 0)
+                return WorkOrderStatus.Completed;
+
+            if (value.Contains("قطع") || value.Contains("متوقف") || value.Contains("معلق") ||
+                value.IndexOf("waiting", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("parts", StringComparison.OrdinalIgnoreCase) >= 0)
+                return WorkOrderStatus.WaitingParts;
+
+            if (value.Contains("جاري") || value.Contains("قيد") ||
+                value.IndexOf("progress", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                value.IndexOf("working", StringComparison.OrdinalIgnoreCase) >= 0)
+                return WorkOrderStatus.InAnalysis;
+
+            return null;
+        }
+
+        private static string Truncate(string value, int maxLength) =>
+            value.Length <= maxLength ? value : value.Substring(0, maxLength);
+
+        private static string? TruncateOrNull(string? value, int maxLength) =>
+            string.IsNullOrWhiteSpace(value) ? null : Truncate(value.Trim(), maxLength);
+        #endregion
     }
 }

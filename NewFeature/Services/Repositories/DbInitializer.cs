@@ -1002,27 +1002,6 @@ namespace NewFeature.Services.Repositories
                 context.SaveChanges();
             }
 
-            // Seed Operations Daily Plans
-            if (!context.OperationsDailyPlans.Any())
-            {
-                context.OperationsDailyPlans.AddRange(
-                    new OperationsDailyPlan { Date = DateTime.UtcNow.AddDays(-2), ScheduledTripsCount = 120, CompletedTripsCount = 118, FuelEfficiencyIndex = 94.5, PassengerSatisfactionRate = 92.0, Status = "Completed" },
-                    new OperationsDailyPlan { Date = DateTime.UtcNow.AddDays(-1), ScheduledTripsCount = 115, CompletedTripsCount = 112, FuelEfficiencyIndex = 93.8, PassengerSatisfactionRate = 91.5, Status = "Completed" },
-                    new OperationsDailyPlan { Date = DateTime.UtcNow, ScheduledTripsCount = 125, CompletedTripsCount = 122, FuelEfficiencyIndex = 95.0, PassengerSatisfactionRate = 93.0, Status = "InProgress" }
-                );
-                context.SaveChanges();
-            }
-
-            // Seed Operations Incidents
-            if (!context.OperationsIncidents.Any())
-            {
-                context.OperationsIncidents.AddRange(
-                    new OperationsIncident { DescriptionAr = "عطل ميكانيكي في الحافلة رقم 4032", DescriptionEn = "Bus #4032 mechanical breakdown", Severity = "Medium", ResponseTimeMinutes = 42.0, Date = DateTime.UtcNow.AddDays(-5), Status = "Resolved" },
-                    new OperationsIncident { DescriptionAr = "تأخر المسار بسبب الازدحام المروري على طريق الحرمين", DescriptionEn = "Route delay due to traffic at Haramain road", Severity = "Low", ResponseTimeMinutes = 15.0, Date = DateTime.UtcNow.AddDays(-3), Status = "Resolved" },
-                    new OperationsIncident { DescriptionAr = "حادث بسيط للحافلة رقم 1029", DescriptionEn = "Bus #1029 minor accident", Severity = "High", ResponseTimeMinutes = 25.0, Date = DateTime.UtcNow, Status = "Resolved" }
-                );
-                context.SaveChanges();
-            }
 
             // Seed MOHU Standards KPIs
             if (!context.MohuStandardKpis.Any())

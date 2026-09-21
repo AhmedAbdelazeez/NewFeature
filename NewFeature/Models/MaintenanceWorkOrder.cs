@@ -8,6 +8,13 @@ namespace NewFeature.Models
     {
         public int Id { get; set; }
 
+        // The workshop's own work-order number from the "Internal work orders" sheet. It is what
+        // identifies a work order on re-upload, so a corrected sheet updates the same rows instead
+        // of appending a second copy of the month. Nullable only for rows that predate the
+        // approved template.
+        [StringLength(50)]
+        public string? WorkOrderNumber { get; set; }
+
         [Required(ErrorMessage = "Vehicle ID is required")]
         public int VehicleId { get; set; }
 
@@ -38,8 +45,21 @@ namespace NewFeature.Models
         [StringLength(150)]
         public string SupervisorName { get; set; } = string.Empty;
 
+        // Technician 1 on the sheet - the technician who owns the job.
         [StringLength(150)]
         public string TechnicianName { get; set; } = string.Empty;
+
+        // Technicians 2-4: the extra hands assigned to the same job. Optional by design, because
+        // most work orders are closed by one technician and requiring three more names would only
+        // get filler typed into the sheet.
+        [StringLength(150)]
+        public string? TechnicianName2 { get; set; }
+
+        [StringLength(150)]
+        public string? TechnicianName3 { get; set; }
+
+        [StringLength(150)]
+        public string? TechnicianName4 { get; set; }
 
         [Required]
         public WorkOrderStatus Status { get; set; } = WorkOrderStatus.Pending;

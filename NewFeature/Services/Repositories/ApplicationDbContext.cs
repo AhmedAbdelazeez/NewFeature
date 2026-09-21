@@ -67,6 +67,13 @@ namespace NewFeature.Services.Repositories
         public DbSet<OfficialDriver> OfficialDrivers { get; set; } = null!;
         public DbSet<RouteScheduleRequest> RouteScheduleRequests { get; set; } = null!;
 
+        // Operations Department - the approved single dispatch-log template
+        public DbSet<OperationsDispatchRecord> OperationsDispatchRecords { get; set; } = null!;
+
+        // Finance Department - the approved single template's two data sheets
+        public DbSet<ChartOfAccount> ChartOfAccounts { get; set; } = null!;
+        public DbSet<FinanceAccountBalance> FinanceAccountBalances { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -135,6 +142,38 @@ namespace NewFeature.Services.Repositories
             modelBuilder.Entity<FinanceTransaction>()
                 .Property(ft => ft.Amount)
                 .HasPrecision(18, 2);
+
+            // ─── The approved Finance template's two data sheets ───
+            modelBuilder.Entity<FinanceAccountBalance>()
+                .Property(fab => fab.Balance)
+                .HasPrecision(18, 2);
+
+            // A balance is one account as of one date, and the chart of accounts holds each
+            // account once. Both are enforced in the database so a re-uploaded month can only ever
+            // update the rows it already owns, never silently append a second copy of them.
+            modelBuilder.Entity<FinanceAccountBalance>()
+                .HasIndex(fab => new { fab.Date, fab.AccountNumber })
+                .IsUnique();
+
+            modelBuilder.Entity<ChartOfAccount>()
+                .HasIndex(coa => coa.AccountNumber)
+                .IsUnique();
+
+            // The Maintenance page and the dashboard both list work orders newest-first, one page at a
+            // time. Without this index SQL Server sorts the whole table (wide text columns included)
+            // on every page request, which measured ~21s for a 20-row page on ~2,800 work orders.
+            modelBuilder.Entity<MaintenanceWorkOrder>()
+                .HasIndex(o => new { o.Date, o.Id })
+                .IsDescending(true, true);
+
+            // Work-order number is how the Excel import and the add/edit form find an existing order.
+            modelBuilder.Entity<MaintenanceWorkOrder>()
+                .HasIndex(o => o.WorkOrderNumber);
+
+            // One dispatch line per direction + rental order + bus + execution date.
+            modelBuilder.Entity<OperationsDispatchRecord>()
+                .HasIndex(r => new { r.DeliveryDate, r.RentOrder, r.BusNumber, r.Direction })
+                .IsUnique();
 
             modelBuilder.Entity<FinanceBudget>()
                 .Property(fb => fb.AllocatedAmount)

@@ -1,79 +1,62 @@
 using System;
+using System.Collections.Generic;
 
 namespace NewFeature.Models
 {
-    public class OperationsDailyPlanDto
+    // One dispatch line, as the Operations page's index table and add/edit form exchange it.
+    public class OperationsDispatchRecordDto
     {
         public int Id { get; set; }
-        public DateTime Date { get; set; }
-        public int ScheduledTripsCount { get; set; }
-        public int CompletedTripsCount { get; set; }
-        public double FuelEfficiencyIndex { get; set; }
-        public double PassengerSatisfactionRate { get; set; }
-        public string Status { get; set; } = "Pending";
-    }
-
-    public class OperationsIncidentDto
-    {
-        public int Id { get; set; }
-        public string DescriptionAr { get; set; } = string.Empty;
-        public string DescriptionEn { get; set; } = string.Empty;
-        public string Severity { get; set; } = "Medium";
-        public double ResponseTimeMinutes { get; set; }
-        public DateTime Date { get; set; }
-        public string Status { get; set; } = "Open";
-    }
-
-    // Deliberately minimal: every field here is a plain, directly-observable count/rate computed
-    // from real Trip records (which come straight from the monthly dispatch sheets, one row per bus
-    // assignment). No illustrative targets, no metric that the source data can't actually support -
-    // e.g. On-Time Performance and Fuel Efficiency were removed because the real dispatch sheets have
-    // no actual-arrival or fuel/odometer reading, so those could only ever be fake numbers.
-    // One row of the real trip log, for the Operations landing page's browsable table - lets
-    // someone visually confirm the uploaded data is real rather than only seeing aggregate KPIs.
-    public class OperationsTripDto
-    {
-        public int Id { get; set; }
-        public DateTime ScheduledDeparture { get; set; }
-        public string? ClientName { get; set; }
-        public string VehiclePlate { get; set; } = string.Empty;
+        public string Direction { get; set; } = string.Empty;
+        public string? DirectionName { get; set; }
+        public string RentOrder { get; set; } = string.Empty;
+        public string? CustomerAccount { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string? BusType { get; set; }
+        public string BusNumber { get; set; } = string.Empty;
+        public DateTime DeliveryDate { get; set; }
+        public DateTime? PlannedStart { get; set; }
+        public DateTime? PlannedEnd { get; set; }
+        public string? DriverNumber { get; set; }
         public string DriverName { get; set; } = string.Empty;
-        public string RouteName { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public string? BookingReference { get; set; }
+        public string? AdditionalDriverNumber { get; set; }
+        public string? AdditionalDriverName { get; set; }
+        public string? Location { get; set; }
+        public string? FromLocation { get; set; }
+        public string? ToLocation { get; set; }
+        public double? ActualKm { get; set; }
+        public double? PlannedKm { get; set; }
+        public double? DieselLiters { get; set; }
+        public string Completion { get; set; } = string.Empty;
     }
 
-    // One row of the official-drivers compliance roster, for the Operations landing page's
-    // browsable table - lets someone visually confirm the uploaded roster is real rather than
-    // only seeing the RegisteredDriversCount KPI.
-    public class OperationsDriverDto
+    // How much of the month's dispatch work one line (Direction) represents.
+    public class OperationsDirectionUsageDto
     {
-        public int Id { get; set; }
-        public string? EmployeeCode { get; set; }
-        public string? IqamaNumber { get; set; }
-        public string ArabicName { get; set; } = string.Empty;
-        public string? EnglishName { get; set; }
-        public string? Nationality { get; set; }
-        public DateTime? LicenseExpiryDate { get; set; }
-        public string? Notes { get; set; }
+        public string Direction { get; set; } = string.Empty;
+        public string? DirectionName { get; set; }
+        public int OrdersCount { get; set; }
+        public double SharePercentage { get; set; }
     }
 
+    // Ten indicators, every one of them a count, a distinct-count or a sum over the approved
+    // Operations dispatch template. No illustrative targets and no metric the sheet can't support:
+    // on-time performance, for instance, is absent because the sheet records a planned start and
+    // end but never an actual arrival.
     public class OperationsKpisDto
     {
-        public int TotalTrips { get; set; }
-        public int CancelledTrips { get; set; }
-        public double CancellationRatePercent { get; set; }
-        public int ActiveDriversCount { get; set; }
-        public int VehiclesDeployedCount { get; set; }
+        public int TotalDispatchOrders { get; set; }
+        public int RentalOrdersCount { get; set; }
         public int ClientsServedCount { get; set; }
-        public double AverageTripsPerDay { get; set; }
+        public int BusesDeployedCount { get; set; }
+        public int DriversAssignedCount { get; set; }
+        public int CompletedOrdersCount { get; set; }
+        public double CompletionRatePercent { get; set; }
+        public double TotalPlannedKm { get; set; }
+        public double TotalActualKm { get; set; }
+        public double TotalDieselLiters { get; set; }
+        public double AverageOrdersPerDay { get; set; }
 
-        // From the official drivers compliance roster (اسطول الحافلات - السائقين الرسميين.xlsx) -
-        // a simple headcount, null when the roster has never been uploaded.
-        public int? RegisteredDriversCount { get; set; }
-
-        // From the route-scheduling sheet (جدولة الخطوط.xlsx): % of requests marked scheduled vs
-        // "غير مجدول". Null when that sheet has never been uploaded.
-        public double? SchedulingSuccessRatePercent { get; set; }
+        public List<OperationsDirectionUsageDto> TopDirections { get; set; } = new();
     }
 }

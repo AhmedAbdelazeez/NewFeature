@@ -26,6 +26,18 @@ namespace NewFeature.Services.ExcelImport
         public string IdentityColumnKey { get; init; } = string.Empty;
         public List<ExcelColumnDefinition> Columns { get; init; } = new();
 
+        // Which worksheet inside the workbook this definition describes. Empty means "the first
+        // sheet", which is what every single-sheet department template uses. Finance is the one
+        // template that legitimately carries two data sheets in one file (the chart of accounts
+        // and the monthly balances), so each of its two definitions names its own sheet here and
+        // the same engine runs twice over the same workbook.
+        public string[] SheetNameAliases { get; init; } = System.Array.Empty<string>();
+
+        // The sheet's Arabic name as the downloadable template writes it - used only to build the
+        // "this workbook has no <sheet> sheet" message, so the uploader is told exactly which tab
+        // is missing rather than just "wrong template".
+        public string SheetDisplayName { get; init; } = string.Empty;
+
         public ExcelColumnDefinition? GetColumn(string key) =>
             Columns.Find(c => c.Key == key);
     }

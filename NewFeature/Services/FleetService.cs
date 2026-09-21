@@ -832,8 +832,8 @@ namespace NewFeature.Services
                         int.TryParse(row.Cell(2).GetString(), out int routeId);
                         var driverId = row.Cell(3).GetString().Trim();
                         int.TryParse(row.Cell(4).GetString(), out int projectId);
-                        System.DateTime.TryParse(row.Cell(5).GetString(), out System.DateTime scheduledDeparture);
-                        System.DateTime.TryParse(row.Cell(6).GetString(), out System.DateTime scheduledArrival);
+                        var scheduledDeparture = FlexibleDateParser.Parse(row.Cell(5).GetString()) ?? default;
+                        var scheduledArrival = FlexibleDateParser.Parse(row.Cell(6).GetString()) ?? default;
 
                         if (vehicleId == 0 || routeId == 0 || scheduledDeparture == default)
                         {

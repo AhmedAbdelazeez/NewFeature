@@ -157,7 +157,7 @@
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Procurement" data-i18n="nav-procurement">Procurement</a></li>
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Strategy" data-i18n="nav-strategy">Strategy</a></li>
                                     <li><hr class="dropdown-divider border-glass"></li>
-                                    <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Finance" data-i18n="nav-finance">Finance</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom" asp-page="/Finance" data-i18n="nav-finance">Finance</a></li>
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Commercial" data-i18n="nav-commercial">Commercial</a></li>
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Tourism" data-i18n="nav-tourism">Tourism</a></li>
                                     <li><a class="dropdown-item dropdown-item-custom" asp-page="/Operations" data-i18n="nav-operations">Operations</a></li>
@@ -196,6 +196,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- Shared reporter for every department Excel bulk upload (row-level validation errors). -->
+    <script src="~/js/excel-upload.js" asp-append-version="true"></script>
+    <!-- Shared records index + add/edit/delete for the department pages. -->
+    <script src="~/js/department-crud.js" asp-append-version="true"></script>
     
     <script>
         const translations = {

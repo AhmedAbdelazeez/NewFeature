@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NewFeature.Models;
 using NewFeature.Services;
+using NewFeature.Services.ExcelImport;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -20,150 +21,111 @@ namespace NewFeature.Controllers
             _operationsService = operationsService;
         }
 
-        #region Daily Plans
-        [HttpGet("dailyplans")]
-        public async Task<ActionResult<IEnumerable<OperationsDailyPlanDto>>> GetDailyPlans()
+        // The downloadable template, generated from the very definition the importer validates
+        // against - so a file the user downloads here can never be rejected for a column the
+        // template itself produced.
+        [HttpGet("template")]
+        public IActionResult DownloadTemplate()
         {
-            var plans = await _operationsService.GetAllDailyPlansAsync();
-            return Ok(plans);
+            var bytes = ExcelTemplateWriter.Build(
+                "نموذج أوامر التشغيل - إدارة العمليات",
+                new[]
+                {
+                    new ExcelTemplateSheetSpec
+                    {
+                        Definition = DepartmentTemplates.Operations,
+                        SheetName = "Operations"
+                    }
+                },
+                new[]
+                {
+                    "• إجمالي أوامر التشغيل",
+                    "• عدد أوامر الإيجار",
+                    "• عدد العملاء المخدومين",
+                    "• عدد الحافلات المشغّلة",
+                    "• عدد السائقين المكلفين",
+                    "• الأوامر المنفذة ونسبة الإنجاز",
+                    "• إجمالي الكيلومترات المخططة",
+                    "• إجمالي الكيلومترات الفعلية",
+                    "• إجمالي الديزل (لتر)",
+                    "• متوسط الأوامر اليومية",
+                    "• أكثر الخطوط تشغيلاً",
+                    "",
+                    "ملاحظات:",
+                    "- الصف يُميَّز بـ (Direction + Rent Order + Bus number + DELV. Date): إعادة رفع الشهر بعد التصحيح تُحدّث الصفوف بدل تكرارها.",
+                    "- عمود Completeion هو ما تُحسب منه نسبة الإنجاز؛ أي قيمة تعني الإتمام (Completed / مكتمل / تم) تُحتسب منفذة.",
+                    "- ADD. Driver و ADD. Driver Name اختياريان ويُتركان فارغين عند عدم وجود سائق مساعد."
+                });
+
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Operations_Template.xlsx");
         }
 
-        [HttpGet("dailyplans/{id}")]
-        public async Task<ActionResult<OperationsDailyPlanDto>> GetDailyPlan(int id)
+        // The Operations department's single bulk upload: the approved dispatch-log template
+        // (one row per bus assigned to a rental order on a day). The separate drivers-roster and
+        // route-scheduling uploads were removed - the department now works from one template.
+        [HttpPost("bulk-upload")]
+        public async Task<IActionResult> BulkUploadDispatchLog(Microsoft.AspNetCore.Http.IFormFile file)
         {
-            var plan = await _operationsService.GetDailyPlanByIdAsync(id);
-            if (plan == null) return NotFound();
-            return Ok(plan);
-        }
-
-        [HttpPost("dailyplans")]
-        public async Task<ActionResult<OperationsDailyPlanDto>> CreateDailyPlan([FromBody] OperationsDailyPlanDto dto)
-        {
-            var created = await _operationsService.CreateDailyPlanAsync(dto);
-            return CreatedAtAction(nameof(GetDailyPlan), new { id = created.Id }, created);
-        }
-
-        [HttpPut("dailyplans/{id}")]
-        public async Task<IActionResult> UpdateDailyPlan(int id, [FromBody] OperationsDailyPlanDto dto)
-        {
-            if (id != dto.Id) return BadRequest();
-            var result = await _operationsService.UpdateDailyPlanAsync(dto);
-            if (!result) return NotFound();
-            return NoContent();
-        }
-
-        [HttpDelete("dailyplans/{id}")]
-        public async Task<IActionResult> DeleteDailyPlan(int id)
-        {
-            var result = await _operationsService.DeleteDailyPlanAsync(id);
-            if (!result) return NotFound();
-            return NoContent();
-        }
-
-        [HttpPost("bulk-upload-daily-plans")]
-        public async Task<IActionResult> BulkUploadDailyPlans(Microsoft.AspNetCore.Http.IFormFile file)
-        {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (file == null || file.Length == 0) return BadRequest("لم يتم اختيار أي ملف.");
             if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
-                return BadRequest("Only .xlsx or .xls files are supported.");
+                return BadRequest("الملفات المدعومة هي .xlsx و .xls فقط.");
 
             using var rawStream = file.OpenReadStream();
             using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
-            var result = await _operationsService.BulkUploadDailyPlansAsync(stream);
+            var result = await _operationsService.BulkUploadDispatchLogAsync(stream);
 
-            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+            // A template/header problem is the uploader's mistake, not a server fault - report it
+            // as 422 so the page can surface the message instead of a generic failure.
+            if (!result.Success) return UnprocessableEntity(result);
+            return Ok(result);
         }
 
-        // Uploads the real monthly operations sheet (e.g. "تشغيل شهر مايو 2026.xlsx") which contains
-        // one row per executed trip. Dynamically resolves/creates Vehicles, Routes and Drivers, and
-        // creates Trip records used to compute the real OTP / Total Trips / Active Drivers / Fuel-Odometer KPIs.
-        [HttpPost("bulk-upload-trips")]
-        public async Task<IActionResult> BulkUploadOperationsTrips(Microsoft.AspNetCore.Http.IFormFile file)
+        #region Dispatch records: index + CRUD (the Operations page)
+        [HttpGet("records")]
+        public async Task<ActionResult<PagedResultDto<OperationsDispatchRecordDto>>> GetRecords(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] System.DateTime? fromDate = null,
+            [FromQuery] System.DateTime? toDate = null)
         {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
-                return BadRequest("Only .xlsx or .xls files are supported.");
-
-            using var rawStream = file.OpenReadStream();
-            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
-            var result = await _operationsService.BulkUploadOperationsTripsAsync(stream);
-
-            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+            return Ok(await _operationsService.GetDispatchRecordsPagedAsync(page, pageSize, search, fromDate, toDate));
         }
 
-        // Replaces the official-drivers compliance roster snapshot (اسطول الحافلات - السائقين الرسميين.xlsx).
-        [HttpPost("bulk-upload-drivers")]
-        public async Task<IActionResult> BulkUploadOfficialDrivers(Microsoft.AspNetCore.Http.IFormFile file)
+        [HttpGet("records/{id:int}")]
+        public async Task<ActionResult<OperationsDispatchRecordDto>> GetRecord(int id)
         {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
-                return BadRequest("Only .xlsx or .xls files are supported.");
-
-            using var rawStream = file.OpenReadStream();
-            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
-            var result = await _operationsService.BulkUploadOfficialDriversAsync(stream);
-
-            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+            var record = await _operationsService.GetDispatchRecordAsync(id);
+            return record == null ? NotFound() : Ok(record);
         }
 
-        // Replaces the route-scheduling requests snapshot (جدولة الخطوط.xlsx).
-        [HttpPost("bulk-upload-route-schedules")]
-        public async Task<IActionResult> BulkUploadRouteSchedules(Microsoft.AspNetCore.Http.IFormFile file)
+        [HttpPost("records")]
+        public async Task<IActionResult> CreateRecord([FromBody] OperationsDispatchRecordDto dto)
         {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-            if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
-                return BadRequest("Only .xlsx or .xls files are supported.");
+            var result = await _operationsService.CreateDispatchRecordAsync(dto);
+            if (!result.Success) return BadRequest(result.ToErrorBody());
+            return CreatedAtAction(nameof(GetRecord), new { id = result.Item!.Id }, result.Item);
+        }
 
-            using var rawStream = file.OpenReadStream();
-            using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
-            var result = await _operationsService.BulkUploadRouteSchedulesAsync(stream);
+        [HttpPut("records/{id:int}")]
+        public async Task<IActionResult> UpdateRecord(int id, [FromBody] OperationsDispatchRecordDto dto)
+        {
+            var result = await _operationsService.UpdateDispatchRecordAsync(id, dto);
+            if (result.NotFound) return NotFound();
+            if (!result.Success) return BadRequest(result.ToErrorBody());
+            return Ok(result.Item);
+        }
 
-            return Ok(new { successCount = result.SuccessCount, errors = result.Errors });
+        [HttpDelete("records/{id:int}")]
+        public async Task<IActionResult> DeleteRecord(int id)
+        {
+            return await _operationsService.DeleteDispatchRecordAsync(id) ? NoContent() : NotFound();
         }
         #endregion
 
-        #region Incidents
-        [HttpGet("incidents")]
-        public async Task<ActionResult<IEnumerable<OperationsIncidentDto>>> GetIncidents()
-        {
-            var incidents = await _operationsService.GetAllIncidentsAsync();
-            return Ok(incidents);
-        }
-
-        [HttpGet("incidents/{id}")]
-        public async Task<ActionResult<OperationsIncidentDto>> GetIncident(int id)
-        {
-            var incident = await _operationsService.GetIncidentByIdAsync(id);
-            if (incident == null) return NotFound();
-            return Ok(incident);
-        }
-
-        [HttpPost("incidents")]
-        public async Task<ActionResult<OperationsIncidentDto>> CreateIncident([FromBody] OperationsIncidentDto dto)
-        {
-            var created = await _operationsService.CreateIncidentAsync(dto);
-            return CreatedAtAction(nameof(GetIncident), new { id = created.Id }, created);
-        }
-
-        [HttpPut("incidents/{id}")]
-        public async Task<IActionResult> UpdateIncident(int id, [FromBody] OperationsIncidentDto dto)
-        {
-            if (id != dto.Id) return BadRequest();
-            var result = await _operationsService.UpdateIncidentAsync(dto);
-            if (!result) return NotFound();
-            return NoContent();
-        }
-
-        [HttpDelete("incidents/{id}")]
-        public async Task<IActionResult> DeleteIncident(int id)
-        {
-            var result = await _operationsService.DeleteIncidentAsync(id);
-            if (!result) return NotFound();
-            return NoContent();
-        }
-        #endregion
-
-        #region KPIs
+        #region KPIs (read by the executive dashboard)
         [HttpGet("kpis")]
         public async Task<ActionResult<OperationsKpisDto>> GetOperationsKpis()
         {
@@ -171,31 +133,6 @@ namespace NewFeature.Controllers
             return Ok(kpis);
         }
 
-        // Paged, searchable listing of the real uploaded trip log - lets the Operations landing page
-        // show an actual browsable table instead of only aggregate KPI numbers.
-        [HttpGet("trips")]
-        public async Task<ActionResult<PagedResultDto<OperationsTripDto>>> GetTrips(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] string? search = null,
-            [FromQuery] System.DateTime? fromDate = null,
-            [FromQuery] System.DateTime? toDate = null)
-        {
-            var result = await _operationsService.GetTripsPagedAsync(page, pageSize, search, fromDate, toDate);
-            return Ok(result);
-        }
-
-        // Paged, searchable listing of the official-drivers compliance roster - lets the Operations
-        // page show a real browsable table of who was imported, instead of only the headcount KPI.
-        [HttpGet("drivers")]
-        public async Task<ActionResult<PagedResultDto<OperationsDriverDto>>> GetDrivers(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            [FromQuery] string? search = null)
-        {
-            var result = await _operationsService.GetDriversPagedAsync(page, pageSize, search);
-            return Ok(result);
-        }
         #endregion
     }
 }
