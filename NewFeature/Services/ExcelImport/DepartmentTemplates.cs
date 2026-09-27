@@ -121,11 +121,14 @@ namespace NewFeature.Services.ExcelImport
             }
         };
 
-        // ─────────── Finance: one workbook, chart of accounts + monthly balances ───────────
-        // Sheet 1 (COA) is the reference tree every balance is classified through; sheet 2
-        // (الحركات المالية) carries one row per account balance per reporting date. Both live in
-        // the same approved file, so a month's upload always arrives with the account tree that
-        // explains it and no balance can land unclassified.
+        // ─────────── Finance: two templates, the account tree and the monthly figures ───────────
+        // The chart of accounts (COA) is reference data that changes a few times a year; the trial
+        // balance arrives every month. They are uploaded as two separate files for exactly that
+        // reason, each with its own template and its own page, and the account tree is what every
+        // uploaded figure is classified through. FinanceChartOfAccounts/FinanceBalances below stay
+        // sheet-targeted for the older single-workbook upload that carried both sheets at once;
+        // FinanceChartOfAccountsFile/FinanceBalancesFile are the standalone ones, which also accept
+        // a file whose sheet was renamed.
         public const string FinanceAccountNumber = "accountNumber";
         public const string FinanceAccountName = "accountName";
         public const string FinanceMapping = "mapping";
@@ -136,60 +139,110 @@ namespace NewFeature.Services.ExcelImport
         public const string FinanceRevenueMainClassification = "revenueMainClassification";
         public const string FinanceRevenueSubClassification = "revenueSubClassification";
 
+        // The account tree's columns, exactly as their own COA sheet spells them.
+        private static List<ExcelColumnDefinition> ChartOfAccountColumns() => new()
+        {
+            new() { Key = FinanceAccountNumber, DisplayName = "رقم الحساب (Account #)", Required = true,
+                    HeaderAliases = new[] { "Account #", "Account No", "Ledger account", "رقم الحساب" } },
+            new() { Key = FinanceAccountName, DisplayName = "اسم الحساب (Account Name)", Required = true,
+                    HeaderAliases = new[] { "Account Name", "اسم الحساب" } },
+            // The Arabic grouping the balance-sheet KPI cards are built from ("نقد في الصندوق ولدى
+            // البنوك", "ذمم مدينة بالصافي", "مصاريف مستحقة ومطلوبات اخرى"...).
+            new() { Key = FinanceMapping, DisplayName = "التصنيف (Mapping)",
+                    HeaderAliases = new[] { "Mapping" } },
+            new() { Key = FinanceBsClassification, DisplayName = "تصنيف المركز المالي (BS Classification)",
+                    HeaderAliases = new[] { "BS Classification" } },
+            new() { Key = FinanceIsClassification, DisplayName = "تصنيف قائمة الدخل (IS Classification)",
+                    HeaderAliases = new[] { "IS Classification" } },
+            // The column every KPI bucket is derived from: its numeric prefix (5xxx assets, 6xxx
+            // liabilities/equity, 7000 revenue, 71xx cost of sales, 72xx operating costs) is what
+            // turns a raw balance into a revenue, a cost or a balance-sheet figure. Not marked
+            // mandatory because their own COA leaves it blank on a few accounts that BS/IS
+            // Classification still classifies, and the importer accepts any one of the three.
+            new() { Key = FinanceRsmClassification, DisplayName = "تصنيف RSM (RSM Classification) - أو BS/IS Classification بدلاً منه",
+                    HeaderAliases = new[] { "RSM Classification" } },
+            new() { Key = FinanceManagementClassification, DisplayName = "التصنيف الإداري (Management Classification)",
+                    HeaderAliases = new[] { "Management Classification" } },
+            new() { Key = FinanceRevenueMainClassification, DisplayName = "التصنيف الرئيسي للإيرادات",
+                    HeaderAliases = new[] { "Revenues Main Classification" } },
+            new() { Key = FinanceRevenueSubClassification, DisplayName = "التصنيف الفرعي للإيرادات",
+                    HeaderAliases = new[] { "Revenues Sub Classification" } }
+        };
+
         public static ExcelTemplateDefinition FinanceChartOfAccounts { get; } = new()
         {
-            TemplateName = "النموذج المالي (شجرة الحسابات والأرصدة)",
+            TemplateName = "نموذج شجرة الحسابات (COA)",
             SheetNameAliases = new[] { "COA", "شجرة الحسابات" },
             SheetDisplayName = "COA",
             IdentityColumnKey = FinanceAccountNumber,
-            Columns = new List<ExcelColumnDefinition>
-            {
-                new() { Key = FinanceAccountNumber, DisplayName = "رقم الحساب (Account #)", Required = true,
-                        HeaderAliases = new[] { "Account #", "Account No", "رقم الحساب" } },
-                new() { Key = FinanceAccountName, DisplayName = "اسم الحساب (Account Name)", Required = true,
-                        HeaderAliases = new[] { "Account Name", "اسم الحساب" } },
-                new() { Key = FinanceMapping, DisplayName = "التصنيف (Mapping)",
-                        HeaderAliases = new[] { "Mapping" } },
-                new() { Key = FinanceBsClassification, DisplayName = "تصنيف المركز المالي (BS Classification)",
-                        HeaderAliases = new[] { "BS Classification" } },
-                new() { Key = FinanceIsClassification, DisplayName = "تصنيف قائمة الدخل (IS Classification)",
-                        HeaderAliases = new[] { "IS Classification" } },
-                // The one column every KPI bucket is derived from: its numeric prefix (5xxx assets,
-                // 6xxx liabilities/equity, 7000 revenue, 71xx cost of sales, 72xx operating costs)
-                // is what turns a raw balance into a revenue, a cost or a balance-sheet figure.
-                new() { Key = FinanceRsmClassification, DisplayName = "تصنيف RSM (RSM Classification)", Required = true,
-                        HeaderAliases = new[] { "RSM Classification" } },
-                new() { Key = FinanceManagementClassification, DisplayName = "التصنيف الإداري (Management Classification)",
-                        HeaderAliases = new[] { "Management Classification" } },
-                new() { Key = FinanceRevenueMainClassification, DisplayName = "التصنيف الرئيسي للإيرادات",
-                        HeaderAliases = new[] { "Revenues Main Classification" } },
-                new() { Key = FinanceRevenueSubClassification, DisplayName = "التصنيف الفرعي للإيرادات",
-                        HeaderAliases = new[] { "Revenues Sub Classification" } }
-            }
+            Columns = ChartOfAccountColumns()
+        };
+
+        // The standalone COA upload: the same contract, but a file whose single sheet was renamed
+        // (the accountant's own export often is) is read rather than rejected.
+        public static ExcelTemplateDefinition FinanceChartOfAccountsFile { get; } = new()
+        {
+            TemplateName = "نموذج شجرة الحسابات (COA)",
+            SheetNameAliases = new[] { "COA", "شجرة الحسابات" },
+            SheetDisplayName = "COA",
+            AllowFirstSheetFallback = true,
+            IdentityColumnKey = FinanceAccountNumber,
+            Columns = ChartOfAccountColumns()
         };
 
         public const string FinanceBalanceDate = "balanceDate";
+        public const string FinanceBalanceBranch = "balanceBranch";
         public const string FinanceBalanceAccountNumber = "balanceAccountNumber";
         public const string FinanceBalanceAccountName = "balanceAccountName";
+        public const string FinanceBalanceOpening = "balanceOpening";
+        public const string FinanceBalanceDebit = "balanceDebit";
+        public const string FinanceBalanceCredit = "balanceCredit";
         public const string FinanceBalanceAmount = "balance";
+
+        // The monthly figures, mirroring the trial balance their accounting system exports: an
+        // opening balance, the period's debits and credits. الحركة (Debit - Credit) and الرصيد
+        // (BBF + الحركة) are computed on our side rather than typed, so a hand-edited total can
+        // never contradict the debits and credits it was supposed to summarize. The Balance column
+        // is still read when a file carries only a closing figure, which is what the first version
+        // of this template asked for.
+        private static List<ExcelColumnDefinition> BalanceColumns() => new()
+        {
+            new() { Key = FinanceBalanceDate, DisplayName = "تاريخ نهاية الفترة (Date)", Required = true,
+                    HeaderAliases = new[] { "Date", "التاريخ" } },
+            new() { Key = FinanceBalanceBranch, DisplayName = "الفرع (Branch) - يُترك فارغاً للفرع الواحد",
+                    HeaderAliases = new[] { "Branch", "الفرع" } },
+            new() { Key = FinanceBalanceAccountNumber, DisplayName = "رقم الحساب (Account No)", Required = true,
+                    HeaderAliases = new[] { "Account No", "Account #", "Ledger account", "رقم الحساب" } },
+            new() { Key = FinanceBalanceAccountName, DisplayName = "اسم الحساب (Account Name) - يُملأ من الشجرة إن تُرك فارغاً",
+                    HeaderAliases = new[] { "Account Name", "اسم الحساب" } },
+            new() { Key = FinanceBalanceOpening, DisplayName = "الرصيد الافتتاحي (BBF)",
+                    HeaderAliases = new[] { "BBF", "Opening Balance", "الرصيد الافتتاحي" } },
+            new() { Key = FinanceBalanceDebit, DisplayName = "مدين (Debit)",
+                    HeaderAliases = new[] { "Debit", "مدين" } },
+            new() { Key = FinanceBalanceCredit, DisplayName = "دائن (Credit)",
+                    HeaderAliases = new[] { "Credit", "دائن" } },
+            new() { Key = FinanceBalanceAmount, DisplayName = "الرصيد (Balance) - يُحسب تلقائياً إن تُرك فارغاً",
+                    HeaderAliases = new[] { "Balance", "الرصيد" } }
+        };
 
         public static ExcelTemplateDefinition FinanceBalances { get; } = new()
         {
-            TemplateName = "النموذج المالي (شجرة الحسابات والأرصدة)",
-            SheetNameAliases = new[] { "الحركات المالية", "Balances", "Trial Balance" },
+            TemplateName = "نموذج الأرصدة والحركات المالية",
+            SheetNameAliases = new[] { "الحركات المالية", "Balances", "Trial Balance", "TB" },
             SheetDisplayName = "الحركات المالية",
             IdentityColumnKey = FinanceBalanceAccountNumber,
-            Columns = new List<ExcelColumnDefinition>
-            {
-                new() { Key = FinanceBalanceDate, DisplayName = "التاريخ (Date)", Required = true,
-                        HeaderAliases = new[] { "Date", "التاريخ" } },
-                new() { Key = FinanceBalanceAccountNumber, DisplayName = "رقم الحساب (Account No)", Required = true,
-                        HeaderAliases = new[] { "Account No", "Account #", "رقم الحساب" } },
-                new() { Key = FinanceBalanceAccountName, DisplayName = "اسم الحساب (Account Name)",
-                        HeaderAliases = new[] { "Account Name", "اسم الحساب" } },
-                new() { Key = FinanceBalanceAmount, DisplayName = "الرصيد (Balance)", Required = true,
-                        HeaderAliases = new[] { "Balance", "الرصيد" } }
-            }
+            Columns = BalanceColumns()
+        };
+
+        // The standalone monthly upload.
+        public static ExcelTemplateDefinition FinanceBalancesFile { get; } = new()
+        {
+            TemplateName = "نموذج الأرصدة والحركات المالية",
+            SheetNameAliases = new[] { "الحركات المالية", "Balances", "Trial Balance", "TB" },
+            SheetDisplayName = "الحركات المالية",
+            AllowFirstSheetFallback = true,
+            IdentityColumnKey = FinanceBalanceAccountNumber,
+            Columns = BalanceColumns()
         };
 
         // ─────────── Maintenance: one internal work-orders log ───────────

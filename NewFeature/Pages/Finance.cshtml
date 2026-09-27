@@ -1,92 +1,51 @@
 @page
 @model FinanceModel
-@using NewFeature.Pages.Shared
-@using NewFeature.Services.ExcelImport
 @{
-    ViewData["Title"] = "الإدارة المالية - رفع البيانات";
+    ViewData["Title"] = "الإدارة المالية";
 }
 
-@* Finance in the ERP is data entry only: one workbook carrying the chart of accounts (COA) and the
-   account balances (الحركات المالية). Every KPI computed from it is shown on the executive
-   dashboard. *@
-@{
-    var landing = new DepartmentUploadLanding
-    {
-        Title = "الإدارة المالية",
-        Subtitle = "رفع النموذج المالي (شجرة الحسابات + الأرصدة) في ملف واحد. المؤشرات المحسوبة منه تظهر في لوحة المؤشرات التنفيذية.",
-        Icon = "bi-cash-coin",
-        TemplateUrl = "/api/finance/template",
-        UploadUrl = "/api/finance/bulk-upload",
-        Sheets = new[] { DepartmentTemplates.FinanceChartOfAccounts, DepartmentTemplates.FinanceBalances }
-    };
-}
-<partial name="_DepartmentUploadLanding" model="landing" />
+@* The Finance department's entry point. The department uploads two separate files, on two separate
+   clocks, so each one has its own page: the chart of accounts (reference data, changes when
+   accounts are opened) and the monthly trial balance (every month). Every KPI computed from them is
+   shown on the executive dashboard, never here. *@
 
-<!-- Records: the template's two sheets, each with add / edit / delete -->
-<ul class="nav nav-tabs nav-tabs-glass mb-3" role="tablist">
-    <li class="nav-item">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-balances" type="button" role="tab">الأرصدة (الحركات المالية)</button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-coa" type="button" role="tab">شجرة الحسابات (COA)</button>
-    </li>
-</ul>
-<div class="tab-content mb-5">
-    <div class="tab-pane fade show active" id="tab-balances" role="tabpanel"><div id="crud-balances"></div></div>
-    <div class="tab-pane fade" id="tab-coa" role="tabpanel"><div id="crud-coa"></div></div>
+<div class="py-4">
+    <div class="mb-4">
+        <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">
+            <i class="bi bi-cash-coin me-2"></i>الإدارة المالية
+        </h1>
+        <p class="text-muted fs-6 mb-0">
+            النموذجان المعتمدان منفصلان: شجرة الحسابات تُرفع أولاً ثم تُرفع الأرصدة الشهرية، فكل رصيد يُصنَّف من خلال الشجرة.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <a href="/FinanceAccounts" class="text-decoration-none">
+                <div class="glass-card p-4 h-100 d-flex flex-column">
+                    <div class="text-muted small fw-bold mb-2">الخطوة 1</div>
+                    <h5 class="fw-bold mb-2"><i class="bi bi-diagram-3 me-2"></i>شجرة الحسابات (COA)</h5>
+                    <p class="text-muted small flex-grow-1">
+                        دليل الحسابات وتصنيفاته (Mapping، RSM، التصنيف الإداري، تصنيف الإيرادات).
+                        يُرفع أول مرة وعند فتح حسابات جديدة فقط، وهو ما يحوّل كل رصيد إلى إيراد أو تكلفة أو بند في المركز المالي.
+                    </p>
+                    <span class="btn btn-neon-outline btn-sm align-self-start">فتح الصفحة <i class="bi bi-arrow-left ms-1"></i></span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6">
+            <a href="/FinanceBalances" class="text-decoration-none">
+                <div class="glass-card p-4 h-100 d-flex flex-column">
+                    <div class="text-muted small fw-bold mb-2">الخطوة 2</div>
+                    <h5 class="fw-bold mb-2"><i class="bi bi-table me-2"></i>الأرصدة والحركات المالية</h5>
+                    <p class="text-muted small flex-grow-1">
+                        ميزان المراجعة الشهري: الرصيد الافتتاحي والمدين والدائن لكل حساب، لكل فرع.
+                        يُرفع كل شهر، وإعادة رفع نفس الشهر تُحدّث الأرقام ولا تكررها.
+                    </p>
+                    <span class="btn btn-neon btn-sm align-self-start">فتح الصفحة <i class="bi bi-arrow-left ms-1"></i></span>
+                </div>
+            </a>
+        </div>
+    </div>
 </div>
-
-@section Scripts {
-    <script>
-        (function () {
-            const f = RawahelCrud.format;
-            RawahelCrud.mount({
-                el: '#crud-balances',
-                itemName: 'رصيد',
-                listUrl: '/api/finance/balances',
-                createUrl: '/api/finance/balances',
-                itemUrl: id => '/api/finance/balances/' + id,
-                searchPlaceholder: 'بحث برقم الحساب أو اسم الحساب...',
-                columns: [
-                    { key: 'date', label: 'التاريخ', format: v => f.date(v) },
-                    { key: 'accountNumber', label: 'رقم الحساب', format: v => '<strong>' + f.esc(v) + '</strong>' },
-                    { key: 'accountName', label: 'اسم الحساب' },
-                    { key: 'classification', label: 'التصنيف', format: v => '<span class="small text-muted">' + f.esc(v || '--') + '</span>' },
-                    { key: 'balance', label: 'الرصيد', format: v => f.number(v, 2) }
-                ],
-                fields: [
-                    { key: 'date', label: 'Date (التاريخ)', type: 'date', required: true, col: 4 },
-                    { key: 'accountNumber', label: 'Account No (رقم الحساب)', required: true, col: 4 },
-                    { key: 'balance', label: 'Balance (الرصيد)', type: 'number', required: true, col: 4 },
-                    { key: 'accountName', label: 'Account Name (اسم الحساب) - يُملأ من الشجرة إن تُرك فارغاً', col: 12 }
-                ]
-            });
-
-            RawahelCrud.mount({
-                el: '#crud-coa',
-                itemName: 'حساب',
-                listUrl: '/api/finance/chart-of-accounts/paged',
-                createUrl: '/api/finance/chart-of-accounts',
-                itemUrl: id => '/api/finance/chart-of-accounts/' + id,
-                searchPlaceholder: 'بحث برقم الحساب أو الاسم أو التصنيف...',
-                columns: [
-                    { key: 'accountNumber', label: 'رقم الحساب', format: v => '<strong>' + f.esc(v) + '</strong>' },
-                    { key: 'accountName', label: 'اسم الحساب' },
-                    { key: 'rsmClassification', label: 'تصنيف RSM' },
-                    { key: 'managementClassification', label: 'التصنيف الإداري' }
-                ],
-                fields: [
-                    { key: 'accountNumber', label: 'Account # (رقم الحساب)', required: true, col: 4 },
-                    { key: 'accountName', label: 'Account Name (اسم الحساب)', required: true, col: 8 },
-                    { key: 'rsmClassification', label: 'RSM Classification (مثال: 7000   Revenues)', required: true, col: 6 },
-                    { key: 'managementClassification', label: 'Management Classification', col: 6 },
-                    { key: 'mapping', label: 'Mapping', col: 6 },
-                    { key: 'bsClassification', label: 'BS Classification', col: 6 },
-                    { key: 'isClassification', label: 'IS Classification', col: 6 },
-                    { key: 'revenueMainClassification', label: 'Revenues Main Classification', col: 6 },
-                    { key: 'revenueSubClassification', label: 'Revenues Sub Classification', col: 6 }
-                ]
-            });
-        })();
-    </script>
-}

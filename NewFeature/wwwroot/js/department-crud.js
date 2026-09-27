@@ -11,6 +11,9 @@
  *     listUrl: '/api/operations/records', itemUrl: id => '/api/operations/records/' + id,
  *     createUrl: '/api/operations/records',
  *     dateFilter: true, searchPlaceholder: '...',
+ *     filterOptionsUrl: '/api/finance/balances/filter-options',
+ *     filters: [{ key: 'mapping', label: 'التصنيف', optionsFrom: 'mappings', param?, col?,
+ *                 formatValue?, formatLabel? }],
  *     columns: [{ key, label, format? }],
  *     fields:  [{ key, label, type: 'text'|'number'|'date'|'datetime'|'select'|'textarea',
  *                 required?, options?: [{ value, label }], col?: 4|6|12 }]
@@ -86,6 +89,11 @@
         const uid = 'crud' + (instances.length + 1);
         const state = { page: 1, pageSize: cfg.pageSize || 20, editingId: null, totalPages: 1 };
 
+        // Dropdown filters (cfg.filters): one <select> per column the records can be narrowed by,
+        // filled from cfg.filterOptionsUrl so the list offers what the uploaded data actually
+        // carries rather than a hard-coded set that drifts from it.
+        const filters = Array.isArray(cfg.filters) ? cfg.filters : [];
+
         root.innerHTML = `
             <div class="glass-card p-3 mb-3">
                 <div class="row g-2 align-items-center">
@@ -103,6 +111,19 @@
                         <button class="btn btn-neon btn-sm flex-grow-1" id="${uid}-add"><i class="bi bi-plus-circle"></i> إضافة</button>
                     </div>
                 </div>
+                ${filters.length ? `
+                <div class="row g-2 mt-2 align-items-end">
+                    ${filters.map(f => `
+                    <div class="col-md-${f.col || 3}">
+                        <label class="form-label small text-muted mb-1">${esc(f.label)}</label>
+                        <select id="${uid}-flt-${f.key}" class="form-select form-select-sm form-control-glass">
+                            <option value="">${esc(f.allLabel || 'الكل')}</option>
+                        </select>
+                    </div>`).join('')}
+                    <div class="col-md-2">
+                        <button class="btn btn-neon-outline btn-sm w-100" id="${uid}-clear"><i class="bi bi-x-circle"></i> مسح الفلاتر</button>
+                    </div>
+                </div>` : ''}
             </div>
 
             <div class="glass-card">
@@ -162,6 +183,10 @@
                 if ($('from').value) params.set('fromDate', $('from').value);
                 if ($('to').value) params.set('toDate', $('to').value);
             }
+            filters.forEach(f => {
+                const el = $(`flt-${f.key}`);
+                if (el && el.value) params.set(f.param || f.key, el.value);
+            });
 
             try {
                 const res = await fetch(`${cfg.listUrl}?${params}`);
@@ -306,8 +331,53 @@
         $('prev').addEventListener('click', () => { if (state.page > 1) { state.page--; load(); } });
         $('next').addEventListener('click', () => { if (state.page < state.totalPages) { state.page++; load(); } });
 
-        const instance = { reload: () => { state.page = 1; return load(); } };
+        // Choosing from a dropdown filters immediately - it is a choice, not a typed query that
+        // needs a search button.
+        filters.forEach(f => {
+            const el = $(`flt-${f.key}`);
+            if (el) el.addEventListener('change', () => { state.page = 1; load(); });
+        });
+        if (filters.length) {
+            $('clear').addEventListener('click', () => {
+                filters.forEach(f => { const el = $(`flt-${f.key}`); if (el) el.value = ''; });
+                $('search').value = '';
+                if (cfg.dateFilter) { $('from').value = ''; $('to').value = ''; }
+                state.page = 1;
+                load();
+            });
+        }
+
+        // The dropdown contents come from the server: one request, then each filter picks its own
+        // list out of the response by `optionsFrom`.
+        async function loadFilterOptions() {
+            if (!filters.length || !cfg.filterOptionsUrl) return;
+            try {
+                const res = await fetch(cfg.filterOptionsUrl);
+                if (!res.ok) throw new Error(res.statusText);
+                const options = await res.json();
+                filters.forEach(f => {
+                    const el = $(`flt-${f.key}`);
+                    const values = f.optionsFrom ? (options[f.optionsFrom] || []) : (f.options || []);
+                    if (!el || !values.length) return;
+                    el.insertAdjacentHTML('beforeend', values.map(v => {
+                        const value = f.formatValue ? f.formatValue(v) : v;
+                        const label = f.formatLabel ? f.formatLabel(v) : v;
+                        return `<option value="${esc(value)}">${esc(label)}</option>`;
+                    }).join(''));
+                });
+            } catch (err) {
+                // A failed options request must not take the records table down with it: the table
+                // still lists everything, only the dropdowns stay empty.
+                console.error('[RawahelCrud] filter options failed', err);
+            }
+        }
+
+        const instance = {
+            reload: () => { state.page = 1; return load(); },
+            reloadFilterOptions: loadFilterOptions
+        };
         instances.push(instance);
+        loadFilterOptions();
         load();
         return instance;
     }

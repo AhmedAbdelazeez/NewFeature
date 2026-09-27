@@ -129,6 +129,10 @@ namespace NewFeature.Models
     {
         public int Id { get; set; }
 
+        [Required(ErrorMessage = "كود المسار مطلوب.")]
+        [StringLength(50, ErrorMessage = "كود المسار لا يتجاوز 50 حرفاً.")]
+        public string Code { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "English Name is required")]
         [StringLength(150)]
         public string NameEn { get; set; } = string.Empty;
@@ -137,24 +141,22 @@ namespace NewFeature.Models
         [StringLength(150)]
         public string NameAr { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "English Start Location is required")]
+        // Start/end locations are optional: the approved sales-lines sheet leaves them blank for
+        // on-demand lines such as daily bus rental.
         [StringLength(200)]
-        public string StartLocationEn { get; set; } = string.Empty;
+        public string? StartLocationEn { get; set; }
 
-        [Required(ErrorMessage = "Arabic Start Location is required")]
         [StringLength(200)]
-        public string StartLocationAr { get; set; } = string.Empty;
+        public string? StartLocationAr { get; set; }
 
-        [Required(ErrorMessage = "English End Location is required")]
         [StringLength(200)]
-        public string EndLocationEn { get; set; } = string.Empty;
+        public string? EndLocationEn { get; set; }
 
-        [Required(ErrorMessage = "Arabic End Location is required")]
         [StringLength(200)]
-        public string EndLocationAr { get; set; } = string.Empty;
+        public string? EndLocationAr { get; set; }
 
         [Required(ErrorMessage = "Distance in KM is required")]
-        [Range(0.1, 100000.0)]
+        [Range(0.0, 100000.0, ErrorMessage = "المسافة يجب أن تكون بين 0 و 100000 كم.")]
         public decimal DistanceKm { get; set; }
 
         public string Name { get; set; } = string.Empty;

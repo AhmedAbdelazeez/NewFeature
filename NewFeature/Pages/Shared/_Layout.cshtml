@@ -158,6 +158,9 @@
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Strategy" data-i18n="nav-strategy">Strategy</a></li>
                                     <li><hr class="dropdown-divider border-glass"></li>
                                     <li><a class="dropdown-item dropdown-item-custom" asp-page="/Finance" data-i18n="nav-finance">Finance</a></li>
+                                    @* The Finance department's two uploads, reachable without going through its landing page. *@
+                                    <li><a class="dropdown-item dropdown-item-custom ps-4 small" asp-page="/FinanceAccounts">— شجرة الحسابات (COA)</a></li>
+                                    <li><a class="dropdown-item dropdown-item-custom ps-4 small" asp-page="/FinanceBalances">— الأرصدة والحركات المالية</a></li>
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Commercial" data-i18n="nav-commercial">Commercial</a></li>
                                     <li class="d-none"><a class="dropdown-item dropdown-item-custom" asp-page="/Tourism" data-i18n="nav-tourism">Tourism</a></li>
                                     <li><a class="dropdown-item dropdown-item-custom" asp-page="/Operations" data-i18n="nav-operations">Operations</a></li>
@@ -350,6 +353,8 @@
                 'routes-title': 'Route Operations',
                 'routes-subtitle': 'Define transportation routes, distance parameters, and transit hubs',
                 'routes-btn-add': 'Add New Route',
+                'routes-th-code': 'Code',
+                'routes-lbl-code': 'Route Code (Item Code)',
                 'routes-th-name': 'Route Name',
                 'routes-th-start': 'Start Location',
                 'routes-th-end': 'End Location',
@@ -773,6 +778,8 @@
                 'routes-title': 'إدارة المسارات',
                 'routes-subtitle': 'تحديد مسارات النقل ومقاييس المسافات ومحطات العبور',
                 'routes-btn-add': 'إضافة مسار جديد',
+                'routes-th-code': 'الكود',
+                'routes-lbl-code': 'كود المسار (Item Code)',
                 'routes-th-name': 'اسم المسار',
                 'routes-th-start': 'نقطة الانطلاق',
                 'routes-th-end': 'نقطة الوصول',

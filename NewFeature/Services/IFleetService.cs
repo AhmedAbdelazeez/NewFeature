@@ -29,6 +29,7 @@ namespace NewFeature.Services
         Task<RouteDto?> GetRouteByIdAsync(int id);
         Task<RouteDto> CreateRouteAsync(RouteDto dto);
         Task<bool> UpdateRouteAsync(RouteDto dto);
+        Task<bool> RouteCodeExistsAsync(string code, int? excludeId);
         Task<bool> DeleteRouteAsync(int id);
 
         // Trips

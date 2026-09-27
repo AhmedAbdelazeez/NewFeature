@@ -299,7 +299,11 @@ namespace NewFeature.Services
         // same rows instead of appending a second copy of them.
         public async Task<ExcelImportResultDto> BulkUploadDispatchLogAsync(System.IO.Stream excelStream)
         {
-            var existing = await _context.OperationsDispatchRecords.ToListAsync();
+            // Keyed once up front: a month's export is ~10,000 lines, and scanning the whole table
+            // for every one of them made a full-month upload crawl.
+            var existing = new Dictionary<string, OperationsDispatchRecord>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in await _context.OperationsDispatchRecords.ToListAsync())
+                existing.TryAdd(DispatchKey(r.DeliveryDate, r.RentOrder, r.BusNumber, r.Direction), r);
             var seenInThisFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var result = await ExcelImportEngine.RunAsync(
@@ -344,15 +348,12 @@ namespace NewFeature.Services
                     // The same dispatch line appearing twice inside one uploaded file is a data
                     // entry mistake, and is reported rather than silently collapsed - otherwise a
                     // duplicated row would look imported while quietly overwriting its twin.
-                    if (!seenInThisFile.Add($"{day:yyyy-MM-dd}|{rentOrder}|{busNumber}|{direction}"))
+                    var key = DispatchKey(day, rentOrder, busNumber, direction);
+                    if (!seenInThisFile.Add(key))
                         return ExcelRowOutcomeResult.Skipped(
                             "هذا الصف مكرر داخل نفس الملف (نفس الخط وأمر الإيجار والحافلة والتاريخ).", "Rent Order");
 
-                    var record = existing.FirstOrDefault(r =>
-                        r.DeliveryDate.Date == day &&
-                        string.Equals(r.RentOrder, rentOrder, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(r.BusNumber, busNumber, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(r.Direction, direction, StringComparison.OrdinalIgnoreCase));
+                    existing.TryGetValue(key, out var record);
 
                     bool isNew = record == null;
                     record ??= new OperationsDispatchRecord();
@@ -361,7 +362,7 @@ namespace NewFeature.Services
                     if (isNew)
                     {
                         _context.OperationsDispatchRecords.Add(record);
-                        existing.Add(record);
+                        existing[key] = record;
                         await System.Threading.Tasks.Task.CompletedTask;
                         return ExcelRowOutcomeResult.Inserted();
                     }
@@ -373,6 +374,9 @@ namespace NewFeature.Services
 
             return result;
         }
+
+        private static string DispatchKey(DateTime day, string rentOrder, string busNumber, string direction) =>
+            $"{day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}|{rentOrder.Trim()}|{busNumber.Trim()}|{direction.Trim()}";
 
         // The Completeion column is free text in practice ("Completed", "مكتمل", "Cancelled",
         // "ملغي"), so it is stored verbatim and only the completed/not-completed decision is

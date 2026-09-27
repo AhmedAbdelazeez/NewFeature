@@ -1,0 +1,93 @@
+@page
+@model FinanceBalancesModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
+@{
+    ViewData["Title"] = "الأرصدة والحركات المالية - الإدارة المالية";
+}
+
+@* The second of the Finance department's two ERP pages: the monthly figures (ميزان المراجعة). One
+   row per account per reporting date per branch, carrying the opening balance and the period's
+   debits and credits. الحركة and الرصيد are computed on our side, so a typed total can never
+   contradict the debits and credits it summarizes. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "الأرصدة والحركات المالية",
+        Subtitle = "رفع ميزان المراجعة الشهري (مدين / دائن لكل حساب) لكل فرع. المؤشرات المحسوبة منه تظهر في لوحة المؤشرات التنفيذية.",
+        Icon = "bi-cash-coin",
+        TemplateUrl = "/api/finance/balances/template",
+        UploadUrl = "/api/finance/balances/bulk-upload",
+        Sheets = new[] { DepartmentTemplates.FinanceBalancesFile }
+    };
+}
+<partial name="_DepartmentUploadLanding" model="landing" />
+
+<div class="glass-card p-3 small d-flex align-items-start gap-2 mb-4">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+        يجب رفع <a href="/FinanceAccounts">شجرة الحسابات (COA)</a> قبل رفع الأرصدة، فكل رقم حساب يُصنَّف من خلالها ويُرفض الصف إن لم يكن موجوداً فيها.
+        كل رفع يحمل حركة شهره فقط (لا مجموعاً تراكمياً)، ويُميَّز الصف بـ (التاريخ + الفرع + رقم الحساب) فإعادة رفع نفس الشهر تُحدّث الأرقام ولا تكررها.
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0">سجل الأرصدة</h5>
+    <a class="btn btn-neon-outline btn-sm" href="/FinanceAccounts">
+        شجرة الحسابات (COA) <i class="bi bi-arrow-left ms-1"></i>
+    </a>
+</div>
+
+<div id="crud-balances" class="mb-5"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const f = RawahelCrud.format;
+            RawahelCrud.mount({
+                el: '#crud-balances',
+                itemName: 'رصيد',
+                listUrl: '/api/finance/balances',
+                createUrl: '/api/finance/balances',
+                itemUrl: id => '/api/finance/balances/' + id,
+                searchPlaceholder: 'بحث برقم الحساب أو اسم الحساب...',
+                dateFilter: true,
+                // The branch, the reporting date and the account tree's own groupings: "كل أرصدة
+                // النقد في فرع 1 في سبتمبر" is one selection rather than a manual cross-reference.
+                filterOptionsUrl: '/api/finance/balances/filter-options',
+                filters: [
+                    { key: 'branch', label: 'الفرع', optionsFrom: 'branches', col: 2 },
+                    {
+                        key: 'asOfDate', label: 'تاريخ التقرير', optionsFrom: 'dates', col: 2,
+                        formatValue: v => String(v).substring(0, 10),
+                        formatLabel: v => f.date(v)
+                    },
+                    { key: 'mapping', label: 'التصنيف (Mapping)', optionsFrom: 'mappings', col: 3 },
+                    { key: 'rsmClassification', label: 'تصنيف RSM', optionsFrom: 'rsmClassifications', col: 3 }
+                ],
+                columns: [
+                    { key: 'date', label: 'التاريخ', format: v => f.date(v) },
+                    { key: 'branch', label: 'الفرع' },
+                    { key: 'accountNumber', label: 'رقم الحساب', format: v => '<strong>' + f.esc(v) + '</strong>' },
+                    { key: 'accountName', label: 'اسم الحساب' },
+                    { key: 'mapping', label: 'التصنيف (Mapping)', format: v => '<span class="small text-muted">' + f.esc(v || '--') + '</span>' },
+                    { key: 'openingBalance', label: 'الافتتاحي', format: v => f.number(v, 2) },
+                    { key: 'debit', label: 'مدين', format: v => f.number(v, 2) },
+                    { key: 'credit', label: 'دائن', format: v => f.number(v, 2) },
+                    { key: 'movement', label: 'الحركة', format: v => f.number(v, 2) },
+                    { key: 'balance', label: 'الرصيد', format: v => '<strong>' + f.number(v, 2) + '</strong>' }
+                ],
+                fields: [
+                    { key: 'date', label: 'Date (تاريخ نهاية الفترة)', type: 'date', required: true, col: 4 },
+                    { key: 'branch', label: 'Branch (الفرع) - يُترك فارغاً للفرع الواحد', col: 4 },
+                    { key: 'accountNumber', label: 'Account No (رقم الحساب)', required: true, col: 4 },
+                    { key: 'openingBalance', label: 'BBF (الرصيد الافتتاحي)', type: 'number', col: 4 },
+                    { key: 'debit', label: 'Debit (مدين)', type: 'number', col: 4 },
+                    { key: 'credit', label: 'Credit (دائن)', type: 'number', col: 4 },
+                    { key: 'accountName', label: 'Account Name (اسم الحساب) - يُملأ من الشجرة إن تُرك فارغاً', col: 8 },
+                    { key: 'balance', label: 'Balance (الرصيد) - يُحسب تلقائياً من المدين والدائن', type: 'number', col: 4 }
+                ]
+            });
+        })();
+    </script>
+}

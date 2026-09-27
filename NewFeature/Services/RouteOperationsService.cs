@@ -25,34 +25,35 @@ namespace NewFeature.Services
 
         #region Route Operations Excel Template
 
-        // The approved Route Operations template. Column semantics match the existing Route data
-        // model exactly (NameEn/NameAr/StartLocationEn/StartLocationAr/EndLocationEn/EndLocationAr/
-        // DistanceKm) - the previous upload code read these same 7 fields positionally with only a
-        // loose keyword sanity check; this rebuild adds real header matching, per-row validation,
-        // and a structured result on top of the same underlying data shape.
-        private static readonly ExcelTemplateDefinition RouteTemplate = new()
+        // The approved Route Operations template (the sales-lines sheet). Item Code is the route's
+        // business key: it is unique per line, whereas the English name is not - the same name
+        // appears under two codes with different distances (e.g. "Makkah - Taif Airport" as 12 and
+        // L79). The first alias of each column is the exact header the downloadable template writes.
+        public static readonly ExcelTemplateDefinition RouteTemplate = new()
         {
-            TemplateName = "Route Operations",
+            TemplateName = "نموذج المسارات (Route Operations)",
             IdentityColumnKey = "NameEn",
             Columns = new List<ExcelColumnDefinition>
             {
+                new() { Key = "Code", DisplayName = "Item Code (كود المسار)", Required = true,
+                    HeaderAliases = new[] { "Item Code", "route code", "كود المسار", "كود الخط", "كود الصنف", "رمز المسار" } },
                 new() { Key = "NameEn", DisplayName = "Route Name (English)", Required = true,
-                    HeaderAliases = new[] { "route name (english)", "route name (en)", "english name", "name (english)" } },
+                    HeaderAliases = new[] { "Route Name (English)", "route name (en)", "english name", "name (english)" } },
                 new() { Key = "NameAr", DisplayName = "Route Name (Arabic)", Required = true,
-                    HeaderAliases = new[] { "route name (arabic)", "route name (ar)", "arabic name", "name (arabic)", "اسم المسار" } },
-                // Start/End location is not always known when a route is first entered (e.g. an
-                // employee-shuttle or on-demand route defined only by name and distance), so these
-                // four columns are optional both as a header and per-row.
-                new() { Key = "StartLocationEn",
-                    HeaderAliases = new[] { "start location (english)", "start location (en)", "start (english)", "english start" } },
-                new() { Key = "StartLocationAr",
-                    HeaderAliases = new[] { "start location (arabic)", "start location (ar)", "start (arabic)", "arabic start", "بداية" } },
-                new() { Key = "EndLocationEn",
-                    HeaderAliases = new[] { "end location (english)", "end location (en)", "end (english)", "english end" } },
-                new() { Key = "EndLocationAr",
-                    HeaderAliases = new[] { "end location (arabic)", "end location (ar)", "end (arabic)", "arabic end", "نهاية" } },
+                    HeaderAliases = new[] { "Route Name (Arabic)", "route name (ar)", "arabic name", "name (arabic)", "اسم المسار" } },
+                // Start/End location is not always known (daily bus rental, on-demand lines are
+                // defined only by name), so these four columns are optional both as a header and
+                // per-row.
+                new() { Key = "StartLocationEn", DisplayName = "Start Location (English)",
+                    HeaderAliases = new[] { "Start Location (English)", "start location (en)", "start (english)", "english start" } },
+                new() { Key = "StartLocationAr", DisplayName = "Start Location (Arabic)",
+                    HeaderAliases = new[] { "Start Location (Arabic)", "start location (ar)", "start (arabic)", "arabic start", "بداية" } },
+                new() { Key = "EndLocationEn", DisplayName = "End Location (English)",
+                    HeaderAliases = new[] { "End Location (English)", "end location (en)", "end (english)", "english end" } },
+                new() { Key = "EndLocationAr", DisplayName = "End Location (Arabic)",
+                    HeaderAliases = new[] { "End Location (Arabic)", "end location (ar)", "end (arabic)", "arabic end", "نهاية" } },
                 new() { Key = "DistanceKm", DisplayName = "Distance (KM)", Required = true,
-                    HeaderAliases = new[] { "distance (km)", "distance", "المسافة" } },
+                    HeaderAliases = new[] { "Distance (KM)", "distance", "المسافة" } },
             }
         };
 
@@ -62,81 +63,104 @@ namespace NewFeature.Services
         public async System.Threading.Tasks.Task<ExcelImportResultDto> BulkUploadRoutesAsync(System.IO.Stream excelStream)
         {
             // Loaded once, up front - no per-row database round-trip.
-            var existingRoutes = (await _routeRepository.GetAllAsync())
-                .GroupBy(r => NormalizeName(r.NameEn))
+            var allRoutes = (await _routeRepository.GetAllAsync()).ToList();
+            var routesByCode = allRoutes
+                .Where(r => !string.IsNullOrWhiteSpace(r.Code))
+                .GroupBy(r => NormalizeKey(r.Code))
                 .ToDictionary(g => g.Key, g => g.First());
+
+            // Routes created before codes existed are matched once by English name, and take the
+            // code of the first row that names them - so the first upload of the coded sheet fills
+            // in the codes instead of duplicating every existing route.
+            var uncodedByName = allRoutes
+                .Where(r => string.IsNullOrWhiteSpace(r.Code))
+                .GroupBy(r => NormalizeKey(r.NameEn))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var codesInThisFile = new Dictionary<string, int>(); // code -> first row that used it
 
             async System.Threading.Tasks.Task<ExcelRowOutcomeResult> ProcessRow(ExcelRowContext ctx)
             {
+                var code = ctx.GetString("Code");
+                if (string.IsNullOrEmpty(code))
+                    return ExcelRowOutcomeResult.Skipped("كود المسار (Item Code) مطلوب لكل مسار.", "Item Code");
+                if (code.Length > 50)
+                    return ExcelRowOutcomeResult.Skipped("كود المسار (Item Code) لا يتجاوز 50 حرفاً.", "Item Code");
+
+                var codeKey = NormalizeKey(code);
+                if (codesInThisFile.TryGetValue(codeKey, out var firstRow))
+                    return ExcelRowOutcomeResult.Skipped($"كود المسار \"{code}\" مكرر في الملف (ورد أولاً في الصف {firstRow}). يجب أن يكون لكل مسار كود مختلف.", "Item Code");
+                codesInThisFile[codeKey] = ctx.RowNumber;
+
                 var nameEn = ctx.GetString("NameEn");
                 if (string.IsNullOrEmpty(nameEn))
-                    return ExcelRowOutcomeResult.Skipped("Route Name (English) is required.", "Route Name (English)");
+                    return ExcelRowOutcomeResult.Skipped("اسم المسار بالإنجليزية (Route Name (English)) مطلوب.", "Route Name (English)");
                 if (nameEn.Length > 150)
-                    return ExcelRowOutcomeResult.Skipped("Route Name (English) cannot exceed 150 characters.", "Route Name (English)");
+                    return ExcelRowOutcomeResult.Skipped("اسم المسار بالإنجليزية لا يتجاوز 150 حرفاً.", "Route Name (English)");
 
                 var nameAr = ctx.GetString("NameAr");
                 if (string.IsNullOrEmpty(nameAr))
-                    return ExcelRowOutcomeResult.Skipped("Route Name (Arabic) is required.", "Route Name (Arabic)");
+                    return ExcelRowOutcomeResult.Skipped("اسم المسار بالعربية (Route Name (Arabic)) مطلوب.", "Route Name (Arabic)");
                 if (nameAr.Length > 150)
-                    return ExcelRowOutcomeResult.Skipped("Route Name (Arabic) cannot exceed 150 characters.", "Route Name (Arabic)");
+                    return ExcelRowOutcomeResult.Skipped("اسم المسار بالعربية لا يتجاوز 150 حرفاً.", "Route Name (Arabic)");
 
-                // Start/End location is optional - blank is a legitimate "not yet known" value, not
-                // an error. Only validate length when something was actually entered.
+                // Start/End location is optional - blank is a legitimate "not a point-to-point line"
+                // value, not an error. A start equal to the end is legitimate too: intra-city lines
+                // (Makkah hotel -> Makkah station) are a large part of the sheet.
                 var startEn = ctx.GetString("StartLocationEn");
-                if (startEn.Length > 200)
-                    return ExcelRowOutcomeResult.Skipped("Start Location (English) cannot exceed 200 characters.", "Start Location (English)");
-
                 var startAr = ctx.GetString("StartLocationAr");
-                if (startAr.Length > 200)
-                    return ExcelRowOutcomeResult.Skipped("Start Location (Arabic) cannot exceed 200 characters.", "Start Location (Arabic)");
-
                 var endEn = ctx.GetString("EndLocationEn");
-                if (endEn.Length > 200)
-                    return ExcelRowOutcomeResult.Skipped("End Location (English) cannot exceed 200 characters.", "End Location (English)");
-
                 var endAr = ctx.GetString("EndLocationAr");
-                if (endAr.Length > 200)
-                    return ExcelRowOutcomeResult.Skipped("End Location (Arabic) cannot exceed 200 characters.", "End Location (Arabic)");
-
-                var distanceStr = ctx.GetString("DistanceKm");
-                if (!decimal.TryParse(distanceStr, out var distance))
-                    return ExcelRowOutcomeResult.Skipped("Distance (KM) is required and must be a valid number.", "Distance (KM)");
-                if (distance <= 0 || distance > 100000)
-                    return ExcelRowOutcomeResult.Skipped("Distance (KM) must be greater than 0 and at most 100000.", "Distance (KM)");
-
-                // A route cannot start and end at the same place - but only when both are actually
-                // filled in (a route with no start/end recorded yet obviously isn't a same-place error).
-                if (startEn.Length > 0 && endEn.Length > 0 &&
-                    string.Equals(startEn.Trim(), endEn.Trim(), System.StringComparison.OrdinalIgnoreCase))
-                    return ExcelRowOutcomeResult.Skipped("Start Location and End Location cannot be the same.", "End Location (English)");
-
-                // Route Name (English) is the business key: an existing route name is updated in
-                // place, a new one is inserted. (No formal Route Code exists in the data model yet -
-                // see the Template Guide for a recommendation to add one for more reliable matching.)
-                var key = NormalizeName(nameEn);
-                if (existingRoutes.TryGetValue(key, out var existing))
+                foreach (var (value, column) in new[]
                 {
+                    (startEn, "Start Location (English)"), (startAr, "Start Location (Arabic)"),
+                    (endEn, "End Location (English)"), (endAr, "End Location (Arabic)")
+                })
+                {
+                    if (value.Length > 200)
+                        return ExcelRowOutcomeResult.Skipped($"{column} لا يتجاوز 200 حرف.", column);
+                }
+
+                // Zero is accepted: service lines such as daily bus rental carry no distance.
+                var distance = ctx.GetDecimal("DistanceKm");
+                if (distance == null)
+                    return ExcelRowOutcomeResult.Skipped("المسافة (Distance (KM)) مطلوبة ويجب أن تكون رقماً.", "Distance (KM)");
+                if (distance < 0 || distance > 100000)
+                    return ExcelRowOutcomeResult.Skipped("المسافة (Distance (KM)) يجب أن تكون بين 0 و 100000 كم.", "Distance (KM)");
+
+                var existing = routesByCode.GetValueOrDefault(codeKey);
+                if (existing == null && uncodedByName.Remove(NormalizeKey(nameEn), out var legacy))
+                {
+                    existing = legacy;
+                    routesByCode[codeKey] = legacy;
+                }
+
+                if (existing != null)
+                {
+                    existing.Code = code;
+                    existing.NameEn = nameEn;
                     existing.NameAr = nameAr;
                     existing.StartLocationEn = startEn;
                     existing.StartLocationAr = startAr;
                     existing.EndLocationEn = endEn;
                     existing.EndLocationAr = endAr;
-                    existing.DistanceKm = distance;
+                    existing.DistanceKm = distance.Value;
                     return ExcelRowOutcomeResult.Updated();
                 }
 
                 var route = new Models.Route
                 {
+                    Code = code,
                     NameEn = nameEn,
                     NameAr = nameAr,
                     StartLocationEn = startEn,
                     StartLocationAr = startAr,
                     EndLocationEn = endEn,
                     EndLocationAr = endAr,
-                    DistanceKm = distance
+                    DistanceKm = distance.Value
                 };
                 await _routeRepository.AddAsync(route);
-                existingRoutes[key] = route;
+                routesByCode[codeKey] = route;
                 return ExcelRowOutcomeResult.Inserted();
             }
 
@@ -148,8 +172,8 @@ namespace NewFeature.Services
                 _logger);
         }
 
-        private static string NormalizeName(string name) =>
-            (name ?? string.Empty).Trim().ToUpperInvariant();
+        private static string NormalizeKey(string? value) =>
+            (value ?? string.Empty).Trim().ToUpperInvariant();
         #endregion
 
         #region KPIs
@@ -160,7 +184,10 @@ namespace NewFeature.Services
 
             var totalRoutes = routes.Count;
             var totalDistance = routes.Sum(r => r.DistanceKm);
-            var avgDistance = totalRoutes > 0 ? System.Math.Round(totalDistance / totalRoutes, 1) : 0m;
+            // Service lines with no distance (daily bus rental and the like) would drag the average
+            // toward zero, so it is taken over the lines that actually have a distance.
+            var measuredRoutes = routes.Count(r => r.DistanceKm > 0);
+            var avgDistance = measuredRoutes > 0 ? System.Math.Round(totalDistance / measuredRoutes, 1) : 0m;
 
             var longest = routes.OrderByDescending(r => r.DistanceKm).FirstOrDefault();
 

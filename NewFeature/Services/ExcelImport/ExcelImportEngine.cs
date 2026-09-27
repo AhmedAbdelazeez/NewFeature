@@ -215,6 +215,11 @@ namespace NewFeature.Services.ExcelImport
                         template.SheetNameAliases.Any(alias =>
                             ws.Name.Trim().IndexOf(alias, StringComparison.OrdinalIgnoreCase) >= 0));
 
+                    // A single-sheet template accepts a renamed sheet: the header contract below is
+                    // what proves the file is the right one.
+                    if (worksheet == null && template.AllowFirstSheetFallback)
+                        worksheet = workbook.Worksheets.First();
+
                     if (worksheet == null)
                     {
                         var sheetLabel = string.IsNullOrEmpty(template.SheetDisplayName)
@@ -319,6 +324,7 @@ namespace NewFeature.Services.ExcelImport
                     return result;
                 }
 
+                var headerTextByColumn = rawHeaders.ToDictionary(h => h.Column, h => h.Text);
                 var dataRows = worksheet.RowsUsed().Skip(1).ToList();
                 result.TotalRows = dataRows.Count;
 
@@ -329,6 +335,13 @@ namespace NewFeature.Services.ExcelImport
                     // must never be counted as data, inserted, or reported as skipped errors.
                     bool isEmpty = columnMap.Values.All(col => string.IsNullOrWhiteSpace(row.Cell(col).GetString()));
                     if (isEmpty) continue;
+
+                    // The header row repeated under itself (two ERP exports stacked into one sheet)
+                    // is not data either - it would otherwise be reported as a row with an
+                    // unreadable date in every column.
+                    bool isRepeatedHeader = columnMap.Values.All(col =>
+                        string.Equals(row.Cell(col).GetString().Trim(), headerTextByColumn[col], StringComparison.OrdinalIgnoreCase));
+                    if (isRepeatedHeader) continue;
 
                     result.DataRows++;
 

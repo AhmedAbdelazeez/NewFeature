@@ -1,0 +1,80 @@
+@page
+@model FinanceAccountsModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
+@{
+    ViewData["Title"] = "شجرة الحسابات - الإدارة المالية";
+}
+
+@* The first of the Finance department's two ERP pages: the chart of accounts. It is reference data
+   - it changes when accounts are opened or reclassified, not every month - and it is what every
+   uploaded figure is classified through, so it must be uploaded before any month's balances. No KPI
+   cards here; the indicators computed from this data live on the executive dashboard. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "شجرة الحسابات (COA)",
+        Subtitle = "رفع دليل الحسابات وتصنيفاته. يُرفع أولاً وعند إضافة حسابات جديدة فقط، وكل رصيد شهري يُصنَّف من خلاله.",
+        Icon = "bi-diagram-3",
+        TemplateUrl = "/api/finance/chart-of-accounts/template",
+        UploadUrl = "/api/finance/chart-of-accounts/bulk-upload",
+        Sheets = new[] { DepartmentTemplates.FinanceChartOfAccountsFile }
+    };
+}
+<partial name="_DepartmentUploadLanding" model="landing" />
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0">سجل الحسابات</h5>
+    <a class="btn btn-neon-outline btn-sm" href="/FinanceBalances">
+        الأرصدة والحركات المالية <i class="bi bi-arrow-left ms-1"></i>
+    </a>
+</div>
+
+<div id="crud-coa" class="mb-5"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const f = RawahelCrud.format;
+            RawahelCrud.mount({
+                el: '#crud-coa',
+                itemName: 'حساب',
+                listUrl: '/api/finance/chart-of-accounts/paged',
+                createUrl: '/api/finance/chart-of-accounts',
+                itemUrl: id => '/api/finance/chart-of-accounts/' + id,
+                searchPlaceholder: 'بحث برقم الحساب أو الاسم أو التصنيف...',
+                // Every dropdown is one of the tree's own classification columns, filled from the
+                // values the uploaded file actually carries.
+                filterOptionsUrl: '/api/finance/chart-of-accounts/filter-options',
+                filters: [
+                    { key: 'mapping', label: 'التصنيف (Mapping)', optionsFrom: 'mappings', col: 3 },
+                    { key: 'bsClassification', label: 'تصنيف المركز المالي (BS)', optionsFrom: 'bsClassifications', col: 3 },
+                    { key: 'isClassification', label: 'تصنيف قائمة الدخل (IS)', optionsFrom: 'isClassifications', col: 2 },
+                    { key: 'rsmClassification', label: 'تصنيف RSM', optionsFrom: 'rsmClassifications', col: 2 },
+                    { key: 'managementClassification', label: 'التصنيف الإداري', optionsFrom: 'managementClassifications', col: 2 },
+                    { key: 'revenueMainClassification', label: 'تصنيف الإيرادات الرئيسي', optionsFrom: 'revenueMainClassifications', col: 3 },
+                    { key: 'revenueSubClassification', label: 'تصنيف الإيرادات الفرعي', optionsFrom: 'revenueSubClassifications', col: 3 }
+                ],
+                columns: [
+                    { key: 'accountNumber', label: 'رقم الحساب', format: v => '<strong>' + f.esc(v) + '</strong>' },
+                    { key: 'accountName', label: 'اسم الحساب' },
+                    { key: 'mapping', label: 'التصنيف (Mapping)' },
+                    { key: 'rsmClassification', label: 'تصنيف RSM' },
+                    { key: 'managementClassification', label: 'التصنيف الإداري' },
+                    { key: 'revenueMainClassification', label: 'تصنيف الإيرادات' }
+                ],
+                fields: [
+                    { key: 'accountNumber', label: 'Account # (رقم الحساب)', required: true, col: 4 },
+                    { key: 'accountName', label: 'Account Name (اسم الحساب)', required: true, col: 8 },
+                    { key: 'rsmClassification', label: 'RSM Classification (مثال: 7000   Revenues)', required: true, col: 6 },
+                    { key: 'mapping', label: 'Mapping (مثال: نقد في الصندوق ولدى البنوك)', col: 6 },
+                    { key: 'managementClassification', label: 'Management Classification', col: 6 },
+                    { key: 'bsClassification', label: 'BS Classification', col: 6 },
+                    { key: 'isClassification', label: 'IS Classification', col: 6 },
+                    { key: 'revenueMainClassification', label: 'Revenues Main Classification', col: 6 },
+                    { key: 'revenueSubClassification', label: 'Revenues Sub Classification', col: 6 }
+                ]
+            });
+        })();
+    </script>
+}

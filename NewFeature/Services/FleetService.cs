@@ -216,6 +216,7 @@ namespace NewFeature.Services
             return routes.OrderByDescending(r => r.Id).Select(r => new RouteDto
             {
                 Id = r.Id,
+                Code = r.Code ?? string.Empty,
                 NameEn = r.NameEn,
                 NameAr = r.NameAr,
                 StartLocationEn = r.StartLocationEn,
@@ -245,6 +246,7 @@ namespace NewFeature.Services
             {
                 var term = search.Trim();
                 routes = routes.Where(r =>
+                    Contains(r.Code ?? string.Empty, term) ||
                     Contains(r.NameEn, term) ||
                     Contains(r.NameAr, term) ||
                     Contains(r.StartLocationEn, term) ||
@@ -262,6 +264,7 @@ namespace NewFeature.Services
                 .Select(r => new RouteDto
                 {
                     Id = r.Id,
+                    Code = r.Code ?? string.Empty,
                     NameEn = r.NameEn,
                     NameAr = r.NameAr,
                     StartLocationEn = r.StartLocationEn,
@@ -293,6 +296,7 @@ namespace NewFeature.Services
             return new RouteDto
             {
                 Id = r.Id,
+                Code = r.Code ?? string.Empty,
                 NameEn = r.NameEn,
                 NameAr = r.NameAr,
                 StartLocationEn = r.StartLocationEn,
@@ -310,12 +314,13 @@ namespace NewFeature.Services
         {
             var route = new Models.Route
             {
+                Code = NormalizeRouteCode(dto.Code),
                 NameEn = dto.NameEn,
                 NameAr = dto.NameAr,
-                StartLocationEn = dto.StartLocationEn,
-                StartLocationAr = dto.StartLocationAr,
-                EndLocationEn = dto.EndLocationEn,
-                EndLocationAr = dto.EndLocationAr,
+                StartLocationEn = dto.StartLocationEn?.Trim() ?? string.Empty,
+                StartLocationAr = dto.StartLocationAr?.Trim() ?? string.Empty,
+                EndLocationEn = dto.EndLocationEn?.Trim() ?? string.Empty,
+                EndLocationAr = dto.EndLocationAr?.Trim() ?? string.Empty,
                 DistanceKm = dto.DistanceKm
             };
 
@@ -331,18 +336,33 @@ namespace NewFeature.Services
             var route = await _routeRepository.GetByIdAsync(dto.Id);
             if (route == null) return false;
 
+            route.Code = NormalizeRouteCode(dto.Code);
             route.NameEn = dto.NameEn;
             route.NameAr = dto.NameAr;
-            route.StartLocationEn = dto.StartLocationEn;
-            route.StartLocationAr = dto.StartLocationAr;
-            route.EndLocationEn = dto.EndLocationEn;
-            route.EndLocationAr = dto.EndLocationAr;
+            route.StartLocationEn = dto.StartLocationEn?.Trim() ?? string.Empty;
+            route.StartLocationAr = dto.StartLocationAr?.Trim() ?? string.Empty;
+            route.EndLocationEn = dto.EndLocationEn?.Trim() ?? string.Empty;
+            route.EndLocationAr = dto.EndLocationAr?.Trim() ?? string.Empty;
             route.DistanceKm = dto.DistanceKm;
 
             await _routeRepository.UpdateAsync(route);
             await _routeRepository.SaveChangesAsync();
             return true;
         }
+
+        // A route code identifies the route everywhere (upload matching, the Operations Direction
+        // column), so two routes may never share one - compared trimmed and case-insensitively.
+        public async Task<bool> RouteCodeExistsAsync(string code, int? excludeId)
+        {
+            var normalized = NormalizeRouteCode(code);
+            if (normalized == null) return false;
+            var routes = await _routeRepository.GetAllAsync();
+            return routes.Any(r => r.Id != excludeId &&
+                                   string.Equals(NormalizeRouteCode(r.Code), normalized, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string? NormalizeRouteCode(string? code) =>
+            string.IsNullOrWhiteSpace(code) ? null : code.Trim();
 
         public async Task<bool> DeleteRouteAsync(int id)
         {

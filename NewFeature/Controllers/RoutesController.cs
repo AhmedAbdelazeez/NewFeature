@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using NewFeature.Models;
 using NewFeature.Services;
+using NewFeature.Services.ExcelImport;
 
 namespace NewFeature.Controllers
 {
@@ -63,6 +64,8 @@ namespace NewFeature.Controllers
         public async Task<ActionResult<RouteDto>> CreateRoute([FromBody] RouteDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (await _fleetService.RouteCodeExistsAsync(dto.Code, excludeId: null))
+                return DuplicateCode(dto.Code);
             var created = await _fleetService.CreateRouteAsync(dto);
             return CreatedAtAction(nameof(GetRoute), new { id = created.Id }, created);
         }
@@ -73,9 +76,17 @@ namespace NewFeature.Controllers
         {
             if (id != dto.Id) return BadRequest("ID mismatch");
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (await _fleetService.RouteCodeExistsAsync(dto.Code, excludeId: id))
+                return DuplicateCode(dto.Code);
             var success = await _fleetService.UpdateRouteAsync(dto);
             if (!success) return NotFound();
             return NoContent();
+        }
+
+        private ActionResult DuplicateCode(string code)
+        {
+            ModelState.AddModelError(nameof(RouteDto.Code), $"كود المسار \"{code.Trim()}\" مستخدم لمسار آخر. يجب أن يكون لكل مسار كود مختلف.");
+            return ValidationProblem(ModelState);
         }
 
         [Authorize(Roles = "ROUTES,Admin")]
@@ -87,18 +98,49 @@ namespace NewFeature.Controllers
             return NoContent();
         }
 
+        // The downloadable template, generated from the very definition the importer validates
+        // against - so it always carries the Item Code column the upload now requires.
+        [HttpGet("template")]
+        public IActionResult DownloadTemplate()
+        {
+            var bytes = ExcelTemplateWriter.Build(
+                "نموذج المسارات - Route Operations",
+                new[]
+                {
+                    new ExcelTemplateSheetSpec
+                    {
+                        Definition = RouteOperationsService.RouteTemplate,
+                        SheetName = "Route Operations"
+                    }
+                },
+                new[]
+                {
+                    "ملاحظات:",
+                    "- Item Code هو كود المسار (مثل 1 أو L10) وهو إلزامي ولا يتكرر؛ وهو نفس الكود الوارد في عمود Direction بسجل أوامر التشغيل.",
+                    "- إعادة رفع الملف تُحدّث المسار صاحب نفس الكود بدل تكراره.",
+                    "- مواقع البداية والنهاية اختيارية، والمسافة صفر مقبولة للبنود التي لا تُقاس بالمسافة (مثل تأجير حافلة يومي)."
+                });
+
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Route_Operations_Template.xlsx");
+        }
+
         [Authorize(Roles = "ROUTES,Admin")]
         [HttpPost("bulk-upload")]
         public async Task<IActionResult> BulkUpload(Microsoft.AspNetCore.Http.IFormFile file)
         {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (file == null || file.Length == 0) return BadRequest("لم يتم اختيار أي ملف.");
             if (!ExcelCompatibility.IsSupportedExcelFile(file.FileName, file.ContentType))
-                return BadRequest("Only .xlsx or .xls files are supported.");
+                return BadRequest("الملفات المدعومة هي .xlsx و .xls فقط.");
 
             using var rawStream = file.OpenReadStream();
             using var stream = ExcelCompatibility.EnsureXlsxStream(rawStream);
             var result = await _routeOperationsService.BulkUploadRoutesAsync(stream);
 
+            // A template/header problem is the uploader's mistake - 422 so the page shows it as a
+            // failure with its message, never as a green "success" with zero rows.
+            if (!result.Success) return UnprocessableEntity(result);
             return Ok(result);
         }
     }

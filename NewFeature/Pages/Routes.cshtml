@@ -11,10 +11,10 @@
             <p class="text-muted mb-0" data-i18n="routes-subtitle">Configure terminals, pathways, and mileage distances</p>
         </div>
         <div>
-            <a class="btn btn-outline-secondary me-2" href="/templates/Route_Operations_Template.xlsx" download>
+            <a class="btn btn-outline-secondary me-2" href="/api/routes/template" download>
                 <i class="bi bi-download"></i> Download Template
             </a>
-            <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx" onchange="handleBulkUpload(event, '/api/routes/bulk-upload')">
+            <input type="file" id="bulkUploadFile" class="d-none" accept=".xlsx,.xls" onchange="rawahelExcelUpload(event, '/api/routes/bulk-upload', () => { routesCurrentPage = 1; loadRoutes(); })">
             <button class="btn btn-neon-outline me-2" onclick="document.getElementById('bulkUploadFile').click()">
                 <i class="bi bi-file-earmark-excel"></i> <span data-i18n="routes-btn-bulk">Bulk Upload</span>
             </button>
@@ -30,7 +30,7 @@
             <div class="col-md-8">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-glass text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" id="routeSearch" class="form-control form-control-glass" placeholder="Search routes by name or locations..." onkeyup="handleRouteSearchKeyup(event)">
+                    <input type="text" id="routeSearch" class="form-control form-control-glass" placeholder="Search routes by code, name or locations..." onkeyup="handleRouteSearchKeyup(event)">
                 </div>
             </div>
             <div class="col-md-2">
@@ -53,6 +53,7 @@
             <table class="table table-glass text-white align-middle" id="routesTable">
                 <thead>
                     <tr>
+                        <th data-i18n="routes-th-code">Code</th>
                         <th data-i18n="routes-th-name">Route Name</th>
                         <th data-i18n="routes-th-start">Start Location</th>
                         <th data-i18n="routes-th-end">End Location</th>
@@ -62,7 +63,7 @@
                 </thead>
                 <tbody id="routesList">
                     <tr>
-                        <td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td>
+                        <td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td>
                     </tr>
                 </tbody>
             </table>
@@ -90,7 +91,14 @@
             <form id="routeForm" onsubmit="saveRoute(event)">
                 <div class="modal-body p-4">
                     <input type="hidden" id="routeId">
-                    
+
+                    <div class="alert alert-danger d-none" id="routeFormError"></div>
+
+                    <div class="mb-3">
+                        <label for="routeCode" class="form-label" data-i18n="routes-lbl-code">Route Code (Item Code)</label>
+                        <input type="text" id="routeCode" class="form-control form-control-glass" maxlength="50" required placeholder="L10">
+                    </div>
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="nameEn" class="form-label" data-i18n="routes-lbl-name-en">Route Name (EN)</label>
@@ -105,28 +113,28 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="startLocationEn" class="form-label" data-i18n="routes-lbl-start-en">Start Location (EN)</label>
-                            <input type="text" id="startLocationEn" class="form-control form-control-glass" required>
+                            <input type="text" id="startLocationEn" class="form-control form-control-glass">
                         </div>
                         <div class="col-md-6">
                             <label for="startLocationAr" class="form-label" data-i18n="routes-lbl-start-ar">Start Location (AR)</label>
-                            <input type="text" id="startLocationAr" class="form-control form-control-glass" required>
+                            <input type="text" id="startLocationAr" class="form-control form-control-glass">
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="endLocationEn" class="form-label" data-i18n="routes-lbl-end-en">End Location (EN)</label>
-                            <input type="text" id="endLocationEn" class="form-control form-control-glass" required>
+                            <input type="text" id="endLocationEn" class="form-control form-control-glass">
                         </div>
                         <div class="col-md-6">
                             <label for="endLocationAr" class="form-label" data-i18n="routes-lbl-end-ar">End Location (AR)</label>
-                            <input type="text" id="endLocationAr" class="form-control form-control-glass" required>
+                            <input type="text" id="endLocationAr" class="form-control form-control-glass">
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="distanceKm" class="form-label" data-i18n="routes-lbl-distance">Distance (KM)</label>
-                        <input type="number" step="0.01" id="distanceKm" class="form-control form-control-glass" required>
+                        <input type="number" step="0.01" min="0" id="distanceKm" class="form-control form-control-glass" required>
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-glass">
@@ -153,7 +161,7 @@
 
         async function loadRoutes() {
             const tbody = document.getElementById("routesList");
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading operational routes...</td></tr>`;
 
             let url = `/api/routes/paged?page=${routesCurrentPage}&pageSize=${routesPageSize}`;
             if (routesSearchTerm) url += `&search=${encodeURIComponent(routesSearchTerm)}`;
@@ -178,20 +186,17 @@
             tbody.innerHTML = "";
 
             if (routes.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No routes found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No routes found.</td></tr>`;
                 return;
             }
 
             routes.forEach(r => {
-                const name = r.name;
-                const start = r.startLocation;
-                const end = r.endLocation;
-
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td><strong>${name}</strong></td>
-                    <td>${start}</td>
-                    <td>${end}</td>
+                    <td>${r.code ? '<span class="badge bg-info text-dark">' + esc(r.code) + '</span>' : '<span class="text-warning small">—</span>'}</td>
+                    <td><strong>${esc(r.name)}</strong></td>
+                    <td>${esc(r.startLocation) || '—'}</td>
+                    <td>${esc(r.endLocation) || '—'}</td>
                     <td>${r.distanceKm} KM</td>
                     <td class="text-end">
                         <button class="btn btn-neon-outline btn-sm me-2" onclick="viewRouteDetails(${r.id})"><i class="bi bi-eye"></i></button>
@@ -201,6 +206,12 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function handleRouteSearchKeyup(event) {
@@ -238,6 +249,7 @@
         function resetModalReadOnly(formId) {
             const form = document.getElementById(formId);
             form.querySelectorAll("input, select, textarea").forEach(el => el.disabled = false);
+            showRouteFormError('');
             const saveBtn = form.querySelector("button[type='submit']");
             if (saveBtn) saveBtn.style.display = "";
         }
@@ -259,6 +271,7 @@
                 if (res.ok) {
                     const r = await res.json();
                     document.getElementById("routeId").value = r.id;
+                    document.getElementById("routeCode").value = r.code || '';
                     document.getElementById("nameEn").value = r.nameEn;
                     document.getElementById("nameAr").value = r.nameAr;
                     document.getElementById("startLocationEn").value = r.startLocationEn;
@@ -292,13 +305,14 @@
             const id = document.getElementById("routeId").value;
             const dto = {
                 id: id ? parseInt(id) : 0,
+                code: document.getElementById("routeCode").value.trim(),
                 nameEn: document.getElementById("nameEn").value,
                 nameAr: document.getElementById("nameAr").value,
                 startLocationEn: document.getElementById("startLocationEn").value,
                 startLocationAr: document.getElementById("startLocationAr").value,
                 endLocationEn: document.getElementById("endLocationEn").value,
                 endLocationAr: document.getElementById("endLocationAr").value,
-                distanceKm: parseFloat(document.getElementById("distanceKm").value)
+                distanceKm: parseFloat(document.getElementById("distanceKm").value || '0')
             };
 
             const method = id ? 'PUT' : 'POST';
@@ -311,17 +325,41 @@
                     body: JSON.stringify(dto)
                 });
 
-                if (res.ok) {
+                // A redirect means the API bounced us to the login / access-denied page.
+                if (res.ok && !res.redirected) {
                     const modalEl = document.getElementById('routeModal');
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     modal.hide();
                     loadRoutes();
                 } else {
-                    alert("Error saving route.");
+                    showRouteFormError(await describeSaveError(res));
                 }
             } catch (err) {
                 console.error(err);
+                showRouteFormError(currentLang === 'en' ? 'Could not reach the server. Please try again.' : 'تعذّر الاتصال بالخادم. يرجى إعادة المحاولة.');
             }
+        }
+
+        function showRouteFormError(message) {
+            const box = document.getElementById("routeFormError");
+            box.textContent = message || '';
+            box.classList.toggle('d-none', !message);
+        }
+
+        // Shows the server's actual reason (duplicate code, missing field, no permission) instead
+        // of a generic "error saving route".
+        async function describeSaveError(res) {
+            if (res.status === 401 || res.status === 403 || res.redirected)
+                return currentLang === 'en' ? 'You do not have permission to change routes.' : 'ليس لديك صلاحية تعديل المسارات.';
+            try {
+                const body = await res.json();
+                if (body && body.errors && !Array.isArray(body.errors)) {
+                    const messages = Object.values(body.errors).flat();
+                    if (messages.length) return messages.join(' ');
+                }
+                if (body && (body.message || body.title)) return body.message || body.title;
+            } catch (e) { /* not JSON */ }
+            return (currentLang === 'en' ? 'Error saving route (status ' : 'تعذّر حفظ المسار (رمز الخطأ ') + res.status + ').';
         }
 
         async function deleteRoute(id) {
@@ -337,44 +375,6 @@
                 }
             } catch (err) {
                 console.error(err);
-            }
-        }
-
-        async function handleBulkUpload(event, url) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const tbody = document.getElementById("routesList");
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Uploading...</td></tr>`;
-
-                const res = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    const result = await res.json();
-                    let msg = currentLang === 'en' ? `Successfully imported ${result.successCount} records.` : `تم استيراد ${result.successCount} سجل بنجاح.`;
-                    if (result.errors && result.errors.length > 0) {
-                        msg += "\nErrors:\n" + result.errors.slice(0, 5).join('\n');
-                        if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more errors.`;
-                    }
-                    alert(msg);
-                } else {
-                    const text = await res.text();
-                    alert("Bulk upload failed: " + text);
-                }
-            } catch (err) {
-                console.error(err);
-                alert("An error occurred during bulk upload.");
-            } finally {
-                event.target.value = "";
-                routesCurrentPage = 1;
-                loadRoutes();
             }
         }
     </script>

@@ -119,6 +119,11 @@ namespace NewFeature.Services.Repositories
                 .Property(r => r.DistanceKm)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<Models.Route>()
+                .HasIndex(r => r.Code)
+                .IsUnique()
+                .HasFilter("[Code] IS NOT NULL");
+
             modelBuilder.Entity<Models.Task>()
                 .Property(t => t.EstimatedHours)
                 .HasPrecision(18, 2);
@@ -143,16 +148,29 @@ namespace NewFeature.Services.Repositories
                 .Property(ft => ft.Amount)
                 .HasPrecision(18, 2);
 
-            // ─── The approved Finance template's two data sheets ───
+            // ─── The Finance department's two approved templates ───
             modelBuilder.Entity<FinanceAccountBalance>()
                 .Property(fab => fab.Balance)
                 .HasPrecision(18, 2);
 
-            // A balance is one account as of one date, and the chart of accounts holds each
-            // account once. Both are enforced in the database so a re-uploaded month can only ever
-            // update the rows it already owns, never silently append a second copy of them.
             modelBuilder.Entity<FinanceAccountBalance>()
-                .HasIndex(fab => new { fab.Date, fab.AccountNumber })
+                .Property(fab => fab.OpeningBalance)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinanceAccountBalance>()
+                .Property(fab => fab.Debit)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinanceAccountBalance>()
+                .Property(fab => fab.Credit)
+                .HasPrecision(18, 2);
+
+            // A balance is one account as of one date in one branch, and the chart of accounts
+            // holds each account once. Both are enforced in the database so a re-uploaded month can
+            // only ever update the rows it already owns, never silently append a second copy of
+            // them - and so the two branches' figures can't overwrite each other.
+            modelBuilder.Entity<FinanceAccountBalance>()
+                .HasIndex(fab => new { fab.Date, fab.Branch, fab.AccountNumber })
                 .IsUnique();
 
             modelBuilder.Entity<ChartOfAccount>()

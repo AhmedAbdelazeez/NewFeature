@@ -101,6 +101,86 @@
         }
     }
 
+    // Must match MaxUploadBytes in Program.cs.
+    var UPLOAD_LIMIT_MB = 200;
+
+    function formatMb(bytes) {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // Shown for as long as the server is reading the file. A month of Operations lines takes the
+    // server the better part of a minute to read; with nothing on screen that looked exactly like
+    // "the upload does nothing".
+    function showProcessing(file) {
+        var modal = ensureModal();
+        document.getElementById(MODAL_ID + 'Title').textContent = 'جاري رفع الملف';
+        document.getElementById(MODAL_ID + 'Body').innerHTML =
+            '<div class="text-center py-4">' +
+            '  <div class="spinner-border text-info mb-3" role="status"></div>' +
+            '  <div class="fw-bold mb-1">' + escapeHtml(file.name) + ' (' + formatMb(file.size) + ')</div>' +
+            '  <div class="text-muted small">جاري رفع الملف والتحقق من كل صف. الملفات الكبيرة قد تستغرق دقيقة أو أكثر، يرجى عدم إغلاق الصفحة.</div>' +
+            '  <div class="text-muted small mt-2" id="' + MODAL_ID + 'Elapsed"></div>' +
+            '</div>';
+
+        var started = Date.now();
+        var timer = setInterval(function () {
+            var el = document.getElementById(MODAL_ID + 'Elapsed');
+            if (el) el.textContent = 'الوقت المنقضي: ' + Math.round((Date.now() - started) / 1000) + ' ثانية';
+        }, 1000);
+
+        if (window.bootstrap && window.bootstrap.Modal) {
+            window.bootstrap.Modal.getOrCreateInstance(modal).show();
+        }
+        return function () { clearInterval(timer); };
+    }
+
+    // ASP.NET's own validation failures (e.g. the request-form reader refusing the file) come back
+    // as ProblemDetails, whose "errors" is an object of arrays rather than our row-error list.
+    function problemDetailsMessage(payload) {
+        var parts = [];
+        if (payload.errors && !Array.isArray(payload.errors)) {
+            Object.keys(payload.errors).forEach(function (key) {
+                [].concat(payload.errors[key]).forEach(function (m) { parts.push(m); });
+            });
+        }
+        if (parts.length === 0 && payload.detail) parts.push(payload.detail);
+        if (parts.length === 0 && payload.title) parts.push(payload.title);
+        return parts.join(' ');
+    }
+
+    // Turns any response - the import result, a ProblemDetails, a plain-text error, an HTML error
+    // or login page - into something the reporter can show. Nothing is ever swallowed.
+    async function readResponse(res, file) {
+        if (res.status === 413) {
+            return { ok: false, result: { message: 'حجم الملف (' + formatMb(file.size) + ') أكبر من الحد المسموح به للرفع (' + UPLOAD_LIMIT_MB + ' MB). احذف الصفوف الفارغة أسفل البيانات في الإكسل أو قسّم الملف ثم أعد الرفع.' } };
+        }
+        if (res.status === 401 || res.status === 403 || (res.redirected && /\/Account\/(Login|AccessDenied)/i.test(res.url))) {
+            return { ok: false, result: { message: 'ليس لديك صلاحية رفع هذا الملف، أو انتهت جلسة الدخول. سجّل الدخول مرة أخرى أو تواصل مع مسؤول النظام لمنحك الصلاحية.' } };
+        }
+
+        var contentType = res.headers.get('content-type') || '';
+        if (contentType.indexOf('json') >= 0) {
+            var payload = await res.json();
+            if (Array.isArray(payload.errors)) {
+                // The import result. A rejected template reports success: false even if a caller
+                // forgot to map that to an error status.
+                return { ok: res.ok && payload.success !== false, result: payload };
+            }
+            var message = payload.message || problemDetailsMessage(payload);
+            return { ok: false, result: { message: message || ('تعذّر رفع الملف (رمز الخطأ ' + res.status + ').') } };
+        }
+
+        var text = (await res.text()).trim();
+        var looksLikeHtml = /^<!doctype|^<html/i.test(text);
+        if (!res.ok || looksLikeHtml) {
+            var fallback = res.status >= 500
+                ? 'حدث خطأ في الخادم أثناء معالجة الملف (رمز الخطأ ' + res.status + '). يرجى إعادة المحاولة أو التواصل مع الدعم الفني.'
+                : 'تعذّر رفع الملف (رمز الخطأ ' + res.status + ').';
+            return { ok: false, result: { message: (!looksLikeHtml && text) ? text : fallback } };
+        }
+        return { ok: true, result: { message: text || 'تمت معالجة الملف.' } };
+    }
+
     // onDone runs whether the upload succeeded or failed, so a page always refreshes its tables and
     // KPI tiles - a partially accepted file still changed the data behind them.
     window.rawahelExcelUpload = async function (event, url, onDone) {
@@ -108,22 +188,25 @@
         var file = input.files && input.files[0];
         if (!file) return;
 
+        if (file.size > UPLOAD_LIMIT_MB * 1024 * 1024) {
+            input.value = '';
+            render({ message: 'حجم الملف (' + formatMb(file.size) + ') أكبر من الحد المسموح به للرفع (' + UPLOAD_LIMIT_MB + ' MB). احذف الصفوف الفارغة أسفل البيانات في الإكسل أو قسّم الملف ثم أعد الرفع.' }, false);
+            return;
+        }
+
         var formData = new FormData();
         formData.append('file', file);
 
+        var stopProcessing = showProcessing(file);
         try {
             var res = await fetch(url, { method: 'POST', body: formData });
-            var contentType = res.headers.get('content-type') || '';
-            var payload = contentType.indexOf('application/json') >= 0 ? await res.json() : await res.text();
-
-            if (typeof payload === 'string') {
-                render({ message: payload || 'تعذّر رفع الملف.', errors: [] }, false);
-            } else {
-                render(payload, res.ok);
-            }
+            var outcome = await readResponse(res, file);
+            stopProcessing();
+            render(outcome.result, outcome.ok);
         } catch (err) {
+            stopProcessing();
             console.error('[Excel upload]', err);
-            render({ message: 'تعذّر الاتصال بالخادم أثناء رفع الملف. يرجى إعادة المحاولة.', errors: [] }, false);
+            render({ message: 'تعذّر الاتصال بالخادم أثناء رفع الملف. تأكد من أن الخادم يعمل ثم أعد المحاولة.' }, false);
         } finally {
             // Always clear the input so re-picking the same file fires change again.
             input.value = '';

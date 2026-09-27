@@ -319,7 +319,7 @@ namespace NewFeature.Services
         }
 
         public async Task<PagedResultDto<FinanceAccountBalanceDto>> GetAccountBalancesPagedAsync(
-            int page, int pageSize, string? search, DateTime? asOfDate)
+            int page, int pageSize, string? search, DateTime? asOfDate, FinanceBalanceFilter? filter = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
@@ -337,28 +337,48 @@ namespace NewFeature.Services
                 query = query.Where(b => b.AccountNumber.Contains(term) || b.AccountName.Contains(term));
             }
 
+            if (filter != null)
+            {
+                if (Has(filter.Branch)) query = query.Where(b => b.Branch == filter.Branch);
+                if (filter.FromDate.HasValue)
+                {
+                    var from = filter.FromDate.Value.Date;
+                    query = query.Where(b => b.Date >= from);
+                }
+                if (filter.ToDate.HasValue)
+                {
+                    var to = filter.ToDate.Value.Date;
+                    query = query.Where(b => b.Date <= to);
+                }
+
+                // Classification filters live on the account tree, so they are applied as a
+                // subquery over it rather than by pulling every row into memory first.
+                if (Has(filter.Mapping) || Has(filter.RsmClassification) || Has(filter.ManagementClassification))
+                {
+                    var accountQuery = _context.ChartOfAccounts.AsNoTracking().AsQueryable();
+                    if (Has(filter.Mapping)) accountQuery = accountQuery.Where(a => a.Mapping == filter.Mapping);
+                    if (Has(filter.RsmClassification)) accountQuery = accountQuery.Where(a => a.RsmClassification == filter.RsmClassification);
+                    if (Has(filter.ManagementClassification)) accountQuery = accountQuery.Where(a => a.ManagementClassification == filter.ManagementClassification);
+
+                    var numbers = accountQuery.Select(a => a.AccountNumber);
+                    query = query.Where(b => numbers.Contains(b.AccountNumber));
+                }
+            }
+
             var totalCount = await query.CountAsync();
 
             var rows = await query
-                .OrderByDescending(b => b.Date).ThenBy(b => b.AccountNumber)
+                .OrderByDescending(b => b.Date).ThenBy(b => b.Branch).ThenBy(b => b.AccountNumber)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             var accountNumbers = rows.Select(r => r.AccountNumber).Distinct().ToList();
-            var classifications = await _context.ChartOfAccounts.AsNoTracking()
+            var accounts = await _context.ChartOfAccounts.AsNoTracking()
                 .Where(a => accountNumbers.Contains(a.AccountNumber))
-                .ToDictionaryAsync(a => a.AccountNumber, a => a.RsmClassification);
+                .ToDictionaryAsync(a => a.AccountNumber, a => a);
 
-            var items = rows.Select(b => new FinanceAccountBalanceDto
-            {
-                Id = b.Id,
-                Date = b.Date,
-                AccountNumber = b.AccountNumber,
-                AccountName = b.AccountName,
-                Balance = b.Balance,
-                Classification = classifications.GetValueOrDefault(b.AccountNumber)
-            }).ToList();
+            var items = rows.Select(b => ToBalanceDto(b, accounts.GetValueOrDefault(b.AccountNumber))).ToList();
 
             return new PagedResultDto<FinanceAccountBalanceDto>
             {
@@ -369,79 +389,164 @@ namespace NewFeature.Services
             };
         }
 
+        // The dropdown contents for both Finance pages: the distinct values the uploaded data
+        // actually carries, blanks dropped.
+        public async Task<FinanceAccountFilterOptionsDto> GetChartOfAccountFilterOptionsAsync()
+        {
+            var accounts = await _context.ChartOfAccounts.AsNoTracking().ToListAsync();
+            return new FinanceAccountFilterOptionsDto
+            {
+                Mappings = Distinct(accounts.Select(a => a.Mapping)),
+                BsClassifications = Distinct(accounts.Select(a => a.BsClassification)),
+                IsClassifications = Distinct(accounts.Select(a => a.IsClassification)),
+                RsmClassifications = Distinct(accounts.Select(a => a.RsmClassification)),
+                ManagementClassifications = Distinct(accounts.Select(a => a.ManagementClassification)),
+                RevenueMainClassifications = Distinct(accounts.Select(a => a.RevenueMainClassification)),
+                RevenueSubClassifications = Distinct(accounts.Select(a => a.RevenueSubClassification))
+            };
+        }
+
+        public async Task<FinanceBalanceFilterOptionsDto> GetBalanceFilterOptionsAsync()
+        {
+            var branches = await _context.FinanceAccountBalances.AsNoTracking()
+                .Select(b => b.Branch).Distinct().ToListAsync();
+            var dates = await _context.FinanceAccountBalances.AsNoTracking()
+                .Select(b => b.Date).Distinct().OrderByDescending(d => d).ToListAsync();
+
+            // Only the classifications that some uploaded figure actually sits on: a tree of 500
+            // accounts would otherwise fill the dropdown with groups the month never touched.
+            var usedNumbers = await _context.FinanceAccountBalances.AsNoTracking()
+                .Select(b => b.AccountNumber).Distinct().ToListAsync();
+            var accounts = await _context.ChartOfAccounts.AsNoTracking()
+                .Where(a => usedNumbers.Contains(a.AccountNumber)).ToListAsync();
+
+            return new FinanceBalanceFilterOptionsDto
+            {
+                Branches = Distinct(branches),
+                Dates = dates,
+                Mappings = Distinct(accounts.Select(a => a.Mapping)),
+                RsmClassifications = Distinct(accounts.Select(a => a.RsmClassification)),
+                ManagementClassifications = Distinct(accounts.Select(a => a.ManagementClassification))
+            };
+        }
+
+        private static bool Has(string? value) => !string.IsNullOrWhiteSpace(value);
+
+        private static List<string> Distinct(IEnumerable<string?> values) => values
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(v => v, StringComparer.Ordinal)
+            .ToList();
+
         #endregion
 
         #region KPIs
-        // Ten indicators, every one of them a sum over the balances sheet grouped by the account's
-        // own COA classification. Nothing here assumes an asset base, a depreciation figure or a
-        // target the uploaded file doesn't carry.
-        public async Task<FinanceKpisDto> GetFinanceKpisAsync()
+        // The ten dashboard indicators, every one of them a sum over the uploaded figures grouped
+        // by the account's own COA classification. Two periods are reported side by side, because
+        // an income statement and a balance sheet do not measure the same thing:
+        //
+        //   • Profitability (revenue, costs, margins) accumulates the الحركة (Debit - Credit) of
+        //     every month uploaded for the latest financial year - year to date. Summing closing
+        //     balances instead would report a figure that appears on no statement.
+        //   • Position (cash, receivables, payables, assets, liabilities) is read from the closing
+        //     balances of the latest reporting date only, because a balance sheet is a snapshot.
+        //
+        // Sign handling: the trial balance is exported as the accounting system holds it, so a
+        // credit-natured account (revenue, liability, equity) arrives negative. Each bucket flips
+        // the sign per the account's own classification rather than taking magnitudes, so a credit
+        // note genuinely reduces revenue instead of inflating it.
+        public async Task<FinanceKpisDto> GetFinanceKpisAsync(string? branch = null)
         {
-            var balances = await _context.FinanceAccountBalances.AsNoTracking().ToListAsync();
-            var accounts = await _context.ChartOfAccounts.AsNoTracking().ToListAsync();
+            var query = _context.FinanceAccountBalances.AsNoTracking().AsQueryable();
+            if (Has(branch)) query = query.Where(b => b.Branch == branch);
 
+            var balances = await query.ToListAsync();
+            var accounts = await _context.ChartOfAccounts.AsNoTracking().ToListAsync();
             var accountMap = accounts.ToDictionary(a => a.AccountNumber, a => a, StringComparer.OrdinalIgnoreCase);
 
-            // KPIs describe the latest reporting date on file, not the sum of every month ever
-            // uploaded - a trial balance is a snapshot, so adding twelve of them together would
-            // report a figure that never existed on any statement.
             var latestDate = balances.Count > 0 ? balances.Max(b => b.Date.Date) : (DateTime?)null;
-            var current = latestDate.HasValue
-                ? balances.Where(b => b.Date.Date == latestDate.Value).ToList()
-                : new List<FinanceAccountBalance>();
+            if (latestDate == null)
+            {
+                return new FinanceKpisDto
+                {
+                    AccountsInChart = accounts.Count,
+                    TopRevenueStreamName = "--",
+                    TopExpenseCategoryName = "--"
+                };
+            }
+
+            var fiscalYear = latestDate.Value.Year;
+            var periodRows = balances.Where(b => b.Date.Year == fiscalYear).ToList();
+            var closingRows = balances.Where(b => b.Date.Date == latestDate.Value).ToList();
 
             decimal revenue = 0m, costOfSales = 0m, operatingExpense = 0m, otherExpense = 0m;
-            decimal totalAssets = 0m, totalLiabilities = 0m;
-            decimal cash = 0m, receivables = 0m;
-            int unclassified = 0;
-
-            // Expense and revenue magnitudes: direction is already carried by the account's own
-            // classification, so a credit-natured revenue account arriving negative (which is how
-            // most trial-balance exports write it) must not subtract from revenue.
+            decimal unclassifiedExpense = 0m;
             var expenseByCategory = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var revenueByStream = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            int unmatchedRows = 0;
 
-            foreach (var balance in current)
+            foreach (var row in periodRows)
             {
-                if (!accountMap.TryGetValue(balance.AccountNumber, out var account))
+                if (!accountMap.TryGetValue(row.AccountNumber, out var account))
                 {
-                    unclassified++;
+                    unmatchedRows++;
                     continue;
                 }
 
-                var amount = Math.Abs(balance.Balance);
-                var bucket = ClassifyAccount(account);
+                var value = PeriodValue(row);
+                if (value == 0m) continue;
 
-                switch (bucket)
+                switch (ClassifyAccount(account))
                 {
                     case AccountBucket.Revenue:
-                        revenue += amount;
+                        // Credit-natured: a credit of 100 is revenue of +100.
+                        revenue += -value;
+                        Accumulate(revenueByStream, RevenueStreamLabel(account), -value);
                         break;
                     case AccountBucket.CostOfSales:
-                        costOfSales += amount;
-                        AccumulateExpense(expenseByCategory, account, amount);
+                        costOfSales += value;
+                        AccumulateExpense(expenseByCategory, account, value, ref unclassifiedExpense);
                         break;
                     case AccountBucket.OperatingExpense:
-                        operatingExpense += amount;
-                        AccumulateExpense(expenseByCategory, account, amount);
+                        operatingExpense += value;
+                        AccumulateExpense(expenseByCategory, account, value, ref unclassifiedExpense);
                         break;
                     case AccountBucket.OtherExpense:
-                        otherExpense += amount;
-                        AccumulateExpense(expenseByCategory, account, amount);
-                        break;
-                    case AccountBucket.Asset:
-                        totalAssets += balance.Balance;
-                        if (IsCode(account, "5000")) cash += balance.Balance;
-                        if (IsCode(account, "5200")) receivables += balance.Balance;
-                        break;
-                    case AccountBucket.Liability:
-                        totalLiabilities += Math.Abs(balance.Balance);
-                        break;
-                    case AccountBucket.Equity:
-                        break;
-                    default:
-                        unclassified++;
+                        // Interest and net gains/losses: a net gain arrives negative and correctly
+                        // reduces total expenses rather than being counted as a cost.
+                        otherExpense += value;
+                        AccumulateExpense(expenseByCategory, account, value, ref unclassifiedExpense);
                         break;
                 }
+            }
+
+            decimal totalAssets = 0m, totalLiabilities = 0m;
+            decimal cash = 0m, receivables = 0m, payablesAndAccruals = 0m;
+
+            // The closing position is rebuilt the way a ledger does it - the opening balance the
+            // year started from, plus every movement reported since - rather than read off the
+            // latest row. Their September sheet carries that month's debits and credits with no
+            // opening balance in it, so reading the latest row alone would report September's
+            // movement as if it were the whole cash position. Grouped per branch and account,
+            // because two branches keep their own opening balance for the same account.
+            foreach (var group in periodRows.GroupBy(b => new { b.Branch, b.AccountNumber }))
+            {
+                if (!accountMap.TryGetValue(group.Key.AccountNumber, out var account)) continue;
+
+                var ordered = group.OrderBy(b => b.Date).ToList();
+                var closing = ordered[0].OpeningBalance + ordered.Sum(PeriodValue);
+
+                var bucket = ClassifyAccount(account);
+                if (bucket == AccountBucket.Asset) totalAssets += closing;
+                if (bucket == AccountBucket.Liability) totalLiabilities += -closing;
+
+                // The three cards a finance manager watches week to week, grouped the way their own
+                // COA groups them (Mapping / BS Classification), with the RSM code as the fallback
+                // for an account whose Arabic mapping was left blank.
+                if (InGroup(account, CashKeywords, CashCodes)) cash += closing;
+                if (InGroup(account, ReceivableKeywords, ReceivableCodes)) receivables += closing;
+                if (InGroup(account, PayableKeywords, PayableCodes)) payablesAndAccruals += -closing;
             }
 
             decimal totalExpenses = costOfSales + operatingExpense + otherExpense;
@@ -452,14 +557,15 @@ namespace NewFeature.Services
             double netMargin = revenue > 0 ? (double)(netProfit / revenue) * 100.0 : 0.0;
             double expenseRatio = revenue > 0 ? (double)(totalExpenses / revenue) * 100.0 : 0.0;
 
-            var topExpense = expenseByCategory
-                .OrderByDescending(kv => kv.Value)
-                .Select(kv => (Name: kv.Key, Amount: kv.Value))
-                .FirstOrDefault();
+            var topExpense = Top(expenseByCategory);
+            var topRevenue = Top(revenueByStream);
 
             return new FinanceKpisDto
             {
                 AsOfDate = latestDate,
+                FiscalYear = fiscalYear,
+                PeriodFrom = periodRows.Count > 0 ? periodRows.Min(b => b.Date.Date) : null,
+
                 TotalRevenue = revenue,
                 CostOfSales = costOfSales,
                 GrossProfit = grossProfit,
@@ -469,39 +575,97 @@ namespace NewFeature.Services
                 NetProfit = netProfit,
                 NetProfitMarginPercent = Math.Round(netMargin, 1),
                 ExpenseToRevenueRatioPercent = Math.Round(expenseRatio, 1),
+
                 CashAndEquivalents = cash,
                 TradeReceivables = receivables,
+                PayablesAndAccruals = payablesAndAccruals,
                 TotalAssets = totalAssets,
                 TotalLiabilities = totalLiabilities,
-                TopExpenseCategoryName = topExpense.Name ?? "--",
+
+                TopRevenueStreamName = topRevenue.Name,
+                TopRevenueStreamAmount = topRevenue.Amount,
+                TopExpenseCategoryName = topExpense.Name,
                 TopExpenseCategoryAmount = topExpense.Amount,
+
                 AccountsInChart = accounts.Count,
-                BalancesLoaded = current.Count,
-                UnclassifiedBalances = unclassified
+                BalancesLoaded = closingRows.Count,
+                UnclassifiedBalances = unmatchedRows,
+                UnclassifiedExpenseAmount = unclassifiedExpense,
+                Branches = Distinct(balances.Select(b => b.Branch))
             };
+        }
+
+        // The period's own activity for one uploaded row. Debit/Credit is what the template asks
+        // for; a row that carries only a closing figure (the first version of the template, or a
+        // hand-entered balance) falls back to Balance - OpeningBalance, which is the same number.
+        private static decimal PeriodValue(FinanceAccountBalance row) =>
+            row.Debit != 0m || row.Credit != 0m ? row.Movement : row.Balance - row.OpeningBalance;
+
+        // ── The balance-sheet groups, keyed off the COA's own Arabic Mapping and English BS
+        // Classification, with the RSM code prefix as the fallback ──
+        private static readonly string[] CashKeywords = { "نقد في الصندوق", "Cash and cash equivalents" };
+        private static readonly string[] CashCodes = { "5000" };
+        private static readonly string[] ReceivableKeywords = { "ذمم مدينة", "Trade receivables" };
+        private static readonly string[] ReceivableCodes = { "5200" };
+        private static readonly string[] PayableKeywords = { "ذمم دائنة", "Trade payables", "مصاريف مستحقة", "Accrued expenses" };
+        private static readonly string[] PayableCodes = { "6100", "6200" };
+
+        private static bool InGroup(ChartOfAccount account, string[] keywords, string[] rsmCodes)
+        {
+            foreach (var keyword in keywords)
+            {
+                if (Contains(account.Mapping, keyword) || Contains(account.BsClassification, keyword)) return true;
+            }
+            return rsmCodes.Any(code => IsCode(account, code));
         }
 
         private static bool IsCode(ChartOfAccount account, string prefix) =>
             (account.RsmClassification ?? string.Empty).TrimStart().StartsWith(prefix, StringComparison.Ordinal);
 
-        // "Top expense item" is reported by the most human-readable label the COA offers for that
-        // account, falling back through the management and RSM classifications.
-        private static void AccumulateExpense(Dictionary<string, decimal> bag, ChartOfAccount account, decimal amount)
-        {
-            var label = FirstNonEmpty(
-                account.RevenueMainClassification,
-                account.ManagementClassification,
-                account.RsmClassification) ?? "غير مصنف";
-
+        private static void Accumulate(Dictionary<string, decimal> bag, string label, decimal amount) =>
             bag[label] = bag.GetValueOrDefault(label) + amount;
+
+        // "Top expense item" is reported by the cost block the management accounts group it under,
+        // because that is the label the finance team recognises ("تكلفة الموارد البشرية"، "مصروفات
+        // تشغيلية"). Expense sitting on an account with no such label is money that cannot be
+        // attributed, so it is both bucketed as غير مصنف and reported as its own coverage figure.
+        private static void AccumulateExpense(
+            Dictionary<string, decimal> bag, ChartOfAccount account, decimal amount, ref decimal unclassified)
+        {
+            // Measured on the management classification alone: the RSM code is a usable label to
+            // bucket the cost under, but an account that carries no cost block is still money the
+            // finance team cannot attribute, and that is what this figure is for.
+            if (string.IsNullOrWhiteSpace(account.ManagementClassification)) unclassified += amount;
+
+            var label = FirstNonEmpty(account.ManagementClassification, account.RsmClassification);
+            Accumulate(bag, label ?? "غير مصنف", amount);
+        }
+
+        private static string RevenueStreamLabel(ChartOfAccount account) =>
+            FirstNonEmpty(
+                account.RevenueMainClassification,
+                account.RevenueSubClassification,
+                account.IsClassification,
+                account.ManagementClassification) ?? "غير مصنف";
+
+        private static (string Name, decimal Amount) Top(Dictionary<string, decimal> bag)
+        {
+            if (bag.Count == 0) return ("--", 0m);
+            var top = bag.OrderByDescending(kv => kv.Value).First();
+            return (top.Key, top.Value);
         }
 
         private static string? FirstNonEmpty(params string?[] values) =>
             values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
         #endregion
 
-        #region Chart of accounts: index + CRUD (the Finance page)
-        public async Task<PagedResultDto<ChartOfAccountDto>> GetChartOfAccountsPagedAsync(int page, int pageSize, string? search)
+        #region Chart of accounts: index + CRUD (the شجرة الحسابات page)
+        // Every filter is an exact match on one of the tree's own classification columns, because
+        // that is how the finance team reads the tree: "show me the accounts mapped to مصاريف
+        // مدفوعة مقدما وموجودات اخرى". Search stays a free substring over number, name and
+        // classifications.
+        public async Task<PagedResultDto<ChartOfAccountDto>> GetChartOfAccountsPagedAsync(
+            int page, int pageSize, string? search, ChartOfAccountFilter? filter = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
@@ -515,7 +679,19 @@ namespace NewFeature.Services
                     a.AccountNumber.Contains(term) ||
                     a.AccountName.Contains(term) ||
                     a.RsmClassification.Contains(term) ||
+                    (a.Mapping != null && a.Mapping.Contains(term)) ||
                     (a.ManagementClassification != null && a.ManagementClassification.Contains(term)));
+            }
+
+            if (filter != null)
+            {
+                if (Has(filter.Mapping)) query = query.Where(a => a.Mapping == filter.Mapping);
+                if (Has(filter.BsClassification)) query = query.Where(a => a.BsClassification == filter.BsClassification);
+                if (Has(filter.IsClassification)) query = query.Where(a => a.IsClassification == filter.IsClassification);
+                if (Has(filter.RsmClassification)) query = query.Where(a => a.RsmClassification == filter.RsmClassification);
+                if (Has(filter.ManagementClassification)) query = query.Where(a => a.ManagementClassification == filter.ManagementClassification);
+                if (Has(filter.RevenueMainClassification)) query = query.Where(a => a.RevenueMainClassification == filter.RevenueMainClassification);
+                if (Has(filter.RevenueSubClassification)) query = query.Where(a => a.RevenueSubClassification == filter.RevenueSubClassification);
             }
 
             var totalCount = await query.CountAsync();
@@ -591,13 +767,21 @@ namespace NewFeature.Services
         }
 
         // The single rule set for a chart-of-accounts row, shared by the Excel import and the form.
+        // An account must carry at least one classification, since that is what decides whether it
+        // is a revenue, a cost or a balance-sheet item - but any of the three will do. Their own COA
+        // leaves RSM Classification blank on a handful of accounts (Account Receivables - Others,
+        // Allowance for Bad Debts) while still classifying them under BS Classification, and
+        // rejecting those would silently drop real receivables out of the KPI.
         private static List<FieldErrorDto> ValidateAccount(ChartOfAccountDto dto)
         {
             var errors = new List<FieldErrorDto>();
             if (string.IsNullOrWhiteSpace(dto.AccountNumber)) errors.Add("accountNumber", "رقم الحساب مطلوب.");
             if (string.IsNullOrWhiteSpace(dto.AccountName)) errors.Add("accountName", "اسم الحساب مطلوب.");
-            if (string.IsNullOrWhiteSpace(dto.RsmClassification))
-                errors.Add("rsmClassification", "تصنيف RSM مطلوب، فهو ما يحدد إن كان الحساب إيراداً أو تكلفة أو بنداً في المركز المالي.");
+            if (string.IsNullOrWhiteSpace(dto.RsmClassification) &&
+                string.IsNullOrWhiteSpace(dto.BsClassification) &&
+                string.IsNullOrWhiteSpace(dto.IsClassification))
+                errors.Add("rsmClassification",
+                    "الحساب بحاجة إلى تصنيف واحد على الأقل (RSM أو BS Classification أو IS Classification)، فهو ما يحدد إن كان الحساب إيراداً أو تكلفة أو بنداً في المركز المالي.");
             return errors;
         }
 
@@ -605,7 +789,9 @@ namespace NewFeature.Services
         {
             account.AccountNumber = Truncate(dto.AccountNumber.Trim(), 50);
             account.AccountName = Truncate(dto.AccountName.Trim(), 250);
-            account.RsmClassification = Truncate(dto.RsmClassification.Trim(), 200);
+            // Stored as an empty string rather than null when blank: the column is NOT NULL, and the
+            // KPI classifier already falls back to BS/IS Classification for such an account.
+            account.RsmClassification = Truncate((dto.RsmClassification ?? string.Empty).Trim(), 200);
             account.Mapping = TruncateOrNull(dto.Mapping, 200);
             account.BsClassification = TruncateOrNull(dto.BsClassification, 200);
             account.IsClassification = TruncateOrNull(dto.IsClassification, 200);
@@ -615,14 +801,14 @@ namespace NewFeature.Services
         }
         #endregion
 
-        #region Account balances: CRUD (the Finance page)
+        #region Account balances: CRUD (the الأرصدة والحركات page)
         public async Task<FinanceAccountBalanceDto?> GetBalanceAsync(int id)
         {
             var b = await _context.FinanceAccountBalances.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             if (b == null) return null;
-            var classification = await _context.ChartOfAccounts.AsNoTracking()
-                .Where(a => a.AccountNumber == b.AccountNumber).Select(a => a.RsmClassification).FirstOrDefaultAsync();
-            return ToBalanceDto(b, classification);
+            var account = await _context.ChartOfAccounts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.AccountNumber == b.AccountNumber);
+            return ToBalanceDto(b, account);
         }
 
         public async Task<CrudResult<FinanceAccountBalanceDto>> CreateBalanceAsync(FinanceAccountBalanceDto dto)
@@ -659,17 +845,24 @@ namespace NewFeature.Services
             return true;
         }
 
-        // Field-level rules for a balance, shared by the Excel import and the form. The account
-        // must exist in the chart of accounts, because an unclassifiable balance silently drops out
-        // of every KPI.
-        private static List<FieldErrorDto> ValidateBalance(FinanceAccountBalanceDto dto, ICollection<string> knownAccounts)
+        // Field-level rules for a row of figures, shared by the Excel import and the form. The
+        // account must exist in the chart of accounts, because an unclassifiable figure silently
+        // drops out of every KPI.
+        //
+        // figuresProvided says whether the source actually carried numbers. A trial balance reports
+        // hundreds of accounts that saw no movement, and an explicit zero is a real reported figure
+        // - rejecting it would fill the upload report with hundreds of false errors. A row with no
+        // numbers at all is a different thing: a reporting gap, and it is rejected.
+        private static List<FieldErrorDto> ValidateBalance(
+            FinanceAccountBalanceDto dto, ICollection<string> knownAccounts, bool figuresProvided = false)
         {
             var errors = new List<FieldErrorDto>();
             if (dto.Date == default) errors.Add("date", "التاريخ غير مقروء. استخدم الصيغة يوم/شهر/سنة.");
             if (string.IsNullOrWhiteSpace(dto.AccountNumber)) errors.Add("accountNumber", "رقم الحساب مطلوب.");
             else if (!knownAccounts.Contains(dto.AccountNumber.Trim()))
-                errors.Add("accountNumber", $"رقم الحساب \"{dto.AccountNumber.Trim()}\" غير موجود في شجرة الحسابات (COA).");
-            if (dto.Balance == null) errors.Add("balance", "الرصيد يجب أن يكون رقماً.");
+                errors.Add("accountNumber", $"رقم الحساب \"{dto.AccountNumber.Trim()}\" غير موجود في شجرة الحسابات (COA). ارفع ملف شجرة الحسابات أولاً.");
+            if (!figuresProvided && dto.Balance == null && dto.Debit == 0m && dto.Credit == 0m && dto.OpeningBalance == 0m)
+                errors.Add("balance", "الصف لا يحتوي على أي رقم: املأ المدين والدائن أو الرصيد.");
             return errors;
         }
 
@@ -684,15 +877,19 @@ namespace NewFeature.Services
             if (errors.Count == 0)
             {
                 var day = dto.Date.Date;
+                var branch = NormalizeBranch(dto.Branch);
                 if (await _context.FinanceAccountBalances.AnyAsync(b =>
-                        b.Date == day && b.AccountNumber == number && (excludeId == null || b.Id != excludeId)))
-                    errors.Add("accountNumber", "يوجد رصيد مسجل لهذا الحساب في نفس التاريخ.");
+                        b.Date == day && b.Branch == branch && b.AccountNumber == number &&
+                        (excludeId == null || b.Id != excludeId)))
+                    errors.Add("accountNumber", "يوجد رصيد مسجل لهذا الحساب في نفس التاريخ ونفس الفرع.");
             }
             return errors;
         }
 
         // The account name is taken from the chart of accounts when the form leaves it blank, so a
-        // hand-entered balance reads the same as an uploaded one.
+        // hand-entered row reads the same as an uploaded one. The closing balance is computed from
+        // the opening balance and the period's debits and credits; a row that carries only a
+        // closing figure keeps it as given.
         private async System.Threading.Tasks.Task ApplyBalanceAsync(FinanceAccountBalanceDto dto, FinanceAccountBalance balance)
         {
             var number = dto.AccountNumber.Trim();
@@ -702,27 +899,63 @@ namespace NewFeature.Services
                     .Select(a => a.AccountName).FirstOrDefaultAsync() ?? string.Empty;
 
             balance.Date = dto.Date.Date;
+            balance.Branch = NormalizeBranch(dto.Branch);
             balance.AccountNumber = Truncate(number, 50);
             balance.AccountName = Truncate(name.Trim(), 250);
-            balance.Balance = dto.Balance!.Value;
+            balance.OpeningBalance = dto.OpeningBalance;
+            balance.Debit = dto.Debit;
+            balance.Credit = dto.Credit;
+            balance.Balance = ResolveClosingBalance(dto);
         }
 
-        private static FinanceAccountBalanceDto ToBalanceDto(FinanceAccountBalance b, string? classification) => new()
+        // A blank branch is the single-branch case, and every row uploaded before the branch column
+        // existed - it must land in the same bucket as the default the template ships with, or the
+        // same month would appear twice under two names.
+        private static string NormalizeBranch(string? branch) =>
+            string.IsNullOrWhiteSpace(branch)
+                ? FinanceAccountBalance.DefaultBranch
+                : Truncate(branch.Trim(), 100);
+
+        private static decimal ResolveClosingBalance(FinanceAccountBalanceDto dto)
+        {
+            if (dto.Debit != 0m || dto.Credit != 0m)
+                return dto.OpeningBalance + dto.Debit - dto.Credit;
+            return dto.Balance ?? dto.OpeningBalance;
+        }
+
+        private static FinanceAccountBalanceDto ToBalanceDto(FinanceAccountBalance b, ChartOfAccount? account) => new()
         {
             Id = b.Id,
             Date = b.Date,
+            Branch = b.Branch,
             AccountNumber = b.AccountNumber,
             AccountName = b.AccountName,
+            OpeningBalance = b.OpeningBalance,
+            Debit = b.Debit,
+            Credit = b.Credit,
             Balance = b.Balance,
-            Classification = classification
+            Movement = b.Movement,
+            Classification = account?.RsmClassification,
+            Mapping = account?.Mapping,
+            ManagementClassification = account?.ManagementClassification
         };
         #endregion
 
-        #region Bulk upload (the approved Finance template: COA + balances in one workbook)
-        // Both data sheets of the same uploaded file are read in one pass: the chart of accounts
-        // first, so that every balance read afterwards already has an account to be classified
-        // through. The engine runs twice over the same workbook because each sheet has its own
-        // header contract; a file missing either sheet is rejected with a message naming the tab.
+        #region Bulk upload (two approved templates: the account tree and the monthly figures)
+        // The chart of accounts and the monthly figures are uploaded as two separate files, each
+        // from its own page, because they change on completely different clocks: the tree a few
+        // times a year, the figures every month. The account tree must be uploaded first - a figure
+        // whose account is not in the tree cannot be classified, so it is rejected by row with the
+        // account number named rather than silently dropping out of every KPI.
+        public async Task<ExcelImportResultDto> BulkUploadChartOfAccountsAsync(System.IO.Stream excelStream) =>
+            await ImportChartOfAccountsAsync(excelStream, DepartmentTemplates.FinanceChartOfAccountsFile);
+
+        public async Task<ExcelImportResultDto> BulkUploadBalancesAsync(System.IO.Stream excelStream) =>
+            await ImportBalancesAsync(excelStream, DepartmentTemplates.FinanceBalancesFile);
+
+        // The older single-workbook upload (COA + الحركات المالية in one file), kept working so a
+        // file prepared against the previous template still imports: the same two row handlers, run
+        // over the two named sheets of one workbook.
         public async Task<ExcelImportResultDto> BulkUploadFinanceWorkbookAsync(System.IO.Stream excelStream)
         {
             // Buffered once and replayed from a fresh MemoryStream per sheet: the engine opens an
@@ -732,15 +965,48 @@ namespace NewFeature.Services
             if (excelStream.CanSeek) excelStream.Position = 0;
             await excelStream.CopyToAsync(buffer);
 
+            var coaResult = await ImportChartOfAccountsAsync(
+                new System.IO.MemoryStream(buffer.ToArray()), DepartmentTemplates.FinanceChartOfAccounts);
+
+            // A workbook whose COA sheet is missing or malformed is rejected before any figure is
+            // touched: importing figures against an account tree that failed to load would leave
+            // every KPI reading zero with no obvious reason why.
+            if (!coaResult.Success) return coaResult;
+
+            var balanceResult = await ImportBalancesAsync(
+                new System.IO.MemoryStream(buffer.ToArray()), DepartmentTemplates.FinanceBalances);
+
+            if (!balanceResult.Success) return balanceResult;
+
+            // One combined result, so the uploader sees what the whole file did rather than only
+            // what its second sheet did.
+            return new ExcelImportResultDto
+            {
+                Success = true,
+                TotalRows = coaResult.TotalRows + balanceResult.TotalRows,
+                DataRows = coaResult.DataRows + balanceResult.DataRows,
+                InsertedRows = coaResult.InsertedRows + balanceResult.InsertedRows,
+                UpdatedRows = coaResult.UpdatedRows + balanceResult.UpdatedRows,
+                SkippedRows = coaResult.SkippedRows + balanceResult.SkippedRows,
+                Errors = coaResult.Errors.Concat(balanceResult.Errors).ToList(),
+                Message = coaResult.Errors.Count + balanceResult.Errors.Count > 0
+                    ? $"تمت معالجة الملف: {coaResult.DataRows} حساب في شجرة الحسابات و {balanceResult.DataRows} سجل أرصدة، مع تجاهل {coaResult.SkippedRows + balanceResult.SkippedRows} صف. التفاصيل بالأسفل."
+                    : $"تمت معالجة الملف بنجاح: {coaResult.DataRows} حساب في شجرة الحسابات و {balanceResult.DataRows} سجل أرصدة."
+            };
+        }
+
+        private async Task<ExcelImportResultDto> ImportChartOfAccountsAsync(
+            System.IO.Stream excelStream, ExcelTemplateDefinition template)
+        {
             var accounts = await _context.ChartOfAccounts.ToListAsync();
             var accountColumns = new Dictionary<string, string>
             {
                 ["accountNumber"] = "Account #", ["accountName"] = "Account Name", ["rsmClassification"] = "RSM Classification"
             };
 
-            var coaResult = await ExcelImportEngine.RunAsync(
-                new System.IO.MemoryStream(buffer.ToArray()),
-                DepartmentTemplates.FinanceChartOfAccounts,
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                template,
                 async row =>
                 {
                     var dto = new ChartOfAccountDto
@@ -780,82 +1046,97 @@ namespace NewFeature.Services
                 },
                 () => _context.SaveChangesAsync(),
                 _logger);
+        }
 
-            // A workbook whose COA sheet is missing or malformed is rejected before any balance is
-            // touched: importing balances against an account tree that failed to load would leave
-            // every KPI reading zero with no obvious reason why.
-            if (!coaResult.Success) return coaResult;
-
+        private async Task<ExcelImportResultDto> ImportBalancesAsync(
+            System.IO.Stream excelStream, ExcelTemplateDefinition template)
+        {
             var balances = await _context.FinanceAccountBalances.ToListAsync();
-            var accountNumbers = new HashSet<string>(accounts.Select(a => a.AccountNumber), StringComparer.OrdinalIgnoreCase);
+            var accounts = await _context.ChartOfAccounts.AsNoTracking()
+                .ToDictionaryAsync(a => a.AccountNumber, a => a.AccountName, StringComparer.OrdinalIgnoreCase);
+            var accountNumbers = new HashSet<string>(accounts.Keys, StringComparer.OrdinalIgnoreCase);
+
+            // Nothing to classify figures through: say so once, instead of rejecting 500 rows one
+            // by one for the same reason.
+            if (accountNumbers.Count == 0)
+            {
+                return new ExcelImportResultDto
+                {
+                    Success = false,
+                    Message = "شجرة الحسابات (COA) فارغة. ارفع ملف شجرة الحسابات أولاً، فكل رصيد يُصنَّف من خلالها."
+                };
+            }
+
             var balanceColumns = new Dictionary<string, string>
             {
-                ["date"] = "Date", ["accountNumber"] = "Account No", ["balance"] = "Balance"
+                ["date"] = "Date", ["accountNumber"] = "Account No", ["balance"] = "Debit / Credit"
             };
 
-            var balanceResult = await ExcelImportEngine.RunAsync(
-                new System.IO.MemoryStream(buffer.ToArray()),
-                DepartmentTemplates.FinanceBalances,
+            return await ExcelImportEngine.RunAsync(
+                excelStream,
+                template,
                 async row =>
                 {
+                    // Read as nullables first: a blank cell and a typed zero mean different things
+                    // here, and only the all-blank row is a reporting gap worth rejecting.
+                    var opening = row.GetDecimal(DepartmentTemplates.FinanceBalanceOpening);
+                    var debit = row.GetDecimal(DepartmentTemplates.FinanceBalanceDebit);
+                    var credit = row.GetDecimal(DepartmentTemplates.FinanceBalanceCredit);
+                    var closing = row.GetDecimal(DepartmentTemplates.FinanceBalanceAmount);
+
                     var dto = new FinanceAccountBalanceDto
                     {
                         Date = row.GetDate(DepartmentTemplates.FinanceBalanceDate)?.Date ?? default,
+                        Branch = row.GetString(DepartmentTemplates.FinanceBalanceBranch),
                         AccountNumber = row.GetString(DepartmentTemplates.FinanceBalanceAccountNumber),
                         AccountName = row.GetString(DepartmentTemplates.FinanceBalanceAccountName),
-                        Balance = row.GetDecimal(DepartmentTemplates.FinanceBalanceAmount)
+                        OpeningBalance = opening ?? 0m,
+                        Debit = debit ?? 0m,
+                        Credit = credit ?? 0m,
+                        Balance = closing
                     };
 
-                    var errors = ValidateBalance(dto, accountNumbers);
+                    var figuresProvided = opening.HasValue || debit.HasValue || credit.HasValue || closing.HasValue;
+                    var errors = ValidateBalance(dto, accountNumbers, figuresProvided);
                     if (errors.Count > 0)
                         return ExcelRowOutcomeResult.Skipped(errors.Joined(), balanceColumns.GetValueOrDefault(errors[0].Field));
 
                     var number = Truncate(dto.AccountNumber.Trim(), 50);
+                    var branch = NormalizeBranch(dto.Branch);
                     var day = dto.Date.Date;
+
+                    // The account name is the tree's, not the uploaded sheet's: a trial balance
+                    // export often abbreviates it, and two spellings of one account read as two
+                    // different accounts on the page.
+                    var name = accounts.GetValueOrDefault(number);
+                    if (string.IsNullOrWhiteSpace(name)) name = dto.AccountName;
+
                     var existing = balances.FirstOrDefault(b =>
                         b.Date.Date == day &&
+                        string.Equals(b.Branch, branch, StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(b.AccountNumber, number, StringComparison.OrdinalIgnoreCase));
 
-                    if (existing != null)
-                    {
-                        existing.AccountName = Truncate(dto.AccountName.Trim(), 250);
-                        existing.Balance = dto.Balance!.Value;
-                        return ExcelRowOutcomeResult.Updated();
-                    }
+                    var target = existing ?? new FinanceAccountBalance();
+                    target.Date = day;
+                    target.Branch = branch;
+                    target.AccountNumber = number;
+                    target.AccountName = Truncate((name ?? string.Empty).Trim(), 250);
+                    target.OpeningBalance = dto.OpeningBalance;
+                    target.Debit = dto.Debit;
+                    target.Credit = dto.Credit;
+                    target.Balance = ResolveClosingBalance(dto);
 
-                    var balance = new FinanceAccountBalance
-                    {
-                        Date = day,
-                        AccountNumber = number,
-                        AccountName = Truncate(dto.AccountName.Trim(), 250),
-                        Balance = dto.Balance!.Value
-                    };
-                    _context.FinanceAccountBalances.Add(balance);
-                    balances.Add(balance);
+                    if (existing != null) return ExcelRowOutcomeResult.Updated();
+
+                    _context.FinanceAccountBalances.Add(target);
+                    balances.Add(target);
                     await System.Threading.Tasks.Task.CompletedTask;
                     return ExcelRowOutcomeResult.Inserted();
                 },
                 () => _context.SaveChangesAsync(),
                 _logger);
-
-            if (!balanceResult.Success) return balanceResult;
-
-            // One combined result, so the uploader sees what the whole file did rather than only
-            // what its second sheet did.
-            return new ExcelImportResultDto
-            {
-                Success = true,
-                TotalRows = coaResult.TotalRows + balanceResult.TotalRows,
-                DataRows = coaResult.DataRows + balanceResult.DataRows,
-                InsertedRows = coaResult.InsertedRows + balanceResult.InsertedRows,
-                UpdatedRows = coaResult.UpdatedRows + balanceResult.UpdatedRows,
-                SkippedRows = coaResult.SkippedRows + balanceResult.SkippedRows,
-                Errors = coaResult.Errors.Concat(balanceResult.Errors).ToList(),
-                Message = coaResult.Errors.Count + balanceResult.Errors.Count > 0
-                    ? $"تمت معالجة الملف: {coaResult.DataRows} حساب في شجرة الحسابات و {balanceResult.DataRows} رصيد، مع تجاهل {coaResult.SkippedRows + balanceResult.SkippedRows} صف. التفاصيل بالأسفل."
-                    : $"تمت معالجة الملف بنجاح: {coaResult.DataRows} حساب في شجرة الحسابات و {balanceResult.DataRows} رصيد."
-            };
         }
+
 
         private static string Truncate(string value, int maxLength) =>
             value.Length <= maxLength ? value : value.Substring(0, maxLength);

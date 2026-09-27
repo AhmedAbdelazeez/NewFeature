@@ -6,6 +6,12 @@ namespace NewFeature.Models
     {
         public int Id { get; set; }
 
+        // The route's item code from the sales-lines sheet ("1", "L10", "L299") - the same code the
+        // Operations dispatch log carries in its Direction column. Unique; nullable only because
+        // routes created before codes existed have none until they are re-uploaded or edited.
+        [StringLength(50)]
+        public string? Code { get; set; }
+
         [Required(ErrorMessage = "English Route Name is required")]
         [StringLength(150, ErrorMessage = "English Name cannot exceed 150 characters")]
         public string NameEn { get; set; } = string.Empty;

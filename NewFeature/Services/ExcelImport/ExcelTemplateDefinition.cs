@@ -38,6 +38,13 @@ namespace NewFeature.Services.ExcelImport
         // is missing rather than just "wrong template".
         public string SheetDisplayName { get; init; } = string.Empty;
 
+        // For a single-sheet template that still names its sheet: when no sheet matches the
+        // aliases, read the first sheet instead of rejecting the file. A one-sheet upload that was
+        // renamed ("Sheet1", "TB Sep 2026") is still unambiguous, and the header contract below is
+        // what really proves the file is the right one. Never set on a definition that shares its
+        // workbook with another data sheet, where the wrong tab could be read silently.
+        public bool AllowFirstSheetFallback { get; init; }
+
         public ExcelColumnDefinition? GetColumn(string key) =>
             Columns.Find(c => c.Key == key);
     }

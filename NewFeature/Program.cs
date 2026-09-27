@@ -71,6 +71,16 @@ builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
+// Department Excel uploads. A month of Operations dispatch lines exported from the ERP runs past
+// 30 MB (Excel keeps hundreds of thousands of formatted-but-empty rows below the data), and the
+// framework's default 30,000,000-byte request cap rejected those files before the upload endpoint
+// ever ran. Raised for every host (Kestrel, IIS, multipart form reader) so they all agree.
+// Keep in step with UPLOAD_LIMIT_MB in wwwroot/js/excel-upload.js.
+const long MaxUploadBytes = 200L * 1024 * 1024;
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = MaxUploadBytes);
+builder.Services.Configure<Microsoft.AspNetCore.Builder.IISServerOptions>(options => options.MaxRequestBodySize = MaxUploadBytes);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => options.MultipartBodyLengthLimit = MaxUploadBytes);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DashboardPortal", policy =>
