@@ -1,5 +1,8 @@
 using System;
 using System.IO;
+using System.IO.Compression;
+using System.Text;
+using System.Xml;
 using ClosedXML.Excel;
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
@@ -47,10 +50,137 @@ namespace NewFeature.Services
             bool isLegacyXls = bytesRead == header.Length && HeaderMatches(header, Ole2Signature);
             if (!isLegacyXls)
             {
-                return input;
+                return StripDataValidations(input);
             }
 
             return ConvertLegacyXlsToXlsx(input);
+        }
+
+        // ClosedXML refuses to open a workbook whose dropdown lists (data validations) are longer
+        // than 255 characters - e.g. a technician list typed straight into the validation's Source
+        // box - and the whole upload then fails as "not a valid Excel file". The imports only read
+        // cell values, so dropdowns are removed from every worksheet before ClosedXML sees them.
+        // Files without any dropdowns are returned untouched, so they cost only a quick scan.
+        private static Stream StripDataValidations(Stream input)
+        {
+            var startPosition = input.Position;
+            try
+            {
+                using (var source = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: true))
+                {
+                    bool hasValidations = false;
+                    foreach (var entry in source.Entries)
+                    {
+                        if (!IsWorksheetEntry(entry)) continue;
+                        using var entryStream = entry.Open();
+                        if (ContainsDataValidations(entryStream)) { hasValidations = true; break; }
+                    }
+                    if (!hasValidations)
+                    {
+                        input.Position = startPosition;
+                        return input;
+                    }
+
+                    var output = new MemoryStream();
+                    using (var target = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+                    {
+                        foreach (var entry in source.Entries)
+                        {
+                            var copy = target.CreateEntry(entry.FullName, CompressionLevel.Fastest);
+                            copy.LastWriteTime = entry.LastWriteTime;
+                            using var from = entry.Open();
+                            using var to = copy.Open();
+                            if (IsWorksheetEntry(entry)) CopyWithoutDataValidations(from, to);
+                            else from.CopyTo(to);
+                        }
+                    }
+                    output.Position = 0;
+                    return output;
+                }
+            }
+            catch (Exception ex) when (ex is InvalidDataException || ex is XmlException)
+            {
+                // Not a readable .xlsx package - hand back the original bytes and let ClosedXML
+                // report it through the normal "could not read the file" path.
+                input.Position = startPosition;
+                return input;
+            }
+        }
+
+        private static bool IsWorksheetEntry(ZipArchiveEntry entry) =>
+            entry.FullName.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase)
+            && entry.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);
+
+        // Matches both the classic <dataValidations> element and the Excel 2010 <x14:dataValidations>
+        // extension (used for dropdowns that point at another sheet).
+        private static bool IsDataValidations(XmlReader reader) =>
+            reader.NodeType == XmlNodeType.Element && reader.LocalName == "dataValidations";
+
+        private static readonly XmlReaderSettings SheetReaderSettings = new()
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null
+        };
+
+        private static bool ContainsDataValidations(Stream sheetXml)
+        {
+            using var reader = XmlReader.Create(sheetXml, SheetReaderSettings);
+            while (reader.Read())
+            {
+                if (IsDataValidations(reader)) return true;
+            }
+            return false;
+        }
+
+        // Streams the worksheet XML node by node (sheets can be hundreds of MB), dropping every
+        // dataValidations subtree and copying everything else as-is.
+        private static void CopyWithoutDataValidations(Stream sheetXml, Stream target)
+        {
+            using var reader = XmlReader.Create(sheetXml, SheetReaderSettings);
+            using var writer = XmlWriter.Create(target, new XmlWriterSettings
+            {
+                Encoding = new UTF8Encoding(false),
+                OmitXmlDeclaration = true
+            });
+
+            reader.Read();
+            while (!reader.EOF)
+            {
+                if (IsDataValidations(reader))
+                {
+                    reader.Skip();
+                    continue;
+                }
+
+                switch (reader.NodeType)
+                {
+                    case XmlNodeType.Element:
+                        writer.WriteStartElement(reader.Prefix, reader.LocalName, reader.NamespaceURI);
+                        writer.WriteAttributes(reader, true);
+                        if (reader.IsEmptyElement) writer.WriteEndElement();
+                        break;
+                    case XmlNodeType.EndElement:
+                        writer.WriteFullEndElement();
+                        break;
+                    case XmlNodeType.Text:
+                        writer.WriteString(reader.Value);
+                        break;
+                    case XmlNodeType.Whitespace:
+                    case XmlNodeType.SignificantWhitespace:
+                        writer.WriteWhitespace(reader.Value);
+                        break;
+                    case XmlNodeType.CDATA:
+                        writer.WriteCData(reader.Value);
+                        break;
+                    case XmlNodeType.ProcessingInstruction:
+                        writer.WriteProcessingInstruction(reader.Name, reader.Value);
+                        break;
+                    case XmlNodeType.Comment:
+                        writer.WriteComment(reader.Value);
+                        break;
+                }
+                reader.Read();
+            }
         }
 
         private static bool HeaderMatches(byte[] header, byte[] signature)
