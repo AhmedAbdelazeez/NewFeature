@@ -1,379 +1,78 @@
 @page
 @model NewFeature.Pages.SalesModel
 @{
-    ViewData["Title"] = "Sales Department";
+    ViewData["Title"] = "إدارة المبيعات";
 }
+
+@* The Sales department's entry point. Sales keeps three separate files on three separate clocks,
+   so each one has its own page (template download, upload, records): the customer roster once a
+   year, the fleet capacity when the fleet changes, and the daily operations every day. The KPIs
+   computed from them are shown on the executive dashboard, never here. *@
 
 <div class="py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
-            <h1 class="glow-text"><i class="bi bi-graph-up-arrow me-2"></i> <span data-i18n="sales-title">Sales Department</span></h1>
-            <p class="text-muted mb-0" data-i18n="sales-subtitle">Customer roster, fleet capacity context, and daily operations - إدارة المبيعات</p>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-outline-secondary btn-sm" href="/templates/Sales_Department_Excel_Templates.xlsx" download title="Download the Sales Department template (Customer Roster + Fleet Capacity + Daily Operations, one workbook)">
-                <i class="bi bi-download"></i> <span data-i18n="sales-btn-download-template">Template</span>
+    <div class="mb-4">
+        <h1 class="display-6 fw-extrabold glow-text mb-1" style="font-family: var(--font-outfit);">
+            <i class="bi bi-graph-up-arrow me-2"></i>إدارة المبيعات
+        </h1>
+        <p class="text-muted fs-6 mb-0">
+            اختر الملف الذي تريد رفعه. لكل ملف صفحة خاصة فيها تحميل النموذج ورفعه وسجل البيانات مع الإضافة والتعديل والحذف.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <a href="/SalesCustomers" class="text-decoration-none">
+                <div class="glass-card p-4 h-100 d-flex flex-column">
+                    <div class="text-muted small fw-bold mb-2">مرة كل سنة</div>
+                    <h5 class="fw-bold mb-2"><i class="bi bi-people me-2"></i>قائمة العملاء</h5>
+                    <p class="text-muted small flex-grow-1">
+                        عملاء السنة المالية: رقم الحساب، الاسم، فئة العميل، العملة. اسم الورقة هو السنة (مثل 2026)،
+                        ورفع نفس السنة مرة أخرى يستبدلها ولا يكررها.
+                    </p>
+                    <span class="btn btn-neon btn-sm align-self-start">فتح الصفحة <i class="bi bi-arrow-left ms-1"></i></span>
+                </div>
             </a>
-            <input type="file" id="uploadSales" class="d-none" accept=".xlsx,.xls" onchange="handleBulkUpload(event, '/api/sales/upload')">
-            <button class="btn btn-neon" onclick="document.getElementById('uploadSales').click()">
-                <i class="bi bi-cloud-upload"></i> <span data-i18n="sales-btn-upload">Upload Sales Data</span>
-            </button>
         </div>
-    </div>
 
-    <!-- Executive KPI Cards -->
-    <div class="row g-3 mb-4" id="salesKpis">
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-active-customers">Active Customers</div>
-                <div class="fs-3 fw-bold" id="kpiActiveCustomers">--</div>
-                <div class="text-muted" style="font-size:0.7rem" id="kpiActiveCustomersYear">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-new-customers">New Customers</div>
-                <div class="fs-3 fw-bold" id="kpiNewCustomers">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-retention">Customer Retention</div>
-                <div class="fs-3 fw-bold" id="kpiRetention">--</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-growth">YoY Growth</div>
-                <div class="fs-3 fw-bold" id="kpiGrowth">--</div>
-            </div>
-        </div>
-        <div class="col-md-4 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-top-segment">Top Customer Segment</div>
-                <div class="fs-5 fw-bold" id="kpiTopSegment">--</div>
-            </div>
-        </div>
-        <div class="col-md-4 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-fleet-buses">Fleet - Total Buses</div>
-                <div class="fs-3 fw-bold" id="kpiFleetBuses">--</div>
-            </div>
-        </div>
-        <div class="col-md-4 col-6">
-            <div class="glass-card p-3 text-center">
-                <div class="text-muted small" data-i18n="sales-kpi-fleet-seats">Fleet - Total Seats</div>
-                <div class="fs-3 fw-bold" id="kpiFleetSeats">--</div>
-            </div>
-        </div>
-    </div>
-    <div class="alert alert-warning small" id="noDataBanner" style="display:none;"></div>
-
-    <!-- Customer Trend by Year -->
-    <div class="glass-card mb-4">
-        <div class="p-3 border-bottom border-glass"><strong data-i18n="sales-section-trend">Customer Roster Trend by Year</strong></div>
-        <div class="table-responsive">
-            <table class="table table-glass text-white align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th data-i18n="sales-th-year">Year</th>
-                        <th data-i18n="sales-th-active">Active Customers</th>
-                        <th data-i18n="sales-th-new">New</th>
-                        <th data-i18n="sales-th-retained">Retained</th>
-                        <th data-i18n="sales-th-churned">Churned</th>
-                        <th data-i18n="sales-th-yoy">YoY Growth %</th>
-                    </tr>
-                </thead>
-                <tbody id="trendBody">
-                    <tr><td colspan="6" class="text-center py-3 text-muted">--</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <!-- Fleet Capacity -->
-        <div class="col-lg-6">
-            <div class="glass-card h-100">
-                <div class="p-3 border-bottom border-glass"><strong data-i18n="sales-section-fleet">Fleet Capacity (Sales Context)</strong></div>
-                <div class="table-responsive" style="max-height: 360px;">
-                    <table class="table table-glass text-white align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th data-i18n="sales-th-bustype">Bus Type</th>
-                                <th data-i18n="sales-th-category">Category</th>
-                                <th data-i18n="sales-th-buses">Buses</th>
-                                <th data-i18n="sales-th-seats">Total Seats</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fleetBody">
-                            <tr><td colspan="4" class="text-center py-3 text-muted">--</td></tr>
-                        </tbody>
-                    </table>
+        <div class="col-md-4">
+            <a href="/SalesFleet" class="text-decoration-none">
+                <div class="glass-card p-4 h-100 d-flex flex-column">
+                    <div class="text-muted small fw-bold mb-2">عند تغيّر الأسطول</div>
+                    <h5 class="fw-bold mb-2"><i class="bi bi-bus-front me-2"></i>الطاقة الاستيعابية للأسطول</h5>
+                    <p class="text-muted small flex-grow-1">
+                        أنواع الحافلات وعددها ومقاعدها. النموذج يُحمَّل مُعبأً بالأسطول الحالي، عدّل الأعداد وارفعه
+                        فيستبدل البيانات السابقة بالكامل.
+                    </p>
+                    <span class="btn btn-neon btn-sm align-self-start">فتح الصفحة <i class="bi bi-arrow-left ms-1"></i></span>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <!-- Import History -->
-        <div class="col-lg-6">
-            <div class="glass-card h-100">
-                <div class="p-3 border-bottom border-glass"><strong data-i18n="sales-section-history">Import History</strong></div>
-                <div class="table-responsive" style="max-height: 360px;">
-                    <table class="table table-glass text-white align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th data-i18n="sales-th-date">Date</th>
-                                <th data-i18n="sales-th-file">File</th>
-                                <th data-i18n="sales-th-type">Type</th>
-                                <th data-i18n="sales-th-rows">Rows</th>
-                                <th data-i18n="sales-th-status">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyBody">
-                            <tr><td colspan="5" class="text-center py-3 text-muted">--</td></tr>
-                        </tbody>
-                    </table>
+        <div class="col-md-4">
+            <a href="/SalesOperations" class="text-decoration-none">
+                <div class="glass-card p-4 h-100 d-flex flex-column">
+                    <div class="text-muted small fw-bold mb-2">كل يوم</div>
+                    <h5 class="fw-bold mb-2"><i class="bi bi-calendar-check me-2"></i>التشغيل اليومي</h5>
+                    <p class="text-muted small flex-grow-1">
+                        أوامر الإيجار لكل يوم: العميل، الاتجاه، عدد الحافلات المطلوبة والمجدولة.
+                        رفع نفس اليوم مرة أخرى يستبدل بياناته فقط.
+                    </p>
+                    <span class="btn btn-neon btn-sm align-self-start">فتح الصفحة <i class="bi bi-arrow-left ms-1"></i></span>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
-    <!-- Daily Operations -->
-    <div class="glass-card mb-4">
-        <div class="p-3 border-bottom border-glass d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <strong data-i18n="sales-section-daily">Daily Operations</strong>
-            <div class="d-flex gap-2 align-items-center">
-                <input type="date" id="filterFrom" class="form-control form-control-glass form-control-sm">
-                <input type="date" id="filterTo" class="form-control form-control-glass form-control-sm">
-                <button class="btn btn-neon-outline btn-sm" onclick="applyOpsFilter()" data-i18n="sales-btn-filter">Apply</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="resetOpsFilter()" data-i18n="sales-btn-reset">Reset</button>
-            </div>
+    @* For whoever still keeps the three sheets together in one workbook. *@
+    <div class="glass-card p-3 mt-4 small d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <i class="bi bi-info-circle me-1"></i>
+            لديك الملف المجمّع (العملاء + الأسطول + التشغيل في ملف واحد)؟ يمكنك رفعه مرة واحدة وسيتم توزيع كل ورقة على صفحتها.
         </div>
-        <div class="table-responsive">
-            <table class="table table-glass text-white align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th data-i18n="sales-th-opsdate">Date</th>
-                        <th data-i18n="sales-th-order">Order #</th>
-                        <th data-i18n="sales-th-customer">Customer</th>
-                        <th data-i18n="sales-th-direction">Route</th>
-                        <th data-i18n="sales-th-count">Bus Count</th>
-                    </tr>
-                </thead>
-                <tbody id="opsBody">
-                    <tr><td colspan="5" class="text-center py-3 text-muted">--</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center p-3">
-            <span class="text-muted small" id="opsPageInfo">--</span>
-            <div>
-                <button class="btn btn-neon-outline btn-sm me-2" onclick="opsPrevPage()" data-i18n="sales-btn-prev">Previous</button>
-                <button class="btn btn-neon-outline btn-sm" onclick="opsNextPage()" data-i18n="sales-btn-next">Next</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="text-center mt-4">
-        <a href="/RawahelDepartments" class="btn btn-neon-outline">
-            <i class="bi bi-arrow-left me-1"></i> <span data-i18n="btn-back-departments">Back to Departments</span>
-        </a>
+        <input type="file" id="salesCombinedFile" class="d-none" accept=".xlsx,.xls"
+               onchange="rawahelExcelUpload(event, '/api/sales/upload')">
+        <button class="btn btn-neon-outline btn-sm" onclick="document.getElementById('salesCombinedFile').click()">
+            <i class="bi bi-files me-1"></i> رفع الملف المجمّع
+        </button>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        const currentLang = localStorage.getItem('lang') || 'en';
-        let opsPage = 1;
-        const opsPageSize = 10;
-        let opsFromDate = '';
-        let opsToDate = '';
-
-        document.addEventListener("DOMContentLoaded", function () {
-            loadKpis();
-            loadTrend();
-            loadFleet();
-            loadHistory();
-            loadOps();
-        });
-
-        function fmtPct(v) { return (v ?? 0).toFixed(1) + '%'; }
-
-        async function loadKpis() {
-            try {
-                const res = await fetch('/api/sales/kpis');
-                if (!res.ok) return;
-                const k = await res.json();
-
-                const banner = document.getElementById('noDataBanner');
-                if (!k.hasCustomerData && !k.hasFleetData && !k.hasDailyOperationsData) {
-                    banner.style.display = 'block';
-                    banner.innerText = currentLang === 'en'
-                        ? 'No Sales data has been uploaded yet. Use the buttons above to upload the customer roster, fleet capacity, and daily operations workbooks.'
-                        : 'لم يتم رفع بيانات المبيعات بعد. استخدم الأزرار أعلاه لرفع ملفات العملاء والطاقة الاستيعابية والتشغيل اليومي.';
-                } else {
-                    banner.style.display = 'none';
-                }
-
-                document.getElementById('kpiActiveCustomers').innerText = k.hasCustomerData ? k.totalActiveCustomersActual : '--';
-                document.getElementById('kpiActiveCustomersYear').innerText = k.hasCustomerData ? (currentLang === 'en' ? `FY ${k.latestFiscalYear}` : `سنة ${k.latestFiscalYear}`) : '';
-                document.getElementById('kpiNewCustomers').innerText = k.hasCustomerData ? k.newCustomersActual : '--';
-                document.getElementById('kpiRetention').innerText = k.hasCustomerData ? fmtPct(k.customerRetentionRateActual) : '--';
-                document.getElementById('kpiGrowth').innerText = (k.hasCustomerData && k.customerGrowthYoYPercent !== null) ? fmtPct(k.customerGrowthYoYPercent) : '--';
-                document.getElementById('kpiTopSegment').innerText = k.hasCustomerData && k.topCustomerSegment ? `${k.topCustomerSegment} (${fmtPct(k.topCustomerSegmentSharePercent)})` : '--';
-                document.getElementById('kpiFleetBuses').innerText = k.hasFleetData ? k.totalFleetBuses : '--';
-                document.getElementById('kpiFleetSeats').innerText = k.hasFleetData ? k.totalFleetSeats.toLocaleString() : '--';
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadTrend() {
-            const tbody = document.getElementById('trendBody');
-            try {
-                const res = await fetch('/api/sales/customers/summary');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.hasData || !data.years.length) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No customer data uploaded yet.' : 'لا توجد بيانات عملاء بعد.'}</td></tr>`;
-                    return;
-                }
-                tbody.innerHTML = '';
-                data.years.forEach(y => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${y.fiscalYear}</strong></td>
-                        <td>${y.activeCustomers}</td>
-                        <td>${y.newCustomers}</td>
-                        <td>${y.retainedCustomers}</td>
-                        <td>${y.churnedCustomers}</td>
-                        <td>${y.yoYGrowthPercent === null ? '--' : fmtPct(y.yoYGrowthPercent)}</td>`;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadFleet() {
-            const tbody = document.getElementById('fleetBody');
-            try {
-                const res = await fetch('/api/sales/fleet-capacity');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.hasData || !data.items.length) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No fleet capacity data uploaded yet.' : 'لا توجد بيانات أسطول بعد.'}</td></tr>`;
-                    return;
-                }
-                tbody.innerHTML = '';
-                data.items.forEach(i => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${i.busType}</td><td>${i.category}</td><td>${i.numberOfBuses}</td><td>${i.totalSeats.toLocaleString()}</td>`;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadHistory() {
-            const tbody = document.getElementById('historyBody');
-            try {
-                const res = await fetch('/api/sales/import-history?page=1&pageSize=15');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.items.length) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No uploads yet.' : 'لا يوجد رفع ملفات بعد.'}</td></tr>`;
-                    return;
-                }
-                tbody.innerHTML = '';
-                data.items.forEach(b => {
-                    const badgeClass = b.status === 'Success' ? 'bg-success' : (b.status === 'Failed' ? 'bg-danger' : (b.status === 'DuplicateSkipped' ? 'bg-secondary' : 'bg-warning text-dark'));
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${new Date(b.uploadedAt).toLocaleString()}</td>
-                        <td title="${b.fileName}">${b.fileName.length > 22 ? b.fileName.substring(0, 22) + '…' : b.fileName}</td>
-                        <td>${b.fileType}</td>
-                        <td>${b.importedRowCount}${b.rejectedRowCount ? ` (${b.rejectedRowCount} rejected)` : ''}</td>
-                        <td><span class="badge ${badgeClass}">${b.status}</span></td>`;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) { console.error(err); }
-        }
-
-        async function loadOps() {
-            const tbody = document.getElementById('opsBody');
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted"><i class="bi bi-arrow-repeat spin me-2"></i> Loading...</td></tr>`;
-            let url = `/api/sales/daily-operations?page=${opsPage}&pageSize=${opsPageSize}`;
-            if (opsFromDate) url += `&fromDate=${opsFromDate}`;
-            if (opsToDate) url += `&toDate=${opsToDate}`;
-            try {
-                const res = await fetch(url);
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!data.items.length) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">${currentLang === 'en' ? 'No daily operations uploaded yet.' : 'لا توجد بيانات تشغيل يومي بعد.'}</td></tr>`;
-                } else {
-                    tbody.innerHTML = '';
-                    data.items.forEach(o => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${new Date(o.executionDate).toLocaleDateString()}</td>
-                            <td>${o.rentalOrderNumber ?? '--'}</td>
-                            <td>${o.customerName}</td>
-                            <td>${o.direction ?? '--'}</td>
-                            <td>${o.operationalCount}</td>`;
-                        tbody.appendChild(tr);
-                    });
-                }
-                document.getElementById('opsPageInfo').innerText = `Page ${data.page} of ${data.totalPages || 1} (${data.totalCount} records)`;
-            } catch (err) { console.error(err); }
-        }
-
-        function applyOpsFilter() {
-            opsFromDate = document.getElementById('filterFrom').value;
-            opsToDate = document.getElementById('filterTo').value;
-            opsPage = 1;
-            loadOps();
-        }
-        function resetOpsFilter() {
-            document.getElementById('filterFrom').value = '';
-            document.getElementById('filterTo').value = '';
-            opsFromDate = ''; opsToDate = '';
-            opsPage = 1;
-            loadOps();
-        }
-        function opsPrevPage() { if (opsPage > 1) { opsPage--; loadOps(); } }
-        function opsNextPage() { opsPage++; loadOps(); }
-
-        async function handleBulkUpload(event, url) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const res = await fetch(url, { method: 'POST', body: formData });
-                const result = await res.json().catch(() => null);
-
-                if (res.ok && result) {
-                    let msg = currentLang === 'en'
-                        ? `Imported ${result.successCount} rows. Status: ${result.status}.`
-                        : `تم استيراد ${result.successCount} سجل. الحالة: ${result.status}.`;
-                    if (result.message) msg += `\n${result.message}`;
-                    if (result.errors && result.errors.length > 0) {
-                        msg += "\n\n" + (currentLang === 'en' ? 'Warnings:' : 'ملاحظات:') + "\n" + result.errors.slice(0, 5).join('\n');
-                        if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more.`;
-                    }
-                    alert(msg);
-                } else if (result) {
-                    let msg = result.message || (currentLang === 'en' ? 'Upload failed.' : 'فشل الرفع.');
-                    if (result.errors && result.errors.length > 0) msg += "\n" + result.errors.slice(0, 5).join('\n');
-                    alert(msg);
-                } else {
-                    alert(currentLang === 'en' ? 'Upload failed.' : 'فشل الرفع.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert(currentLang === 'en' ? 'An error occurred during upload.' : 'حدث خطأ أثناء الرفع.');
-            } finally {
-                event.target.value = "";
-                loadKpis(); loadTrend(); loadFleet(); loadHistory(); loadOps();
-            }
-        }
-    </script>
-}

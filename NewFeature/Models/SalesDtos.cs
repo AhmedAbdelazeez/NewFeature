@@ -3,17 +3,6 @@ using System.Collections.Generic;
 
 namespace NewFeature.Models
 {
-    public class SalesImportResultDto
-    {
-        public int BatchId { get; set; }
-        public string FileType { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public int SuccessCount { get; set; }
-        public int RejectedCount { get; set; }
-        public List<string> Errors { get; set; } = new();
-        public string Message { get; set; } = string.Empty;
-    }
-
     public class SalesImportBatchDto
     {
         public int Id { get; set; }
@@ -29,102 +18,99 @@ namespace NewFeature.Models
         public string? ErrorDetails { get; set; }
     }
 
-    public class SalesCustomerYearSummaryDto
+    // One customer on one fiscal year's roster - a row of the العملاء page and of the upload.
+    // Numbers and dates are nullable on every Sales DTO so a blank form field reaches the shared
+    // validation (and gets its "مطلوب" message) instead of failing JSON binding.
+    public class SalesCustomerDto
     {
-        public int FiscalYear { get; set; }
-        public int ActiveCustomers { get; set; }
-        public int NewCustomers { get; set; }
-        public int RetainedCustomers { get; set; }
-        public int ChurnedCustomers { get; set; }
-        // Null when there is no prior-year roster to compare against (first year on file).
-        public double? YoYGrowthPercent { get; set; }
-        public Dictionary<string, int> SegmentDistribution { get; set; } = new();
+        public int Id { get; set; }
+        public string? CustomerCode { get; set; }
+        public string? CustomerName { get; set; }
+        public string? CustomerGroup { get; set; }
+        public string? Currency { get; set; }
+        public int? FiscalYear { get; set; }
     }
 
-    public class SalesCustomersOverviewDto
+    public class SalesFleetCapacityDto
     {
-        public bool HasData { get; set; }
-        public List<SalesCustomerYearSummaryDto> Years { get; set; } = new();
-        public List<SalesTopSegmentDto> TopSegments { get; set; } = new();
-    }
-
-    public class SalesTopSegmentDto
-    {
-        public string CustomerGroup { get; set; } = string.Empty;
-        public int CustomerCount { get; set; }
-        public double SharePercent { get; set; }
-    }
-
-    public class SalesFleetCapacityItemDto
-    {
+        public int Id { get; set; }
         public string? BusCode { get; set; }
-        public string BusType { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
+        public string? BusType { get; set; }
+        public string? Category { get; set; }
         public int? ModelYear { get; set; }
-        public int NumberOfBuses { get; set; }
-        public int SeatsPerBus { get; set; }
-        public int TotalSeats { get; set; }
-    }
-
-    public class SalesFleetCapacitySummaryDto
-    {
-        public bool HasData { get; set; }
-        public DateTime? SnapshotDate { get; set; }
-        public int TotalBuses { get; set; }
-        public int TotalSeats { get; set; }
-        public double AverageSeatsPerBus { get; set; }
-        public List<SalesFleetCapacityItemDto> Items { get; set; } = new();
-        public Dictionary<string, int> BusesByCategory { get; set; } = new();
-        public Dictionary<string, int> BusesByType { get; set; } = new();
+        public int? NumberOfBuses { get; set; }
+        public int? SeatsPerBus { get; set; }
+        // Left blank, it is computed as NumberOfBuses x SeatsPerBus.
+        public int? TotalSeats { get; set; }
     }
 
     public class SalesDailyOperationDto
     {
         public int Id { get; set; }
         public string? RentalOrderNumber { get; set; }
-        public string CustomerName { get; set; } = string.Empty;
+        public string? ConfirmationNumber { get; set; }
+        public string? RequestType { get; set; }
+        public string? CustomerName { get; set; }
         public string? ExecutionPoint { get; set; }
         public string? Direction { get; set; }
         public string? BusTypeCode { get; set; }
-        public int OperationalCount { get; set; }
-        public int ScheduledBuses { get; set; }
-        public DateTime ExecutionDate { get; set; }
+        public int? OperationalCount { get; set; }
+        public int? ScheduledBuses { get; set; }
+        public DateTime? ExecutionDate { get; set; }
+        // "HH:mm", the way the page's form and the sheet both write it.
+        public string? ExecutionTime { get; set; }
+        public string? Notes { get; set; }
     }
 
-    // Executive aggregate for the Sales dashboard (NewFeature page + the CEO dashboard in `project`).
-    // Every *Actual field is computed from real uploaded data; every *Target field is an illustrative
-    // business goal (matching the convention already used by CommercialKpisDto/WarehouseKpisDto in
-    // this codebase) that the business can tune later - never a measured/fabricated value.
+    // Dropdown contents for each page's index, taken from what the uploaded data actually carries.
+    public class SalesCustomerFilterOptionsDto
+    {
+        public List<int> Years { get; set; } = new();
+        public List<string> Groups { get; set; } = new();
+    }
+
+    public class SalesFleetFilterOptionsDto
+    {
+        public List<string> Categories { get; set; } = new();
+        public List<string> BusTypes { get; set; } = new();
+    }
+
+    public class SalesOperationFilterOptionsDto
+    {
+        public List<string> RequestTypes { get; set; } = new();
+        public List<string> ExecutionPoints { get; set; } = new();
+    }
+
+    // The Sales KPIs the executive dashboard (project repo) shows: plain counts and two ratios,
+    // one small group per template. Every figure is computed from uploaded rows; nothing here is
+    // an assumed target.
     public class SalesKpisDto
     {
         public bool HasCustomerData { get; set; }
         public bool HasFleetData { get; set; }
         public bool HasDailyOperationsData { get; set; }
 
+        // Customer roster - the latest fiscal year uploaded.
         public int LatestFiscalYear { get; set; }
+        public int ActiveCustomers { get; set; }
+        // Null when only one fiscal year is on file (nothing to compare against).
+        public int? PreviousYearCustomers { get; set; }
+        public int? NewCustomers { get; set; }
+        public string TopCustomerGroup { get; set; } = string.Empty;
+        public double TopCustomerGroupSharePercent { get; set; }
 
-        public int TotalActiveCustomersActual { get; set; }
-        public int TotalActiveCustomersTarget { get; set; } // = previous year's active customer count
-
-        public int NewCustomersActual { get; set; }
-        public int NewCustomersTarget { get; set; } = 50; // illustrative
-
-        public int ChurnedCustomersActual { get; set; }
-
-        public double CustomerRetentionRateActual { get; set; }
-        public double CustomerRetentionRateTarget { get; set; } = 80.0; // illustrative
-
-        // Null when there is no prior-year roster to compare against.
-        public double? CustomerGrowthYoYPercent { get; set; }
-
-        public string TopCustomerSegment { get; set; } = string.Empty;
-        public double TopCustomerSegmentSharePercent { get; set; }
-
+        // Fleet capacity - the current snapshot.
         public int TotalFleetBuses { get; set; }
         public int TotalFleetSeats { get; set; }
-        public double AverageSeatsPerBus { get; set; }
 
-        public int LatestDailyOperationsCount { get; set; }
-        public DateTime? LatestDailyOperationsDate { get; set; }
+        // Daily operations - the latest execution date uploaded.
+        public DateTime? LatestOperationsDate { get; set; }
+        public int LatestOrdersCount { get; set; }
+        public int LatestRequestedBuses { get; set; }
+        public int LatestScheduledBuses { get; set; }
+        // Scheduled / requested buses on that day.
+        public double? SchedulingCoveragePercent { get; set; }
+        // Scheduled buses on that day / buses in the fleet snapshot.
+        public double? FleetUtilizationPercent { get; set; }
     }
 }

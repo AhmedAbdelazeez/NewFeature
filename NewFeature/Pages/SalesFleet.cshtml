@@ -1,0 +1,64 @@
+@page
+@model SalesFleetModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
+@{
+    ViewData["Title"] = "الطاقة الاستيعابية - إدارة المبيعات";
+}
+
+@* Sales template 2 of 3: the fleet capacity snapshot. Each upload replaces the previous one. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "الطاقة الاستيعابية للأسطول",
+        Subtitle = "أنواع الحافلات وعددها ومقاعدها. النموذج يُحمَّل مُعبأً بالأسطول الحالي، وكل رفع يستبدل البيانات السابقة بالكامل.",
+        Icon = "bi-bus-front",
+        TemplateUrl = "/api/sales/fleet-capacity/template",
+        UploadUrl = "/api/sales/fleet-capacity/bulk-upload",
+        Sheets = new[] { DepartmentTemplates.SalesFleetCapacity }
+    };
+}
+<partial name="_SalesNav" model="@("fleet")" />
+<partial name="_DepartmentUploadLanding" model="landing" />
+
+<h5 class="fw-bold mb-3">سجل الأسطول</h5>
+<div id="crud-fleet" class="mb-5"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const f = RawahelCrud.format;
+            RawahelCrud.mount({
+                el: '#crud-fleet',
+                itemName: 'صنف حافلات',
+                listUrl: '/api/sales/fleet-capacity',
+                createUrl: '/api/sales/fleet-capacity',
+                itemUrl: id => '/api/sales/fleet-capacity/' + id,
+                searchPlaceholder: 'بحث بكود الحافلة أو النوع أو الفئة...',
+                filterOptionsUrl: '/api/sales/fleet-capacity/filter-options',
+                filters: [
+                    { key: 'category', label: 'الفئة', optionsFrom: 'categories', col: 3 },
+                    { key: 'busType', label: 'نوع الحافلة', optionsFrom: 'busTypes', col: 3 }
+                ],
+                columns: [
+                    { key: 'busCode', label: 'كود الحافلة', format: v => '<strong>' + f.esc(v || '--') + '</strong>' },
+                    { key: 'busType', label: 'نوع الحافلة' },
+                    { key: 'category', label: 'الفئة' },
+                    { key: 'modelYear', label: 'الموديل' },
+                    { key: 'numberOfBuses', label: 'عدد الحافلات', format: v => f.number(v, 0) },
+                    { key: 'seatsPerBus', label: 'مقاعد الحافلة', format: v => f.number(v, 0) },
+                    { key: 'totalSeats', label: 'إجمالي المقاعد', format: v => '<strong>' + f.number(v, 0) + '</strong>' }
+                ],
+                fields: [
+                    { key: 'busCode', label: 'كود الحافلة (Bus Code)', col: 4 },
+                    { key: 'busType', label: 'نوع الحافلة (Bus Type)', required: true, col: 4 },
+                    { key: 'category', label: 'الفئة (Category)', col: 4 },
+                    { key: 'modelYear', label: 'سنة الموديل (Model Year)', type: 'number', col: 3 },
+                    { key: 'numberOfBuses', label: 'عدد الحافلات', type: 'number', required: true, col: 3 },
+                    { key: 'seatsPerBus', label: 'مقاعد الحافلة', type: 'number', required: true, col: 3 },
+                    { key: 'totalSeats', label: 'إجمالي المقاعد (تلقائي إن تُرك فارغاً)', type: 'number', col: 3 }
+                ]
+            });
+        })();
+    </script>
+}

@@ -245,6 +245,115 @@ namespace NewFeature.Services.ExcelImport
             Columns = BalanceColumns()
         };
 
+        // ─────────── Sales: three templates, one page each ───────────
+        // The customer roster (one sheet per fiscal year, the sheet name IS the year), the fleet
+        // capacity snapshot and the daily operations log. Each is uploaded on its own page from its
+        // own file; the combined workbook (all three sheets in one file) is still accepted. Headers
+        // are the English ones Sales already uses in its approved workbook; the first alias is what
+        // the downloadable template writes, the others are the Arabic spellings of their older AX /
+        // operations-room exports. SalesService resolves them by exact name first, then by keyword.
+        public const string SalesCustomerCode = "customerCode";
+        public const string SalesCustomerName = "customerName";
+        public const string SalesCustomerGroup = "customerGroup";
+        public const string SalesCurrency = "currency";
+
+        public static ExcelTemplateDefinition SalesCustomers { get; } = new()
+        {
+            TemplateName = "نموذج قائمة العملاء (Customer Roster)",
+            IdentityColumnKey = SalesCustomerCode,
+            Columns = new List<ExcelColumnDefinition>
+            {
+                new() { Key = SalesCustomerCode, DisplayName = "رقم حساب العميل (Order Account)", Required = true,
+                        HeaderAliases = new[] { "Order Account", "حساب العميل", "رقم الحساب" } },
+                new() { Key = SalesCustomerName, DisplayName = "اسم العميل (Name)", Required = true,
+                        HeaderAliases = new[] { "Name", "اسم العميل", "أسم العميل", "Customer Name" } },
+                new() { Key = SalesCustomerGroup, DisplayName = "فئة العميل (Customer Group) مثل LCLCONT / FRNHAJ",
+                        HeaderAliases = new[] { "Customer Group", "فئة العميل", "مجموعة العملاء" } },
+                new() { Key = SalesCurrency, DisplayName = "العملة (Currency)",
+                        HeaderAliases = new[] { "Currency", "العملة" } }
+            }
+        };
+
+        public const string SalesBusCode = "busCode";
+        public const string SalesBusType = "busType";
+        public const string SalesCategory = "category";
+        public const string SalesModelYear = "modelYear";
+        public const string SalesNumberOfBuses = "numberOfBuses";
+        public const string SalesSeatsPerBus = "seatsPerBus";
+        public const string SalesTotalSeats = "totalSeats";
+
+        public static ExcelTemplateDefinition SalesFleetCapacity { get; } = new()
+        {
+            TemplateName = "نموذج الطاقة الاستيعابية للأسطول (Fleet Capacity)",
+            SheetDisplayName = "Fleet Capacity",
+            IdentityColumnKey = SalesBusType,
+            Columns = new List<ExcelColumnDefinition>
+            {
+                new() { Key = SalesBusCode, DisplayName = "كود الحافلة (Bus Code)",
+                        HeaderAliases = new[] { "Bus Code", "كود الحافلة", "الحافلة" } },
+                new() { Key = SalesBusType, DisplayName = "نوع الحافلة / الشركة المصنعة (Bus Type)", Required = true,
+                        HeaderAliases = new[] { "Bus Type", "نوع الحافلة" } },
+                new() { Key = SalesCategory, DisplayName = "الفئة (Category) مثل Coach / VIP",
+                        HeaderAliases = new[] { "Category", "الفئة" } },
+                new() { Key = SalesModelYear, DisplayName = "سنة الموديل (Model Year)",
+                        HeaderAliases = new[] { "Model Year", "الموديل" } },
+                new() { Key = SalesNumberOfBuses, DisplayName = "عدد الحافلات (Number of Buses)", Required = true,
+                        HeaderAliases = new[] { "Number of Buses", "عدد الحافلات" } },
+                new() { Key = SalesSeatsPerBus, DisplayName = "عدد المقاعد للحافلة (Seats per Bus)", Required = true,
+                        HeaderAliases = new[] { "Seats per Bus", "عدد المقاعد" } },
+                new() { Key = SalesTotalSeats, DisplayName = "إجمالي المقاعد (Total Seats) - يُحسب تلقائياً إن تُرك فارغاً",
+                        HeaderAliases = new[] { "Total Seats", "اجمالي المقاعد", "إجمالي المقاعد" } }
+            }
+        };
+
+        public const string SalesRentalOrderNumber = "rentalOrderNumber";
+        public const string SalesConfirmationNumber = "confirmationNumber";
+        public const string SalesRequestType = "requestType";
+        public const string SalesOpsCustomerName = "customerName";
+        public const string SalesExecutionPoint = "executionPoint";
+        public const string SalesDirection = "direction";
+        public const string SalesBusTypeCode = "busTypeCode";
+        public const string SalesOperationalCount = "operationalCount";
+        public const string SalesScheduledBuses = "scheduledBuses";
+        public const string SalesExecutionDate = "executionDate";
+        public const string SalesExecutionTime = "executionTime";
+        public const string SalesNotes = "notes";
+
+        public static ExcelTemplateDefinition SalesDailyOperations { get; } = new()
+        {
+            TemplateName = "نموذج التشغيل اليومي (Daily Operations)",
+            SheetDisplayName = "Daily Operations",
+            IdentityColumnKey = SalesOpsCustomerName,
+            Columns = new List<ExcelColumnDefinition>
+            {
+                new() { Key = SalesRentalOrderNumber, DisplayName = "رقم أمر الإيجار (Rental Order Number)",
+                        HeaderAliases = new[] { "Rental Order Number", "رقم أمر الايجار", "رقم امر الايجار", "Rental Order" } },
+                new() { Key = SalesConfirmationNumber, DisplayName = "رقم التعميد (Confirmation Number)",
+                        HeaderAliases = new[] { "Confirmation Number", "رقم التعميد" } },
+                new() { Key = SalesRequestType, DisplayName = "نوع الطلب (Request Type) خارجي / داخلي",
+                        HeaderAliases = new[] { "Request Type", "طلب العميل" } },
+                new() { Key = SalesOpsCustomerName, DisplayName = "اسم العميل (Customer Name)", Required = true,
+                        HeaderAliases = new[] { "Customer Name", "أسم العميل", "اسم العميل" } },
+                new() { Key = SalesExecutionPoint, DisplayName = "المنفذ (Execution Point)",
+                        HeaderAliases = new[] { "Execution Point", "المنفذ" } },
+                new() { Key = SalesDirection, DisplayName = "الاتجاه (Direction)",
+                        HeaderAliases = new[] { "Direction", "الاتجاه", "كود الاتجاة" } },
+                new() { Key = SalesBusTypeCode, DisplayName = "نوع الحافلة (Bus Type Code)",
+                        HeaderAliases = new[] { "Bus Type Code", "نوع الحافلة" } },
+                new() { Key = SalesOperationalCount, DisplayName = "عدد الحافلات المطلوبة (Operational Count)", Required = true,
+                        HeaderAliases = new[] { "Operational Count", "العدد التشغيلى", "العدد التشغيلي" } },
+                new() { Key = SalesScheduledBuses, DisplayName = "الحافلات المجدولة (Scheduled Buses) - يُترك فارغاً إن لم تُجدول",
+                        Required = true,
+                        HeaderAliases = new[] { "Scheduled Buses", "الحافلات المجدولة" } },
+                new() { Key = SalesExecutionDate, DisplayName = "تاريخ التنفيذ (Execution Date)", Required = true,
+                        HeaderAliases = new[] { "Execution Date", "تاريخ التنفيذ" } },
+                new() { Key = SalesExecutionTime, DisplayName = "وقت التنفيذ (Execution Time) مثل 06:00",
+                        HeaderAliases = new[] { "Execution Time", "وقت التنفيذ" } },
+                new() { Key = SalesNotes, DisplayName = "ملاحظات (Notes)",
+                        HeaderAliases = new[] { "Notes", "ملاحظات" } }
+            }
+        };
+
         // ─────────── Maintenance: one internal work-orders log ───────────
         // Mirrors the workshop's own "Internal work orders" sheet exactly. Technicians 2-4 are the
         // extra hands assigned to the same job and are left optional, because most work orders are

@@ -1,0 +1,75 @@
+@page
+@model SalesOperationsModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
+@{
+    ViewData["Title"] = "التشغيل اليومي - إدارة المبيعات";
+}
+
+@* Sales template 3 of 3: the daily operations log. An upload replaces only the dates it carries. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "التشغيل اليومي",
+        Subtitle = "أوامر الإيجار لكل يوم: العميل، الاتجاه، الحافلات المطلوبة والمجدولة. رفع نفس اليوم مرة أخرى يستبدل بياناته فقط.",
+        Icon = "bi-calendar-check",
+        TemplateUrl = "/api/sales/daily-operations/template",
+        UploadUrl = "/api/sales/daily-operations/bulk-upload",
+        Sheets = new[] { DepartmentTemplates.SalesDailyOperations }
+    };
+}
+<partial name="_SalesNav" model="@("operations")" />
+<partial name="_DepartmentUploadLanding" model="landing" />
+
+<h5 class="fw-bold mb-3">سجل التشغيل اليومي</h5>
+<div id="crud-operations" class="mb-5"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const f = RawahelCrud.format;
+            RawahelCrud.mount({
+                el: '#crud-operations',
+                itemName: 'أمر تشغيل',
+                listUrl: '/api/sales/daily-operations',
+                createUrl: '/api/sales/daily-operations',
+                itemUrl: id => '/api/sales/daily-operations/' + id,
+                searchPlaceholder: 'بحث باسم العميل أو رقم الأمر أو التعميد أو الاتجاه...',
+                dateFilter: true,
+                filterOptionsUrl: '/api/sales/daily-operations/filter-options',
+                filters: [
+                    { key: 'requestType', label: 'نوع الطلب', optionsFrom: 'requestTypes', col: 3 },
+                    { key: 'executionPoint', label: 'المنفذ', optionsFrom: 'executionPoints', col: 3 }
+                ],
+                columns: [
+                    { key: 'executionDate', label: 'التاريخ', format: v => f.date(v) },
+                    { key: 'executionTime', label: 'الوقت' },
+                    { key: 'rentalOrderNumber', label: 'رقم الأمر', format: v => '<strong>' + f.esc(v || '--') + '</strong>' },
+                    { key: 'customerName', label: 'العميل' },
+                    { key: 'requestType', label: 'نوع الطلب' },
+                    { key: 'direction', label: 'الاتجاه' },
+                    { key: 'busTypeCode', label: 'نوع الحافلة' },
+                    { key: 'operationalCount', label: 'المطلوب', format: v => f.number(v, 0) },
+                    { key: 'scheduledBuses', label: 'المجدول', format: (v, item) => {
+                        const short = (item.operationalCount || 0) > (v || 0);
+                        return '<strong class="' + (short ? 'text-warning' : '') + '">' + f.number(v, 0) + '</strong>';
+                    } }
+                ],
+                fields: [
+                    { key: 'executionDate', label: 'تاريخ التنفيذ (Execution Date)', type: 'date', required: true, col: 4 },
+                    { key: 'executionTime', label: 'وقت التنفيذ (مثل 06:00)', type: 'time', col: 4 },
+                    { key: 'requestType', label: 'نوع الطلب (Request Type)', col: 4 },
+                    { key: 'rentalOrderNumber', label: 'رقم أمر الإيجار (Rental Order Number)', col: 6 },
+                    { key: 'confirmationNumber', label: 'رقم التعميد (Confirmation Number)', col: 6 },
+                    { key: 'customerName', label: 'اسم العميل (Customer Name)', required: true, col: 12 },
+                    { key: 'executionPoint', label: 'المنفذ (Execution Point)', col: 6 },
+                    { key: 'direction', label: 'الاتجاه (Direction)', col: 6 },
+                    { key: 'busTypeCode', label: 'نوع الحافلة (Bus Type Code)', col: 4 },
+                    { key: 'operationalCount', label: 'الحافلات المطلوبة', type: 'number', required: true, col: 4 },
+                    { key: 'scheduledBuses', label: 'الحافلات المجدولة', type: 'number', col: 4 },
+                    { key: 'notes', label: 'ملاحظات (Notes)', type: 'textarea', col: 12 }
+                ]
+            });
+        })();
+    </script>
+}

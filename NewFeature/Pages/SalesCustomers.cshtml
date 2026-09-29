@@ -1,0 +1,60 @@
+@page
+@model SalesCustomersModel
+@using NewFeature.Pages.Shared
+@using NewFeature.Services.ExcelImport
+@{
+    ViewData["Title"] = "قائمة العملاء - إدارة المبيعات";
+}
+
+@* Sales template 1 of 3: the customer roster, one sheet per fiscal year. *@
+@{
+    var landing = new DepartmentUploadLanding
+    {
+        Title = "قائمة العملاء",
+        Subtitle = "عملاء السنة المالية. اسم الورقة في الملف هو السنة (مثل 2026)، ورفع نفس السنة مرة أخرى يستبدل عملاءها ولا يكررهم.",
+        Icon = "bi-people",
+        TemplateUrl = "/api/sales/customers/template",
+        UploadUrl = "/api/sales/customers/bulk-upload",
+        Sheets = new[] { DepartmentTemplates.SalesCustomers }
+    };
+}
+<partial name="_SalesNav" model="@("customers")" />
+<partial name="_DepartmentUploadLanding" model="landing" />
+
+<h5 class="fw-bold mb-3">سجل العملاء</h5>
+<div id="crud-customers" class="mb-5"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const f = RawahelCrud.format;
+            RawahelCrud.mount({
+                el: '#crud-customers',
+                itemName: 'عميل',
+                listUrl: '/api/sales/customers',
+                createUrl: '/api/sales/customers',
+                itemUrl: id => '/api/sales/customers/' + id,
+                searchPlaceholder: 'بحث برقم الحساب أو اسم العميل أو الفئة...',
+                filterOptionsUrl: '/api/sales/customers/filter-options',
+                filters: [
+                    { key: 'fiscalYear', label: 'السنة المالية', optionsFrom: 'years', col: 3 },
+                    { key: 'customerGroup', label: 'فئة العميل', optionsFrom: 'groups', col: 3 }
+                ],
+                columns: [
+                    { key: 'fiscalYear', label: 'السنة' },
+                    { key: 'customerCode', label: 'رقم الحساب', format: v => '<strong>' + f.esc(v) + '</strong>' },
+                    { key: 'customerName', label: 'اسم العميل' },
+                    { key: 'customerGroup', label: 'فئة العميل' },
+                    { key: 'currency', label: 'العملة' }
+                ],
+                fields: [
+                    { key: 'fiscalYear', label: 'السنة المالية (Fiscal Year)', type: 'number', required: true, col: 4, default: new Date().getFullYear() },
+                    { key: 'customerCode', label: 'رقم الحساب (Order Account)', required: true, col: 8 },
+                    { key: 'customerName', label: 'اسم العميل (Name)', required: true, col: 12 },
+                    { key: 'customerGroup', label: 'فئة العميل (Customer Group) مثل LCLCONT', col: 6 },
+                    { key: 'currency', label: 'العملة (Currency)', col: 6, default: 'SAR' }
+                ]
+            });
+        })();
+    </script>
+}
